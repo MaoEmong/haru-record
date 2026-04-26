@@ -1,5 +1,5 @@
 class AppSettings {
-  const AppSettings({
+  AppSettings({
     required this.trackingEnabled,
     required this.notificationEnabled,
     required this.notificationHour,
@@ -7,10 +7,31 @@ class AppSettings {
     required this.minimumMovementMeters,
     required this.minimumStayMinutes,
     required this.rawPointRetentionDays,
-  });
+  }) {
+    RangeError.checkValueInInterval(
+      notificationHour,
+      0,
+      23,
+      'notificationHour',
+    );
+    RangeError.checkValueInInterval(
+      notificationMinute,
+      0,
+      59,
+      'notificationMinute',
+    );
+    RangeError.checkNotNegative(minimumMovementMeters, 'minimumMovementMeters');
+    RangeError.checkNotNegative(minimumStayMinutes, 'minimumStayMinutes');
+    RangeError.checkValueInInterval(
+      rawPointRetentionDays,
+      1,
+      3650,
+      'rawPointRetentionDays',
+    );
+  }
 
   factory AppSettings.defaults() {
-    return const AppSettings(
+    return AppSettings(
       trackingEnabled: false,
       notificationEnabled: true,
       notificationHour: 9,
@@ -18,6 +39,37 @@ class AppSettings {
       minimumMovementMeters: 100,
       minimumStayMinutes: 10,
       rawPointRetentionDays: 30,
+    );
+  }
+
+  factory AppSettings.normalized({
+    required bool trackingEnabled,
+    required bool notificationEnabled,
+    required int notificationHour,
+    required int notificationMinute,
+    required int minimumMovementMeters,
+    required int minimumStayMinutes,
+    required int rawPointRetentionDays,
+  }) {
+    final defaults = AppSettings.defaults();
+    return AppSettings(
+      trackingEnabled: trackingEnabled,
+      notificationEnabled: notificationEnabled,
+      notificationHour: _validRange(notificationHour, 0, 23)
+          ? notificationHour
+          : defaults.notificationHour,
+      notificationMinute: _validRange(notificationMinute, 0, 59)
+          ? notificationMinute
+          : defaults.notificationMinute,
+      minimumMovementMeters: minimumMovementMeters >= 0
+          ? minimumMovementMeters
+          : defaults.minimumMovementMeters,
+      minimumStayMinutes: minimumStayMinutes >= 0
+          ? minimumStayMinutes
+          : defaults.minimumStayMinutes,
+      rawPointRetentionDays: _validRange(rawPointRetentionDays, 1, 3650)
+          ? rawPointRetentionDays
+          : defaults.rawPointRetentionDays,
     );
   }
 
@@ -65,12 +117,14 @@ class AppSettings {
 
   @override
   int get hashCode => Object.hash(
-        trackingEnabled,
-        notificationEnabled,
-        notificationHour,
-        notificationMinute,
-        minimumMovementMeters,
-        minimumStayMinutes,
-        rawPointRetentionDays,
-      );
+    trackingEnabled,
+    notificationEnabled,
+    notificationHour,
+    notificationMinute,
+    minimumMovementMeters,
+    minimumStayMinutes,
+    rawPointRetentionDays,
+  );
 }
+
+bool _validRange(int value, int min, int max) => value >= min && value <= max;
