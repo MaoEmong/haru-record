@@ -13,12 +13,14 @@ double distanceMeters(
   final deltaLat = _toRadians(endLatitude - startLatitude);
   final deltaLng = _toRadians(endLongitude - startLongitude);
 
-  final a = math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
+  final a =
+      math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
       math.cos(startLat) *
           math.cos(endLat) *
           math.sin(deltaLng / 2) *
           math.sin(deltaLng / 2);
-  final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  final clampedA = a.clamp(0, 1).toDouble();
+  final c = 2 * math.atan2(math.sqrt(clampedA), math.sqrt(1 - clampedA));
   return earthRadiusMeters * c;
 }
 
