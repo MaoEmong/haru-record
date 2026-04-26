@@ -39,10 +39,17 @@ class LocationTrackingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val minimumMovementMeters = intent?.getIntExtra("minimumMovementMeters", 100) ?: 100
-        startForeground(FOREGROUND_NOTIFICATION_ID, buildNotification())
 
         if (!hasLocationPermission()) {
-            Log.w(LOG_TAG, "Location permission missing; stopping tracking service.")
+            logTrackingStopped("missing_location_permission")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        try {
+            startForeground(FOREGROUND_NOTIFICATION_ID, buildNotification())
+        } catch (exception: SecurityException) {
+            logTrackingStopped("foreground_service_permission_denied")
             stopSelf()
             return START_NOT_STICKY
         }
@@ -54,9 +61,22 @@ class LocationTrackingService : Service() {
             .setMinUpdateDistanceMeters(minimumMovementMeters.toFloat())
             .build()
 
-        fusedLocationClient.requestLocationUpdates(request, locationCallback, mainLooper)
-        isRunning = true
-        return START_STICKY
+        try {
+            fusedLocationClient.requestLocationUpdates(request, locationCallback, mainLooper)
+                .addOnSuccessListener {
+                    isRunning = true
+                }
+                .addOnFailureListener {
+                    logTrackingStopped("location_updates_failed")
+                    stopSelf()
+                }
+        } catch (exception: SecurityException) {
+            logTrackingStopped("location_updates_permission_denied")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        return START_REDELIVER_INTENT
     }
 
     override fun onDestroy() {
@@ -109,6 +129,7 @@ class LocationTrackingService : Service() {
 
     private fun recordLocation(location: Location) {
         val event = JSONObject()
+            .put("event", "location_recorded")
             .put("timestamp", Instant.ofEpochMilli(location.time).toString())
             .put("latitude", location.latitude)
             .put("longitude", location.longitude)
@@ -118,7 +139,26 @@ class LocationTrackingService : Service() {
             .put("source", "android")
 
         eventFile(this).appendText(event.toString() + "\n")
-        Log.d(LOG_TAG, "Recorded location event.")
+        Log.d(LOG_TAG, redactedLocationLog(location).toString())
+    }
+
+    private fun logTrackingStopped(reason: String) {
+        Log.w(
+            LOG_TAG,
+            JSONObject()
+                .put("event", "tracking_stopped")
+                .put("reason", reason)
+                .toString()
+        )
+    }
+
+    private fun redactedLocationLog(location: Location): JSONObject {
+        return JSONObject()
+            .put("event", "location_recorded")
+            .put("accuracy", location.accuracy.toDouble())
+            .put("hasSpeed", location.hasSpeed())
+            .put("isMock", isMockLocation(location))
+            .put("source", "android")
     }
 
     private fun isMockLocation(location: Location): Boolean {
