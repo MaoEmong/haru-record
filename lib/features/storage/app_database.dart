@@ -40,8 +40,9 @@ class Visits extends Table {
 }
 
 class DailySummaries extends Table {
-  TextColumn get date =>
-      text().customConstraint("NOT NULL CHECK (date GLOB '????-??-??')")();
+  TextColumn get date => text().customConstraint(
+    "NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')",
+  )();
   RealColumn get totalDistanceMeters => real()();
   IntColumn get movingMinutes => integer()();
   IntColumn get stationaryMinutes => integer()();
