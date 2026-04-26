@@ -1535,6 +1535,7 @@ class $DailySummariesTable extends DailySummaries
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (date GLOB \'????-??-??\')',
   );
   static const VerificationMeta _totalDistanceMetersMeta =
       const VerificationMeta('totalDistanceMeters');
