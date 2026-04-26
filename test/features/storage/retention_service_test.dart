@@ -45,7 +45,7 @@ void main() {
         .into(database.dailySummaries)
         .insert(
           DailySummariesCompanion.insert(
-            date: DateTime(2026, 4, 25),
+            date: '2026-04-25',
             totalDistanceMeters: 1000,
             movingMinutes: 30,
             stationaryMinutes: 600,
@@ -67,12 +67,17 @@ void main() {
           ),
         );
 
-    await service.deleteRawPointsOlderThan(now, retentionDays: 30);
+    final deleted = await service.deleteRawPointsOlderThan(
+      now,
+      retentionDays: 30,
+    );
 
     final points = await database.select(database.locationPoints).get();
     final summaries = await database.select(database.dailySummaries).get();
     final insights = await database.select(database.insights).get();
+    expect(deleted, 1);
     expect(points, hasLength(1));
+    expect(points.single.timestamp, withinRetention);
     expect(summaries, hasLength(1));
     expect(insights, hasLength(1));
   });

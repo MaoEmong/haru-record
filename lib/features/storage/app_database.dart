@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
 
+@TableIndex(name: 'location_points_timestamp', columns: {#timestamp})
 class LocationPoints extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get timestamp => dateTime()();
@@ -26,8 +27,11 @@ class PlaceClusters extends Table {
 
 class Visits extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get placeClusterId =>
-      integer().nullable().references(PlaceClusters, #id)();
+  IntColumn get placeClusterId => integer().nullable().references(
+    PlaceClusters,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   DateTimeColumn get startedAt => dateTime()();
   DateTimeColumn get endedAt => dateTime()();
   IntColumn get durationMinutes => integer()();
@@ -36,14 +40,17 @@ class Visits extends Table {
 }
 
 class DailySummaries extends Table {
-  DateTimeColumn get date => dateTime()();
+  TextColumn get date => text()();
   RealColumn get totalDistanceMeters => real()();
   IntColumn get movingMinutes => integer()();
   IntColumn get stationaryMinutes => integer()();
   IntColumn get visitCount => integer()();
   IntColumn get newPlaceCount => integer()();
-  IntColumn get longestStayPlaceId =>
-      integer().nullable().references(PlaceClusters, #id)();
+  IntColumn get longestStayPlaceId => integer().nullable().references(
+    PlaceClusters,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 
   @override
   Set<Column<Object>> get primaryKey => {date};
