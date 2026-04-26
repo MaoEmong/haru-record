@@ -73,7 +73,7 @@ class Insights extends Table {
   tables: [LocationPoints, PlaceClusters, Visits, DailySummaries, Insights],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor executor) : super(executor);
+  AppDatabase(super.executor);
 
   @override
   int get schemaVersion => 1;

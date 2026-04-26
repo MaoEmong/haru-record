@@ -1,3 +1,5 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/features/settings/settings_models.dart';
 import 'package:projectapp_1/features/settings/settings_repository.dart';

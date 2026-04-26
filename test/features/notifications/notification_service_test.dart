@@ -38,6 +38,15 @@ void main() {
     );
     expect(adapter.scheduledHour, isNull);
   });
+
+  test('cancels daily insight notification', () async {
+    final adapter = FakeNotificationAdapter();
+    final service = NotificationService(adapter);
+
+    await service.cancelDailyInsight();
+
+    expect(adapter.cancelledId, NotificationService.dailyInsightNotificationId);
+  });
 }
 
 class FakeNotificationAdapter implements NotificationAdapter {
@@ -45,11 +54,17 @@ class FakeNotificationAdapter implements NotificationAdapter {
   int? scheduledMinute;
   String? title;
   int permissionRequestCount = 0;
+  int? cancelledId;
 
   @override
   Future<bool?> requestPermission() async {
     permissionRequestCount++;
     return true;
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    cancelledId = id;
   }
 
   @override

@@ -1,6 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:timezone/timezone.dart' as tz;
 
-void main() {
+import 'core/time/local_timezone.dart';
+import 'features/background/daily_insight_worker.dart';
+import 'features/notifications/notification_service.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await configureLocalTimezone();
+  final notificationAdapter = FlutterLocalNotificationAdapter(
+    location: tz.local,
+  );
+  await notificationAdapter.initialize();
+  await initializeDailyInsightWorker();
   runApp(const MyApp());
 }
 
@@ -28,7 +40,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
@@ -102,7 +114,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
           // action in the IDE, or press "p" in the console), to see the
           // wireframe for each widget.
-          mainAxisAlignment: .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('You have pushed the button this many times:'),
             Text(

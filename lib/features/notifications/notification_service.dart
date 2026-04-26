@@ -4,6 +4,8 @@ import 'package:timezone/timezone.dart' as tz;
 abstract interface class NotificationAdapter {
   Future<bool?> requestPermission();
 
+  Future<void> cancel(int id);
+
   Future<void> scheduleDaily({
     required int id,
     required int hour,
@@ -21,6 +23,10 @@ class NotificationService {
 
   Future<bool?> requestNotificationPermission() {
     return _adapter.requestPermission();
+  }
+
+  Future<void> cancelDailyInsight() {
+    return _adapter.cancel(dailyInsightNotificationId);
   }
 
   Future<void> scheduleDailyInsight({required int hour, required int minute}) {
@@ -96,6 +102,12 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
           AndroidFlutterLocalNotificationsPlugin
         >();
     return android?.requestNotificationsPermission();
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    await initialize();
+    await _plugin.cancel(id: id);
   }
 
   @override
