@@ -44,4 +44,20 @@ void main() {
       ),
     );
   });
+
+  test('startTracking surfaces native start failures', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'startTracking') {
+            throw PlatformException(code: 'tracking_start_failed');
+          }
+          return null;
+        });
+    final service = PlatformLocationTrackingService(channel: channel);
+
+    await expectLater(
+      service.startTracking(AppSettings.defaults()),
+      throwsA(isA<PlatformException>()),
+    );
+  });
 }
