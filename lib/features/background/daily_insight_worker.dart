@@ -1,0 +1,357 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart';
+import 'package:flutter/widgets.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:timezone/timezone.dart' as timezone;
+import 'package:workmanager/workmanager.dart';
+
+import '../../core/time/local_timezone.dart';
+import '../../core/geo/geo_math.dart';
+import '../analysis/daily_summary_service.dart';
+import '../insights/insight_generation_service.dart';
+import '../insights/insight_models.dart';
+import '../notifications/notification_service.dart';
+import '../places/place_clustering_service.dart';
+import '../settings/settings_models.dart';
+import '../settings/settings_repository.dart';
+import '../storage/app_database.dart';
+import '../storage/database_factory.dart';
+import '../storage/retention_service.dart';
+import '../tracking/location_event_importer.dart';
+
+const dailyInsightWorkerName = 'dailyInsightWorker';
+
+abstract interface class DailyWorkerScheduler {
+  Future<void> initialize(void Function() dispatcher);
+
+  Future<void> registerPeriodicTask({
+    required String uniqueName,
+    required String taskName,
+    required Duration frequency,
+  });
+}
+
+class WorkmanagerDailyWorkerScheduler implements DailyWorkerScheduler {
+  WorkmanagerDailyWorkerScheduler({Workmanager? workmanager})
+    : _workmanager = workmanager ?? Workmanager();
+
+  final Workmanager _workmanager;
+
+  @override
+  Future<void> initialize(void Function() dispatcher) {
+    return _workmanager.initialize(dispatcher);
+  }
+
+  @override
+  Future<void> registerPeriodicTask({
+    required String uniqueName,
+    required String taskName,
+    required Duration frequency,
+  }) {
+    return _workmanager.registerPeriodicTask(
+      uniqueName,
+      taskName,
+      frequency: frequency,
+    );
+  }
+}
+
+class DailyInsightProcessor {
+  DailyInsightProcessor({
+    required AppDatabase database,
+    required NotificationService notificationService,
+    required Future<LocationEventImportResult> Function() importPendingEvents,
+    required AppSettings settings,
+    PlaceClusteringService? placeClusteringService,
+    DailySummaryService? dailySummaryService,
+    InsightGenerationService? insightGenerationService,
+    RetentionService? retentionService,
+  }) : _database = database,
+       _notificationService = notificationService,
+       _importPendingEvents = importPendingEvents,
+       _settings = settings,
+       _placeClusteringService =
+           placeClusteringService ??
+           PlaceClusteringService(
+             clusterRadiusMeters: settings.minimumMovementMeters.toDouble(),
+             minimumStayMinutes: settings.minimumStayMinutes,
+           ),
+       _dailySummaryService = dailySummaryService ?? DailySummaryService(),
+       _insightGenerationService =
+           insightGenerationService ?? InsightGenerationService(),
+       _retentionService = retentionService ?? RetentionService(database);
+
+  final AppDatabase _database;
+  final NotificationService _notificationService;
+  final Future<LocationEventImportResult> Function() _importPendingEvents;
+  final AppSettings _settings;
+  final PlaceClusteringService _placeClusteringService;
+  final DailySummaryService _dailySummaryService;
+  final InsightGenerationService _insightGenerationService;
+  final RetentionService _retentionService;
+
+  Future<void> run({required DateTime now}) async {
+    await _importPendingEvents();
+
+    final yesterday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 1));
+    final baseline = await _recentBaseline(before: yesterday);
+    final points = await _loadLocationPointsFor(yesterday);
+    final visits = _placeClusteringService.detectVisits(
+      points
+          .map(
+            (point) => TrackedPoint(
+              point.timestamp,
+              point.latitude,
+              point.longitude,
+              point.accuracy,
+              point.isMock,
+            ),
+          )
+          .toList(),
+    );
+
+    final visitSnapshots = <VisitSnapshot>[];
+    DetectedVisit? previousVisit;
+    for (final visit in visits) {
+      visitSnapshots.add(
+        VisitSnapshot(
+          durationMinutes: visit.durationMinutes,
+          distanceFromPreviousMeters: previousVisit == null
+              ? 0
+              : distanceMeters(
+                  previousVisit.latitude,
+                  previousVisit.longitude,
+                  visit.latitude,
+                  visit.longitude,
+                ),
+          isNewPlace: false,
+        ),
+      );
+      previousVisit = visit;
+    }
+
+    final summary = _dailySummaryService.buildSummary(
+      date: yesterday,
+      visits: visitSnapshots,
+    );
+
+    final recentAverage = baseline ?? _baselineFromSummary(summary);
+    final insights = _insightGenerationService.generate(
+      yesterday: summary,
+      recentAverage: recentAverage,
+    );
+    await _replaceDailyOutputs(yesterday, visits, summary, insights);
+
+    await _retentionService.deleteRawPointsOlderThan(
+      now,
+      retentionDays: _settings.rawPointRetentionDays,
+    );
+
+    if (_settings.notificationEnabled) {
+      await _notificationService.scheduleDailyInsight(
+        hour: _settings.notificationHour,
+        minute: _settings.notificationMinute,
+      );
+    } else {
+      await _notificationService.cancelDailyInsight();
+    }
+  }
+
+  Future<List<LocationPoint>> _loadLocationPointsFor(DateTime date) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final query = _database.select(_database.locationPoints)
+      ..where(
+        (point) =>
+            point.timestamp.isBiggerOrEqualValue(start) &
+            point.timestamp.isSmallerThanValue(end),
+      );
+    return await query.get()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  Future<void> _replaceDailyOutputs(
+    DateTime date,
+    List<DetectedVisit> visits,
+    DailySummarySnapshot summary,
+    List<GeneratedInsight> insights,
+  ) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final dateKey = _dateKey(date);
+    await _database.transaction(() async {
+      await (_database.delete(_database.visits)..where(
+            (visit) =>
+                visit.startedAt.isBiggerOrEqualValue(start) &
+                visit.startedAt.isSmallerThanValue(end),
+          ))
+          .go();
+      await (_database.delete(_database.insights)..where(
+            (insight) =>
+                insight.date.isBiggerOrEqualValue(start) &
+                insight.date.isSmallerThanValue(end),
+          ))
+          .go();
+      await (_database.delete(
+        _database.dailySummaries,
+      )..where((summary) => summary.date.equals(dateKey))).go();
+      for (final visit in visits) {
+        await _database
+            .into(_database.visits)
+            .insert(
+              VisitsCompanion.insert(
+                startedAt: visit.startedAt,
+                endedAt: visit.endedAt,
+                durationMinutes: visit.durationMinutes,
+                representativeLatitude: visit.latitude,
+                representativeLongitude: visit.longitude,
+              ),
+            );
+      }
+      await _insertDailySummary(summary);
+      await _insertInsights(summary.date, insights);
+    });
+  }
+
+  Future<DailySummaryBaseline?> _recentBaseline({
+    required DateTime before,
+  }) async {
+    final summaries = await _database.select(_database.dailySummaries).get();
+    final start = before.subtract(const Duration(days: 7));
+    final candidates = summaries.where((summary) {
+      final date = DateTime.parse(summary.date);
+      return date.isBefore(before) && !date.isBefore(start);
+    }).toList();
+    if (candidates.isEmpty) return null;
+
+    return DailySummaryBaseline(
+      totalDistanceMeters:
+          candidates.fold<double>(
+            0,
+            (total, summary) => total + summary.totalDistanceMeters,
+          ) /
+          candidates.length,
+      movingMinutes:
+          (candidates.fold<int>(
+                    0,
+                    (total, summary) => total + summary.movingMinutes,
+                  ) /
+                  candidates.length)
+              .round(),
+      visitCount:
+          (candidates.fold<int>(
+                    0,
+                    (total, summary) => total + summary.visitCount,
+                  ) /
+                  candidates.length)
+              .round(),
+    );
+  }
+
+  DailySummaryBaseline _baselineFromSummary(DailySummarySnapshot summary) {
+    return DailySummaryBaseline(
+      totalDistanceMeters: summary.totalDistanceMeters,
+      movingMinutes: summary.movingMinutes,
+      visitCount: summary.visitCount,
+    );
+  }
+
+  Future<void> _insertDailySummary(DailySummarySnapshot summary) async {
+    final date = _dateKey(summary.date);
+    await _database
+        .into(_database.dailySummaries)
+        .insert(
+          DailySummariesCompanion.insert(
+            date: date,
+            totalDistanceMeters: summary.totalDistanceMeters,
+            movingMinutes: summary.movingMinutes,
+            stationaryMinutes: summary.stationaryMinutes,
+            visitCount: summary.visitCount,
+            newPlaceCount: summary.newPlaceCount,
+            longestStayPlaceId: Value(summary.longestStayPlaceId),
+          ),
+        );
+  }
+
+  Future<void> _insertInsights(
+    DateTime date,
+    List<GeneratedInsight> insights,
+  ) async {
+    final createdAt = DateTime.now();
+    for (final insight in insights) {
+      await _database
+          .into(_database.insights)
+          .insert(
+            InsightsCompanion.insert(
+              date: date,
+              type: _enumName(insight.type),
+              severity: _enumName(insight.severity),
+              title: insight.title,
+              body: insight.body,
+              evidence: insight.evidence,
+              createdAt: createdAt,
+            ),
+          );
+    }
+  }
+
+  String _enumName(Object value) => value.toString().split('.').last;
+
+  String _dateKey(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+}
+
+Future<void> initializeDailyInsightWorker({
+  DailyWorkerScheduler? scheduler,
+}) async {
+  final workerScheduler = scheduler ?? WorkmanagerDailyWorkerScheduler();
+  await workerScheduler.initialize(dailyInsightWorkerDispatcher);
+  await workerScheduler.registerPeriodicTask(
+    uniqueName: dailyInsightWorkerName,
+    taskName: dailyInsightWorkerName,
+    frequency: const Duration(hours: 24),
+  );
+}
+
+@pragma('vm:entry-point')
+void dailyInsightWorkerDispatcher() {
+  Workmanager().executeTask((taskName, inputData) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await configureLocalTimezone();
+    if (taskName != dailyInsightWorkerName) return true;
+
+    final database = AppDatabase(openAppDatabaseConnection());
+    try {
+      final settings = await SettingsRepository().load();
+      final eventDirectory = await getApplicationSupportDirectory();
+      final importer = LocationEventImporter.fromFile(
+        database,
+        File(path.join(eventDirectory.path, 'location_events.jsonl')),
+      );
+      final notificationAdapter = FlutterLocalNotificationAdapter(
+        location: timezone.local,
+      );
+      final processor = DailyInsightProcessor(
+        database: database,
+        notificationService: NotificationService(notificationAdapter),
+        importPendingEvents: importer.importPendingEvents,
+        settings: settings,
+      );
+      await processor.run(now: DateTime.now());
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      await database.close();
+    }
+  });
+}
