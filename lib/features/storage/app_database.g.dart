@@ -1053,7 +1053,7 @@ class $VisitsTable extends Visits with TableInfo<$VisitsTable, Visit> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES place_clusters (id)',
+      'REFERENCES place_clusters (id) ON DELETE SET NULL',
     ),
   );
   static const VerificationMeta _startedAtMeta = const VerificationMeta(
@@ -1529,11 +1529,11 @@ class $DailySummariesTable extends DailySummaries
   $DailySummariesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
-  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
     'date',
     aliasedName,
     false,
-    type: DriftSqlType.dateTime,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _totalDistanceMetersMeta =
@@ -1601,7 +1601,7 @@ class $DailySummariesTable extends DailySummaries
     type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES place_clusters (id)',
+      'REFERENCES place_clusters (id) ON DELETE SET NULL',
     ),
   );
   @override
@@ -1705,7 +1705,7 @@ class $DailySummariesTable extends DailySummaries
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return DailySummary(
       date: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
+        DriftSqlType.string,
         data['${effectivePrefix}date'],
       )!,
       totalDistanceMeters: attachedDatabase.typeMapping.read(
@@ -1742,7 +1742,7 @@ class $DailySummariesTable extends DailySummaries
 }
 
 class DailySummary extends DataClass implements Insertable<DailySummary> {
-  final DateTime date;
+  final String date;
   final double totalDistanceMeters;
   final int movingMinutes;
   final int stationaryMinutes;
@@ -1761,7 +1761,7 @@ class DailySummary extends DataClass implements Insertable<DailySummary> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['date'] = Variable<DateTime>(date);
+    map['date'] = Variable<String>(date);
     map['total_distance_meters'] = Variable<double>(totalDistanceMeters);
     map['moving_minutes'] = Variable<int>(movingMinutes);
     map['stationary_minutes'] = Variable<int>(stationaryMinutes);
@@ -1793,7 +1793,7 @@ class DailySummary extends DataClass implements Insertable<DailySummary> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return DailySummary(
-      date: serializer.fromJson<DateTime>(json['date']),
+      date: serializer.fromJson<String>(json['date']),
       totalDistanceMeters: serializer.fromJson<double>(
         json['totalDistanceMeters'],
       ),
@@ -1808,7 +1808,7 @@ class DailySummary extends DataClass implements Insertable<DailySummary> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'date': serializer.toJson<DateTime>(date),
+      'date': serializer.toJson<String>(date),
       'totalDistanceMeters': serializer.toJson<double>(totalDistanceMeters),
       'movingMinutes': serializer.toJson<int>(movingMinutes),
       'stationaryMinutes': serializer.toJson<int>(stationaryMinutes),
@@ -1819,7 +1819,7 @@ class DailySummary extends DataClass implements Insertable<DailySummary> {
   }
 
   DailySummary copyWith({
-    DateTime? date,
+    String? date,
     double? totalDistanceMeters,
     int? movingMinutes,
     int? stationaryMinutes,
@@ -1899,7 +1899,7 @@ class DailySummary extends DataClass implements Insertable<DailySummary> {
 }
 
 class DailySummariesCompanion extends UpdateCompanion<DailySummary> {
-  final Value<DateTime> date;
+  final Value<String> date;
   final Value<double> totalDistanceMeters;
   final Value<int> movingMinutes;
   final Value<int> stationaryMinutes;
@@ -1918,7 +1918,7 @@ class DailySummariesCompanion extends UpdateCompanion<DailySummary> {
     this.rowid = const Value.absent(),
   });
   DailySummariesCompanion.insert({
-    required DateTime date,
+    required String date,
     required double totalDistanceMeters,
     required int movingMinutes,
     required int stationaryMinutes,
@@ -1933,7 +1933,7 @@ class DailySummariesCompanion extends UpdateCompanion<DailySummary> {
        visitCount = Value(visitCount),
        newPlaceCount = Value(newPlaceCount);
   static Insertable<DailySummary> custom({
-    Expression<DateTime>? date,
+    Expression<String>? date,
     Expression<double>? totalDistanceMeters,
     Expression<int>? movingMinutes,
     Expression<int>? stationaryMinutes,
@@ -1957,7 +1957,7 @@ class DailySummariesCompanion extends UpdateCompanion<DailySummary> {
   }
 
   DailySummariesCompanion copyWith({
-    Value<DateTime>? date,
+    Value<String>? date,
     Value<double>? totalDistanceMeters,
     Value<int>? movingMinutes,
     Value<int>? stationaryMinutes,
@@ -1982,7 +1982,7 @@ class DailySummariesCompanion extends UpdateCompanion<DailySummary> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (date.present) {
-      map['date'] = Variable<DateTime>(date.value);
+      map['date'] = Variable<String>(date.value);
     }
     if (totalDistanceMeters.present) {
       map['total_distance_meters'] = Variable<double>(
@@ -2519,6 +2519,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $VisitsTable visits = $VisitsTable(this);
   late final $DailySummariesTable dailySummaries = $DailySummariesTable(this);
   late final $InsightsTable insights = $InsightsTable(this);
+  late final Index locationPointsTimestamp = Index(
+    'location_points_timestamp',
+    'CREATE INDEX location_points_timestamp ON location_points (timestamp)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2529,7 +2533,25 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     visits,
     dailySummaries,
     insights,
+    locationPointsTimestamp,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'place_clusters',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('visits', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'place_clusters',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('daily_summaries', kind: UpdateKind.update)],
+    ),
+  ]);
 }
 
 typedef $$LocationPointsTableCreateCompanionBuilder =
@@ -3610,7 +3632,7 @@ typedef $$VisitsTableProcessedTableManager =
     >;
 typedef $$DailySummariesTableCreateCompanionBuilder =
     DailySummariesCompanion Function({
-      required DateTime date,
+      required String date,
       required double totalDistanceMeters,
       required int movingMinutes,
       required int stationaryMinutes,
@@ -3621,7 +3643,7 @@ typedef $$DailySummariesTableCreateCompanionBuilder =
     });
 typedef $$DailySummariesTableUpdateCompanionBuilder =
     DailySummariesCompanion Function({
-      Value<DateTime> date,
+      Value<String> date,
       Value<double> totalDistanceMeters,
       Value<int> movingMinutes,
       Value<int> stationaryMinutes,
@@ -3671,7 +3693,7 @@ class $$DailySummariesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<DateTime> get date => $composableBuilder(
+  ColumnFilters<String> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnFilters(column),
   );
@@ -3734,7 +3756,7 @@ class $$DailySummariesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<DateTime> get date => $composableBuilder(
+  ColumnOrderings<String> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnOrderings(column),
   );
@@ -3797,7 +3819,7 @@ class $$DailySummariesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<DateTime> get date =>
+  GeneratedColumn<String> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
   GeneratedColumn<double> get totalDistanceMeters => $composableBuilder(
@@ -3879,7 +3901,7 @@ class $$DailySummariesTableTableManager
               $$DailySummariesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<DateTime> date = const Value.absent(),
+                Value<String> date = const Value.absent(),
                 Value<double> totalDistanceMeters = const Value.absent(),
                 Value<int> movingMinutes = const Value.absent(),
                 Value<int> stationaryMinutes = const Value.absent(),
@@ -3899,7 +3921,7 @@ class $$DailySummariesTableTableManager
               ),
           createCompanionCallback:
               ({
-                required DateTime date,
+                required String date,
                 required double totalDistanceMeters,
                 required int movingMinutes,
                 required int stationaryMinutes,
