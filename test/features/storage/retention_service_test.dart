@@ -83,20 +83,27 @@ void main() {
   });
 
   test('rejects non-normalized daily summary date keys', () async {
-    expect(
-      () => database
-          .into(database.dailySummaries)
-          .insert(
-            DailySummariesCompanion.insert(
-              date: '2026-04-25T09:00:00',
-              totalDistanceMeters: 1000,
-              movingMinutes: 30,
-              stationaryMinutes: 600,
-              visitCount: 2,
-              newPlaceCount: 0,
+    for (final invalidDate in [
+      '2026-04-25T09:00:00',
+      'abcd-ef-gh',
+      '20260425',
+    ]) {
+      expect(
+        () => database
+            .into(database.dailySummaries)
+            .insert(
+              DailySummariesCompanion.insert(
+                date: invalidDate,
+                totalDistanceMeters: 1000,
+                movingMinutes: 30,
+                stationaryMinutes: 600,
+                visitCount: 2,
+                newPlaceCount: 0,
+              ),
             ),
-          ),
-      throwsA(isA<Exception>()),
-    );
+        throwsA(isA<Exception>()),
+        reason: invalidDate,
+      );
+    }
   });
 }
