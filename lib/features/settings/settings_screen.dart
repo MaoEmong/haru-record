@@ -123,47 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _sendTestNotification() async {
-    setState(() {
-      _busy = true;
-      _status = null;
-    });
-    try {
-      final granted = await widget.dependencies.permissionService
-          .ensureNotificationPermission();
-      if (!granted) {
-        setState(() {
-          _status = '테스트 알림을 보내려면 알림 권한이 필요해요';
-        });
-        _showFeedback('테스트 알림을 보내려면 알림 권한이 필요해요');
-        return;
-      }
-      await widget.dependencies.notificationService.showTestNotification();
-      setState(() {
-        _status = '테스트 알림을 보냈어요';
-      });
-      _showFeedback('테스트 알림을 보냈어요');
-    } catch (_) {
-      setState(() {
-        _status = '테스트 알림을 보내지 못했어요';
-      });
-      _showFeedback('테스트 알림을 보내지 못했어요');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
-    }
-  }
-
-  void _showFeedback(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _seedDebugYesterdayVisit() async {
     await DebugValidationSeeder(
       widget.dependencies.database,
@@ -297,12 +256,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: _busy ? null : _runProcessing,
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('어제 돌아보기 만들기'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : _sendTestNotification,
-                    icon: const Icon(Icons.notifications_outlined),
-                    label: const Text('테스트 알림 보내기'),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(

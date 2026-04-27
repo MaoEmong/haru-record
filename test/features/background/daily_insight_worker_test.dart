@@ -319,13 +319,6 @@ class FakeNotificationAdapter implements NotificationAdapter {
   }
 
   @override
-  Future<void> showNow({
-    required int id,
-    required String title,
-    required String body,
-  }) async {}
-
-  @override
   Future<void> scheduleDaily({
     required int id,
     required int hour,
