@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
 import '../background/daily_insight_worker.dart';
+import '../diagnostics/diagnostics_repository.dart';
+import '../diagnostics/diagnostics_snapshot.dart';
 import 'settings_models.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -175,7 +177,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : (enabled) => _toggleNotifications(settings, enabled),
             ),
             const SizedBox(height: 8),
-            _SettingsStatusArea(message: _status),
+            _SettingsStatusArea(
+              message: _status,
+              repository: DiagnosticsRepository(widget.dependencies.database),
+            ),
             const SizedBox(height: 16),
             _EditableSettingsValueTile(
               key: const ValueKey('movement-threshold-edit'),
@@ -406,9 +411,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 class _SettingsStatusArea extends StatelessWidget {
-  const _SettingsStatusArea({required this.message});
+  const _SettingsStatusArea({required this.message, required this.repository});
 
   final String? message;
+  final DiagnosticsRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -426,15 +432,35 @@ class _SettingsStatusArea extends StatelessWidget {
         child: Center(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
-            child: Text(
-              message ?? ' ',
-              key: ValueKey(message ?? 'empty-status'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: message == null
+                ? FutureBuilder<DiagnosticsSnapshot>(
+                    key: const ValueKey('settings-diagnostics-summary'),
+                    future: repository.load(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data;
+                      final text = data == null
+                          ? '기록 상태 확인 중'
+                          : '기록 상태 확인 · 위치 ${data.locationPointCount}개 · '
+                                '방문 ${data.visitCount}개 · 돌아보기 ${data.reflectionCount}개';
+                      return Text(
+                        text,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                  )
+                : Text(
+                    message!,
+                    key: ValueKey(message),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ),
       ),
