@@ -89,22 +89,22 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final data = snapshot.data!;
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
           children: [
             _StatusPanel(snapshot: data),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             _TodayRecordPanel(
               snapshot: data,
               onOpen: widget.onOpenTodayRecords,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             _TodayTimelinePanel(
               items: data.timeline,
               onOpen: widget.onOpenTodayRecords,
             ),
             const SizedBox(height: 22),
             Text('최근 돌아보기', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             if (data.latestInsight == null)
               const _EmptyPanel()
             else
@@ -293,7 +293,7 @@ class _StatusPanel extends StatelessWidget {
     return DecoratedBox(
       decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -57,22 +57,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
           return const _HistoryExamples();
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
           itemCount: insights.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final insight = insights[index];
             return Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 onTap: () => _openDayDetail(insight),
                 child: DecoratedBox(
                   decoration: AppThemeDecorations.softCard(),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 18,
-                      vertical: 8,
+                      vertical: 10,
                     ),
                     title: Text(
                       insight.title,
@@ -123,7 +123,7 @@ class _HistoryExamples extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
       children: const [
         Text(
           '이런 식으로 하루가 정리돼요',

@@ -166,13 +166,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 children: [
                   const _TrustCard(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   SwitchListTile(
                     key: const ValueKey('tracking-switch'),
                     tileColor: AppColors.surface,
                     shape: RoundedRectangleBorder(
                       side: const BorderSide(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     title: const Text('하루 기록'),
                     subtitle: Text(
@@ -183,13 +183,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : (enabled) => _toggleTracking(settings, enabled),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   SwitchListTile(
                     key: const ValueKey('notification-switch'),
                     tileColor: AppColors.surface,
                     shape: RoundedRectangleBorder(
                       side: const BorderSide(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     title: const Text('돌아보기 알림'),
                     subtitle: Text(
@@ -202,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : (enabled) => _toggleNotifications(settings, enabled),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   _EditableSettingsValueTile(
                     key: const ValueKey('movement-threshold-edit'),
                     title: '움직임으로 볼 거리',
@@ -451,7 +451,7 @@ class _TrustCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
+      decoration: AppThemeDecorations.quietPanel(),
       child: const Padding(
         padding: EdgeInsets.all(18),
         child: Column(
@@ -484,8 +484,8 @@ class _SettingsStatusArea extends StatelessWidget {
     return DecoratedBox(
       key: const ValueKey('settings-status-area'),
       decoration: BoxDecoration(
-        color: message == null ? AppColors.background : AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
+        color: message == null ? AppColors.paleBlue : AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: message == null ? Colors.transparent : AppColors.border,
         ),
@@ -551,7 +551,7 @@ class _EditableSettingsValueTile extends StatelessWidget {
       tileColor: AppColors.surface,
       shape: RoundedRectangleBorder(
         side: const BorderSide(color: AppColors.border),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
       leading: Icon(icon, color: AppColors.ink),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),

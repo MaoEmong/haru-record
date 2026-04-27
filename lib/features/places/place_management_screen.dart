@@ -81,9 +81,9 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
           return const _PlaceExamples();
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
           itemCount: places.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final place = places[index];
             return DecoratedBox(
@@ -91,7 +91,7 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 18,
-                  vertical: 8,
+                  vertical: 10,
                 ),
                 leading: const Icon(Icons.place_outlined, color: AppColors.ink),
                 title: Text(
@@ -169,7 +169,7 @@ class _PlaceExamples extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
       children: const [
         Text(
           '자주 머문 곳은 이렇게 보여요',
