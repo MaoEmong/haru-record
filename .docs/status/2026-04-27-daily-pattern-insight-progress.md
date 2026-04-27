@@ -54,6 +54,7 @@ Completed work:
   - Settings requests location permission before starting tracking.
   - Missing location permission is reported in-app instead of relying only on native service failure.
   - Notification permission is requested before scheduling notifications from Settings.
+  - Notification settings remain off when notification permission is denied.
 - Safe local data maintenance controls implemented:
   - Raw location points can be deleted while preserving derived summaries and insights.
   - A full local data delete path is available behind a confirmation dialog.
@@ -75,7 +76,7 @@ flutter analyze
 
 Result:
 
-- `flutter test`: passed, 41 tests.
+- `flutter test`: passed, 42 tests.
 - `flutter analyze`: passed, no issues.
 
 Known environment blocker:
