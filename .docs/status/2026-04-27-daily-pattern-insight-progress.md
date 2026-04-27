@@ -1,142 +1,122 @@
 # Daily Pattern Insight App Progress
 
 Date: 2026-04-27
-Branch: `codex/daily-pattern-insight-app`
+Branch: `master`
+Latest reviewed commit: `147530f Document route map decision`
 
 ## Current State
 
-The project has moved from an empty Flutter template to an Android-first daily pattern insight app foundation.
+The app is now a working Android-first MVP for local daily pattern recording
+and reflection.
 
-Completed work:
+Core capabilities completed:
 
-- Project documentation rule added: all project docs live under `.docs/`, with repo-level instructions in `AGENTS.md`.
-- Product/design docs added for the daily pattern insight app.
-- Android and Flutter dependencies added for location tracking, local storage, notifications, permissions, and background work.
-- Android foreground tracking boundary implemented:
-  - Native Kotlin foreground location service.
-  - Flutter platform-channel service wrapper.
-  - Battery-conscious default thresholds.
-  - Permission and startup hardening.
-- Core app settings implemented:
-  - Tracking enabled flag.
-  - Notification settings.
-  - Movement/stay thresholds.
-  - Raw point retention days.
-- Drift/SQLite local database implemented:
-  - Raw location points.
-  - Place clusters.
-  - Visits.
-  - Daily summaries.
-  - Insights.
-  - Retention cleanup.
-- Place visit detection implemented:
-  - Filters low-accuracy and mock points.
-  - Detects stays using movement radius and minimum stay duration.
-  - Handles antimeridian longitude averaging.
-- Daily summary and rule-based insight generation implemented.
-- Local daily notification scheduling implemented:
-  - Uses inexact scheduling to avoid exact alarm requirements.
-  - Uses device-local timezone setup.
-  - Can cancel the daily insight notification when notifications are disabled.
-- Daily background processing implemented:
-  - Imports native Android JSONL location events.
-  - Preserves pending events on storage failure.
-  - Avoids duplicate imports from leftover snapshot files.
-  - Generates yesterday's visits, summary, insights, cleanup, and notification updates through Workmanager.
-- App shell implemented:
-  - Replaced the default Flutter counter UI.
-  - Added bottom navigation for Home, History, Places, and Settings.
-  - Added initial real-service wiring for latest insights, history, detected places, settings, tracking start/stop, notification toggle, and manual daily processing.
-- Settings controls made editable:
-  - Notification time can be edited from Settings.
-  - Movement threshold, minimum stay, and raw point retention can be edited from Settings.
-- Tracking startup is permission-aware:
-  - Settings requests location permission before starting tracking.
-  - Missing location permission is reported in-app instead of relying only on native service failure.
-  - Notification permission is requested before scheduling notifications from Settings.
-  - Notification settings remain off when notification permission is denied.
-- Safe local data maintenance controls implemented:
-  - Raw location points can be deleted while preserving derived summaries and insights.
-  - A full local data delete path is available behind a confirmation dialog.
+- Android foreground location recording through a native Kotlin service.
+- Runtime location permission flow before tracking startup.
+- Background location settings path validated on a physical Android device.
+- Local JSONL native event capture and Dart-side import into Drift/SQLite.
+- Local database for raw points, places, visits, daily summaries, and insights.
+- Visit detection from location points with movement/stay thresholds.
+- Persistent place clusters linked from generated visits.
+- Today timeline preview from stored visits and places.
+- Home, History, Places, and Settings tabs with Korean product copy.
+- Editable settings for movement threshold, stay threshold, raw point retention,
+  and daily notification time.
+- Manual `어제 돌아보기 만들기` processing with clear empty-state feedback.
+- Diagnostics summary in Settings for location, visit, and reflection counts.
+- Safe cleanup actions for raw points and all local data.
+- Daily notification scheduling with generated reflection title/body when an
+  insight exists, and fallback copy otherwise.
+- `InsightNarrator` boundary so future AI wording can replace deterministic
+  copy without rewriting insight candidate detection.
+- Debug-only validation seed for physical-device generation checks.
 
-Latest completed commit:
+Product/design decisions completed:
 
-```text
-49f8bd4 feat: add daily insight background processing
-```
+- Blue Ink visual direction selected and implemented.
+- Map dependency deferred for MVP. Route context should first be handled through
+  timeline and route summary surfaces.
+- Full route-map decision is documented in
+  `.docs/specs/2026-04-27-route-map-options.md`.
 
 ## Verification
 
-Last verified after app shell work:
+Latest verification run after the current MVP work:
 
 ```powershell
-flutter test
 flutter analyze
+flutter test
+flutter build apk --debug
 ```
 
 Result:
 
-- `flutter test`: passed, 42 tests.
 - `flutter analyze`: passed, no issues.
+- `flutter test`: passed, 61 tests.
+- `flutter build apk --debug`: passed and produced
+  `build\app\outputs\flutter-apk\app-debug.apk`.
 
-Known environment blocker:
+Physical-device validation:
 
-```powershell
-flutter build apk --debug
-```
+- Device: `SM F946N`, Android 16 API 36, `android-arm64`.
+- Debug APK installed and launched.
+- Foreground/background location permission path verified.
+- Foreground service and `하루 기록` tracking notification verified.
+- Native location event writing verified.
+- Manual processing import verified.
+- Debug-seeded yesterday data generated visits, places, summaries, and insights.
+- Home, History, and Places rendered generated data after processing.
 
-This is no longer blocked by missing Android SDK setup. The local Android
-toolchain is configured and `flutter build apk --debug` creates
-`build\app\outputs\flutter-apk\app-debug.apk`.
-
-Known build warning:
-
-- Debug APK build exits 0 and produces the APK.
-- An earlier build printed Kotlin daemon incremental cache errors after the success line.
-- A later build completed without that warning.
-- See `.docs/status/2026-04-27-android-device-validation.md`.
-
-## Remaining Work
-
-### 1. Finish UI Service Wiring And Controls
-
-Connect UI state to the implemented services.
-
-Required behavior:
-
-- Refresh Home/History/Places after manual daily processing or place rename without requiring a full app restart.
-
-### 2. Android Device Validation
-
-Validate on a physical Android device.
-
-Required checks:
-
-- App launches on device.
-- Foreground/background location permissions work.
-- Foreground tracking notification appears.
-- Native location events are written and imported.
-- Visit detection and insight generation work from real movement/stay data.
-- Daily notification appears at the configured local time.
-- Retention/delete controls keep the app usable after cleanup.
-
-Tracking document:
+Details:
 
 - `.docs/status/2026-04-27-android-device-validation.md`
 
-### 3. Polish And Release Readiness
+## Remaining Work
 
-After real-device validation:
+### 1. Branding And App Identity
 
-- Update `.docs/plans/2026-04-26-daily-pattern-insight-app.md` checkboxes or add a completion summary.
-- Add any device-specific findings to `.docs/status/`.
-- Consider replacing the default Flutter counter UI entirely once the app shell lands.
-- Decide whether to open a PR or continue feature work on the same branch.
+- Decide final app name.
+- Replace or remove temporary `하루 기록` Android app label if it is not the
+  final name.
+- Prepare launcher icon and splash direction.
+- Confirm package/application id strategy before release.
+
+### 2. Notification Permission UX
+
+- Physical-device validation covered location permissions and foreground
+  service notification behavior.
+- The daily reflection notification permission prompt still needs a clean
+  first-run device check.
+- After that check, refine Settings copy if the permission-denied state feels
+  unclear.
+
+### 3. Release Readiness
+
+- Confirm debug-only validation tools are absent from release builds.
+- Add release signing configuration when distribution target is known.
+- Review privacy/battery copy for store readiness.
+- Decide whether raw coordinate export/delete language needs stronger privacy
+  framing.
+
+### 4. Optional Day Detail / Route Summary
+
+- Do not add a map dependency yet.
+- If route context is needed, build a day detail screen first:
+  `집 근처 -> 회사 근처 -> 카페`, distance between visits, and ordered timeline.
+- Revisit actual map rendering only after the route summary proves insufficient.
+
+### 5. Documentation Cleanup
+
+- Older implementation plans still contain historical step-by-step scaffolding.
+- Keep them as execution history, but prefer this status document and the
+  Android validation document for current state.
 
 ## Resume Notes
 
-- Current branch should remain `codex/daily-pattern-insight-app`.
-- The working tree was clean before this status document was added.
-- Start next with UI control completion and Android permission/device validation.
-- Keep the battery-saving goal central: favor inexact scheduling, threshold-based tracking, local processing, and minimal background work.
-- All new project docs should stay under `.docs/`.
+- Continue on `master` unless a new feature branch is explicitly requested.
+- Do not commit generated desktop plugin file churn unless intentionally
+  updating platform registration.
+- Keep the app local-first, battery-conscious, and reflective rather than
+  surveillance-like.
+- Next recommended task: branding/app identity cleanup, because Android system
+  permission dialogs currently expose the temporary app label `하루 기록`.
