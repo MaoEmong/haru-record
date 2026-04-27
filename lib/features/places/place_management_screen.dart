@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
+import '../maps/cached_map_snapshot.dart';
 import '../storage/app_database.dart';
 
 class PlaceManagementScreen extends StatefulWidget {
@@ -294,31 +295,38 @@ class _PlaceMapPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final center = LatLng(place.centerLatitude, place.centerLongitude);
     return IgnorePointer(
-      child: FlutterMap(
-        key: ValueKey('place-map-${place.id}'),
-        options: MapOptions(
-          initialCenter: center,
-          initialZoom: 16,
-          interactionOptions: const InteractionOptions(
-            flags: InteractiveFlag.none,
+      child: CachedMapSnapshot(
+        key: ValueKey('map-snapshot-place-${place.id}'),
+        cacheKey:
+            'place-${place.id}-'
+            '${place.centerLatitude.toStringAsFixed(5)}-'
+            '${place.centerLongitude.toStringAsFixed(5)}-z16',
+        child: FlutterMap(
+          key: ValueKey('place-map-${place.id}'),
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: 16,
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.none,
+            ),
           ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.projectapp_1',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: center,
+                  width: 34,
+                  height: 34,
+                  child: const _PlacePinBadge(),
+                ),
+              ],
+            ),
+          ],
         ),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.projectapp_1',
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: center,
-                width: 34,
-                height: 34,
-                child: const _PlacePinBadge(),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

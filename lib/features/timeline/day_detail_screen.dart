@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
+import '../maps/cached_map_snapshot.dart';
 import '../storage/app_database.dart';
 import 'day_activity_preview_repository.dart';
 import 'day_route_models.dart';
@@ -103,7 +104,10 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                _RoutePreviewCard(route: data.route),
+                _RoutePreviewCard(
+                  route: data.route,
+                  dateKey: _dateKey(widget.date),
+                ),
                 const SizedBox(height: 12),
                 _RouteSummaryCard(items: data.preview.timeline),
               ],
@@ -216,9 +220,10 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _RoutePreviewCard extends StatelessWidget {
-  const _RoutePreviewCard({required this.route});
+  const _RoutePreviewCard({required this.route, required this.dateKey});
 
   final DayRouteSnapshot route;
+  final String dateKey;
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +250,7 @@ class _RoutePreviewCard extends StatelessWidget {
                 style: TextStyle(color: AppColors.muted),
               )
             else ...[
-              _DayRouteMap(route: route),
+              _DayRouteMap(route: route, dateKey: dateKey),
               const SizedBox(height: 12),
               Text(
                 '${route.points.first.timeLabel} -> ${route.points.last.timeLabel}',
@@ -260,9 +265,10 @@ class _RoutePreviewCard extends StatelessWidget {
 }
 
 class _DayRouteMap extends StatelessWidget {
-  const _DayRouteMap({required this.route});
+  const _DayRouteMap({required this.route, required this.dateKey});
 
   final DayRouteSnapshot route;
+  final String dateKey;
 
   @override
   Widget build(BuildContext context) {
@@ -277,35 +283,42 @@ class _DayRouteMap extends StatelessWidget {
         key: const ValueKey('day-route-map'),
         height: 150,
         width: double.infinity,
-        child: FlutterMap(
-          options: MapOptions(
-            initialCameraFit: CameraFit.bounds(
-              bounds: bounds,
-              padding: const EdgeInsets.all(18),
-              maxZoom: 18,
+        child: CachedMapSnapshot(
+          key: ValueKey('map-snapshot-day-route-$dateKey'),
+          cacheKey:
+              'day-route-$dateKey-'
+              '${route.points.length}-'
+              '${route.points.last.timeLabel}',
+          child: FlutterMap(
+            options: MapOptions(
+              initialCameraFit: CameraFit.bounds(
+                bounds: bounds,
+                padding: const EdgeInsets.all(18),
+                maxZoom: 18,
+              ),
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none,
+              ),
             ),
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.none,
-            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.projectapp_1',
+              ),
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: points,
+                    color: AppColors.blueGrey,
+                    strokeWidth: 4,
+                    borderColor: AppColors.surface,
+                    borderStrokeWidth: 2,
+                  ),
+                ],
+              ),
+              MarkerLayer(markers: _markers(points)),
+            ],
           ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.projectapp_1',
-            ),
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: points,
-                  color: AppColors.blueGrey,
-                  strokeWidth: 4,
-                  borderColor: AppColors.surface,
-                  borderStrokeWidth: 2,
-                ),
-              ],
-            ),
-            MarkerLayer(markers: _markers(points)),
-          ],
         ),
       ),
     );

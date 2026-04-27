@@ -396,6 +396,7 @@ void main() {
     );
     expect(homeMap.options.initialZoom, 16);
     expect(homeMap.options.interactionOptions.flags, InteractiveFlag.none);
+    expect(find.byKey(ValueKey('map-snapshot-place-$homeId')), findsOneWidget);
   });
 
   testWidgets('canceling rename for an unnamed place keeps the app stable', (
@@ -591,6 +592,10 @@ void main() {
     expect(find.byKey(const ValueKey('day-route-map')), findsOneWidget);
     final routeMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
     expect(routeMap.options.interactionOptions.flags, InteractiveFlag.none);
+    expect(
+      find.byKey(const ValueKey('map-snapshot-day-route-2026-04-26')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {
