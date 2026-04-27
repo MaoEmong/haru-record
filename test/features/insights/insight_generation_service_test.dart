@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/features/analysis/daily_summary_service.dart';
 import 'package:projectapp_1/features/insights/insight_generation_service.dart';
 import 'package:projectapp_1/features/insights/insight_models.dart';
+import 'package:projectapp_1/features/insights/insight_narrator.dart';
 
 void main() {
   test('generates lower movement insight against baseline', () {
@@ -104,4 +105,39 @@ void main() {
       isNot(contains(InsightType.visitChange)),
     );
   });
+
+  test('uses injected narrator wording for generated insights', () {
+    final service = InsightGenerationService(narrator: _FakeInsightNarrator());
+
+    final insights = service.generate(
+      yesterday: DailySummarySnapshot(
+        date: DateTime(2026, 4, 25),
+        totalDistanceMeters: 500,
+        movingMinutes: 10,
+        stationaryMinutes: 700,
+        visitCount: 1,
+        newPlaceCount: 1,
+      ),
+      recentAverage: DailySummaryBaseline(
+        totalDistanceMeters: 2000,
+        movingMinutes: 45,
+        visitCount: 3,
+      ),
+    );
+
+    expect(insights.first.title, 'custom movementChange');
+    expect(insights.first.body, 'custom notable body');
+    expect(insights.first.evidence, 'custom evidence');
+  });
+}
+
+class _FakeInsightNarrator implements InsightNarrator {
+  @override
+  InsightText narrate(InsightNarrationContext context) {
+    return InsightText(
+      title: 'custom ${context.type.name}',
+      body: 'custom ${context.severity.name} body',
+      evidence: 'custom evidence',
+    );
+  }
 }

@@ -1,7 +1,13 @@
 import '../analysis/daily_summary_service.dart';
 import 'insight_models.dart';
+import 'insight_narrator.dart';
 
 class InsightGenerationService {
+  InsightGenerationService({InsightNarrator? narrator})
+    : _narrator = narrator ?? const RuleBasedInsightNarrator();
+
+  final InsightNarrator _narrator;
+
   List<GeneratedInsight> generate({
     required DailySummarySnapshot yesterday,
     required DailySummaryBaseline recentAverage,
@@ -16,12 +22,12 @@ class InsightGenerationService {
 
     if (yesterday.newPlaceCount > 0) {
       insights.add(
-        GeneratedInsight(
+        _buildInsight(
           type: InsightType.newPlace,
           severity: InsightSeverity.notable,
-          title: '새롭게 자주 머문 곳이 생겼어요',
-          body: '최근 흐름에 없던 머문 곳이 기록에 남았어요.',
-          evidence: '새롭게 보인 곳 ${yesterday.newPlaceCount}곳',
+          direction: InsightDirection.newValue,
+          currentValue: yesterday.newPlaceCount,
+          baselineValue: 0,
         ),
       );
     }
@@ -48,24 +54,22 @@ class InsightGenerationService {
         yesterday.movingMinutes > recentAverage.movingMinutes * 1.5;
 
     if (distanceLower || movingLower) {
-      return GeneratedInsight(
+      return _buildInsight(
         type: InsightType.movementChange,
         severity: InsightSeverity.notable,
-        title: '어제는 조금 조용한 하루였어요',
-        body: '최근 며칠보다 이동이 적고 차분했어요.',
-        evidence:
-            '${yesterday.totalDistanceMeters.round()}m, 최근 평균 ${recentAverage.totalDistanceMeters.round()}m',
+        direction: InsightDirection.lower,
+        currentValue: yesterday.totalDistanceMeters,
+        baselineValue: recentAverage.totalDistanceMeters,
       );
     }
 
     if (distanceHigher || movingHigher) {
-      return GeneratedInsight(
+      return _buildInsight(
         type: InsightType.movementChange,
         severity: InsightSeverity.notable,
-        title: '어제는 평소보다 많이 움직였어요',
-        body: '최근 며칠보다 이동이 많은 하루였어요.',
-        evidence:
-            '${yesterday.totalDistanceMeters.round()}m, 최근 평균 ${recentAverage.totalDistanceMeters.round()}m',
+        direction: InsightDirection.higher,
+        currentValue: yesterday.totalDistanceMeters,
+        baselineValue: recentAverage.totalDistanceMeters,
       );
     }
 
@@ -79,28 +83,51 @@ class InsightGenerationService {
     if (recentAverage.visitCount <= 0) return null;
 
     if (yesterday.visitCount < recentAverage.visitCount) {
-      return GeneratedInsight(
+      return _buildInsight(
         type: InsightType.visitChange,
         severity: InsightSeverity.neutral,
-        title: '어제는 머문 곳이 적었어요',
-        body: '최근 며칠보다 들른 곳이 적은 하루였어요.',
-        evidence:
-            '${yesterday.visitCount}회 방문, 최근 평균 ${recentAverage.visitCount}회',
+        direction: InsightDirection.lower,
+        currentValue: yesterday.visitCount,
+        baselineValue: recentAverage.visitCount,
       );
     }
 
     if (yesterday.visitCount > recentAverage.visitCount) {
-      return GeneratedInsight(
+      return _buildInsight(
         type: InsightType.visitChange,
         severity: InsightSeverity.neutral,
-        title: '어제는 여러 곳을 들렀어요',
-        body: '최근 며칠보다 머문 곳이 많은 하루였어요.',
-        evidence:
-            '${yesterday.visitCount}회 방문, 최근 평균 ${recentAverage.visitCount}회',
+        direction: InsightDirection.higher,
+        currentValue: yesterday.visitCount,
+        baselineValue: recentAverage.visitCount,
       );
     }
 
     return null;
+  }
+
+  GeneratedInsight _buildInsight({
+    required InsightType type,
+    required InsightSeverity severity,
+    required InsightDirection direction,
+    required num currentValue,
+    required num baselineValue,
+  }) {
+    final text = _narrator.narrate(
+      InsightNarrationContext(
+        type: type,
+        severity: severity,
+        direction: direction,
+        currentValue: currentValue,
+        baselineValue: baselineValue,
+      ),
+    );
+    return GeneratedInsight(
+      type: type,
+      severity: severity,
+      title: text.title,
+      body: text.body,
+      evidence: text.evidence,
+    );
   }
 
   int _compareInsightStrength(GeneratedInsight a, GeneratedInsight b) {

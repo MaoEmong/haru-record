@@ -574,7 +574,12 @@ git commit -m "Show daily timeline preview on Today"
 - Modify: `lib/features/insights/insight_generation_service.dart`
 - Modify: `test/features/insights/insight_generation_service_test.dart`
 
-- [ ] **Step 1: Add narrator test**
+Implementation note: completed with `InsightNarrationContext`,
+`InsightText`, `InsightNarrator`, and `RuleBasedInsightNarrator`.
+`InsightGenerationService` now detects insight candidates and delegates
+wording to the narrator boundary.
+
+- [x] **Step 1: Add narrator test**
 
 Add to `test/features/insights/insight_generation_service_test.dart`:
 
@@ -602,7 +607,7 @@ test('uses narrator wording for movement reflections', () {
 });
 ```
 
-- [ ] **Step 2: Run test to verify RED**
+- [x] **Step 2: Run test to verify RED**
 
 ```powershell
 flutter test test\features\insights\insight_generation_service_test.dart
@@ -610,7 +615,7 @@ flutter test test\features\insights\insight_generation_service_test.dart
 
 Expected: compile failure because narrator constructor/boundary does not exist.
 
-- [ ] **Step 3: Create narrator boundary**
+- [x] **Step 3: Create narrator boundary**
 
 Create `lib/features/insights/insight_narrator.dart`:
 
@@ -662,7 +667,7 @@ class RuleBasedInsightNarrator implements InsightNarrator {
 }
 ```
 
-- [ ] **Step 4: Inject narrator into service**
+- [x] **Step 4: Inject narrator into service**
 
 Modify `InsightGenerationService`:
 
@@ -675,7 +680,7 @@ final InsightNarrator _narrator;
 
 Use `_narrator.narrate(...)` when creating movement insights.
 
-- [ ] **Step 5: Run insight tests**
+- [x] **Step 5: Run insight tests**
 
 ```powershell
 flutter test test\features\insights\insight_generation_service_test.dart
@@ -683,7 +688,7 @@ flutter test test\features\insights\insight_generation_service_test.dart
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add lib\features\insights test\features\insights
