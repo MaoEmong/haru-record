@@ -1,17 +1,84 @@
-# projectapp_1
+# 위치 기반 하루 기록 앱
 
-A new Flutter project.
+위치 변화를 백그라운드에서 기록하고, 하루 단위로 머문 곳과 이동 흐름을 정리하는 Flutter 앱입니다. 앱 이름은 아직 확정 전이며, 현재 Android 라벨은 `하루 기록`입니다.
 
-## Getting Started
+## 현재 구현된 기능
 
-This project is a starting point for a Flutter application.
+- 오늘 탭에서 오늘의 이동 거리, 방문 수, 움직임 시간, 최근 돌아보기, 오늘 기록 화면 진입을 제공합니다.
+- 위치 기록을 바탕으로 하루 상세 화면에서 이동 경로 지도, 기록 지점 수, 장소 흐름을 확인할 수 있습니다.
+- 같은 위치 반경 안에서 일정 시간 이상 머문 기록을 `방문한 곳`으로 묶습니다.
+- 방문한 곳 화면에서 장소별 지도 스냅샷, 방문 횟수, 주소 또는 사용자가 지정한 이름을 보여줍니다.
+- 돌아보기 탭에서 생성된 하루 인사이트 기록을 확인하고 상세 화면으로 이동할 수 있습니다.
+- 설정에서 위치 기록 ON/OFF, 움직임 거리 기준, 머문 시간 기준, 알림 시간, 위치 기록 보관 기간을 조정할 수 있습니다.
+- Android 뒤로가기 시 바로 종료하지 않고 종료 확인 팝업을 표시합니다.
+- Kakao REST API 키가 있으면 좌표를 도로명/지번 주소로 변환해 방문한 곳 이름에 활용합니다.
 
-A few resources to get you started if this is your first Flutter project:
+## 동작 기준
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+방문한 곳으로 판단되는 기본 조건은 설정값을 따릅니다.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- `움직임으로 볼 거리`: 같은 장소로 묶을 반경입니다. 예를 들어 50m로 설정하면 첫 위치 기준 50m 안의 좌표를 같은 머문 후보로 봅니다.
+- `머문 곳으로 볼 시간`: 같은 반경 안에 머문 최소 시간입니다. 예를 들어 5분이면 첫 유효 좌표와 마지막 유효 좌표의 차이가 5분 이상이어야 합니다.
+- mock 위치는 제외하고, 정확도 `accuracy`가 200m보다 나쁜 좌표는 제외합니다.
+- 최소 2개 이상의 유효 좌표가 필요합니다.
+- 오늘의 raw 위치는 먼저 기록으로 쌓이고, 일일 처리 후 방문/요약/돌아보기 데이터로 정리됩니다.
+
+## 기술 구성
+
+- Flutter / Dart
+- Drift + SQLite 로컬 저장소
+- Android foreground service 기반 위치 기록
+- Workmanager 기반 일일 처리
+- flutter_local_notifications 기반 알림
+- flutter_map + OpenStreetMap 타일 기반 지도 표시
+- Kakao REST `coord2address` 기반 선택적 주소 변환
+
+## 환경 변수
+
+루트에 `.env` 파일을 만들고 필요한 키를 설정합니다.
+
+```env
+KAKAO_REST_API_KEY=
+```
+
+`.env.example`이 같은 형식으로 제공됩니다. `.env`는 git에 포함하지 않습니다.
+
+## 실행
+
+```bash
+flutter pub get
+flutter run
+```
+
+Android 실제 기기에서 위치 기록을 검증하려면 위치 권한, 백그라운드 위치 권한, 알림 권한을 허용해야 합니다.
+
+## 검증 명령
+
+```bash
+flutter analyze
+flutter test
+flutter build apk --debug
+```
+
+연결된 Android 기기에 설치하려면:
+
+```bash
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb shell monkey -p com.example.projectapp_1 -c android.intent.category.LAUNCHER 1
+```
+
+## 실제 기기 테스트 체크리스트
+
+1. 앱 설치 후 설정에서 `하루 기록`을 켭니다.
+2. 위치 권한과 백그라운드 위치 권한을 허용합니다.
+3. `움직임으로 볼 거리`와 `머문 곳으로 볼 시간`을 테스트 목적에 맞게 조정합니다.
+4. 기기를 들고 실제로 이동하거나 한 장소에 일정 시간 머뭅니다.
+5. 앱 재진입 후 오늘 탭과 오늘 기록 화면에서 위치 기록/이동 경로가 쌓이는지 확인합니다.
+6. 일일 처리 후 방문한 곳, 하루 요약, 돌아보기가 생성되는지 확인합니다.
+
+## 현재 남은 과제
+
+- 장시간 실제 이동 테스트로 Android 백그라운드 위치 기록 안정성 확인
+- 오늘 기록 화면에서 방문 후보를 더 실시간에 가깝게 보여줄지 결정
+- 지도 타일 사용 정책과 운영 환경에서의 지도 제공 방식 검토
+- 앱 이름, 아이콘, 릴리즈용 패키지 정보 확정
