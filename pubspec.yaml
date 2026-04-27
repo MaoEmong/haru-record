@@ -73,11 +73,6 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  fonts:
-    - family: KyoboHandwriting
-      fonts:
-        - asset: assets/KyoboHandwriting2025lyb.ttf
-
   assets:
     - .env
 

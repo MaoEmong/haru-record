@@ -65,7 +65,7 @@ void main() {
     expect(items.first.placeLabel, '집 근처');
     expect(items.first.durationLabel, '1시간 머문 곳');
     expect(items.last.timeLabel, '13:00');
-    expect(items.last.placeLabel, '이름 없는 장소');
+    expect(items.last.placeLabel, '방문한 곳');
     expect(items.last.durationLabel, '25분 머문 곳');
   });
 }

@@ -39,12 +39,39 @@ void main() {
 
     expect(find.text('오늘'), findsWidgets);
     expect(find.text('돌아보기'), findsOneWidget);
-    expect(find.text('자주 간 곳'), findsOneWidget);
+    expect(find.text('방문한 곳'), findsOneWidget);
     expect(find.text('설정'), findsOneWidget);
     expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
   });
 
-  testWidgets('app uses the bundled Kyobo handwriting font', (tester) async {
+  testWidgets('asks before exiting from the Android back button', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('앱을 종료할까요?'), findsOneWidget);
+    expect(find.text('계속 사용'), findsOneWidget);
+    expect(find.text('종료'), findsOneWidget);
+
+    await tester.tap(find.text('계속 사용'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('앱을 종료할까요?'), findsNothing);
+    expect(find.text('오늘'), findsWidgets);
+  });
+
+  testWidgets('app uses the default platform font with app text sizing', (
+    tester,
+  ) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -56,7 +83,7 @@ void main() {
     final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(
       materialApp.theme?.textTheme.bodyMedium?.fontFamily,
-      'KyoboHandwriting',
+      isNot('KyoboHandwriting'),
     );
     expect(materialApp.theme?.textTheme.bodyMedium?.fontSize, 15);
     expect(materialApp.theme?.textTheme.titleLarge?.fontSize, 23);
@@ -167,7 +194,7 @@ void main() {
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
-    expect(find.text('위치 기록 1개'), findsOneWidget);
+    expect(find.text('기록 지점 1개'), findsOneWidget);
   });
 
   testWidgets('home shows a compact timeline preview when visits exist', (
@@ -270,9 +297,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('오늘 기록'), findsWidgets);
-    expect(find.text('오늘 기록중인 위치'), findsOneWidget);
-    expect(find.text('위치 기록 1개'), findsOneWidget);
-    expect(find.textContaining('37.5665'), findsOneWidget);
+    expect(find.text('오늘 기록중인 위치'), findsNothing);
+    expect(find.text('기록 지점 1개'), findsOneWidget);
+    expect(find.textContaining('37.5665'), findsNothing);
   });
 
   testWidgets('today detail estimates summary and flow from raw points', (
@@ -288,7 +315,7 @@ void main() {
           .insert(
             LocationPointsCompanion.insert(
               timestamp: start.add(Duration(minutes: i * 2)),
-              latitude: 37 + (i * 0.001),
+              latitude: i < 4 ? 37 : 37.01,
               longitude: 127,
               accuracy: 20,
             ),
@@ -303,13 +330,13 @@ void main() {
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
-    expect(find.text('위치 기록 8개'), findsWidgets);
+    expect(find.text('기록 지점 2개'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('하루 요약'), 300);
     expect(find.text('방문 0곳'), findsOneWidget);
     expect(find.text('움직임 14분'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('최근 위치 기록'), 300);
     expect(find.text('최근 위치 기록'), findsOneWidget);
-    expect(find.textContaining('위치 기록 8개 · 머문 곳은 판단 중'), findsOneWidget);
+    expect(find.textContaining('위치 기록 2개 · 머문 곳은 판단 중'), findsOneWidget);
   });
 
   testWidgets('empty history shows example reflection cards', (tester) async {
@@ -340,12 +367,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('자주 간 곳'));
+    await tester.tap(find.text('방문한 곳'));
     await tester.pumpAndSettle();
 
-    expect(find.text('자주 머문 곳은 이렇게 보여요'), findsOneWidget);
-    expect(find.text('집 근처'), findsOneWidget);
-    expect(find.text('3번 머문 곳'), findsOneWidget);
+    expect(find.text('방문한 곳은 이렇게 보여요'), findsOneWidget);
+    expect(
+      find.text(
+        '머문 위치가 생기면 이곳에 방문한 곳으로 모아요. 가까운 위치는 같은 장소로 묶고, 이름은 눌러서 바꿀 수 있어요.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('방문한 곳'), findsWidgets);
+    expect(find.text('서울 중구 세종대로 근처'), findsOneWidget);
+    expect(find.text('카페로 이름 바꾼 곳'), findsOneWidget);
+    expect(find.byKey(const ValueKey('place-map--101')), findsOneWidget);
   });
 
   testWidgets('frequent places show map context for each place', (
@@ -386,7 +421,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('자주 간 곳'));
+    await tester.tap(find.text('방문한 곳'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(ValueKey('place-map-$homeId')), findsOneWidget);
@@ -405,7 +440,7 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final now = DateTime(2026, 4, 27);
-    await database
+    final placeId = await database
         .into(database.placeClusters)
         .insert(
           PlaceClustersCompanion.insert(
@@ -423,18 +458,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('자주 간 곳'));
+    await tester.tap(find.text('방문한 곳'));
     await tester.pumpAndSettle();
-    expect(find.text('이름을 정하지 않은 곳'), findsOneWidget);
+    expect(find.text('방문한 곳'), findsWidgets);
 
-    await tester.tap(find.text('이름을 정하지 않은 곳'));
+    await tester.tap(find.byKey(ValueKey('place-card-$placeId')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('취소'));
     await tester.pump();
 
     expect(tester.takeException(), isNull);
     await tester.pumpAndSettle();
-    expect(find.text('이름을 정하지 않은 곳'), findsOneWidget);
+    expect(find.text('방문한 곳'), findsWidgets);
 
     final places = await database.select(database.placeClusters).get();
     expect(places.single.displayName, isNull);
@@ -989,41 +1024,6 @@ void main() {
     expect(find.text('어제 기록은 봤지만 특별한 변화는 없었어요'), findsOneWidget);
   });
 
-  testWidgets('debug seed supports device validation of yesterday reflection', (
-    tester,
-  ) async {
-    final database = AppDatabase(NativeDatabase.memory());
-    addTearDown(database.close);
-
-    await tester.pumpWidget(
-      DailyPatternApp(
-        dependencies: _testDependencies(
-          database,
-          showDebugValidationTools: true,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('설정'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('검증용 어제 기록 넣기'), 200);
-    await tester.tap(find.text('검증용 어제 기록 넣기'));
-    await tester.pumpAndSettle();
-
-    final seededPoints = await database.select(database.locationPoints).get();
-    expect(seededPoints, hasLength(2));
-
-    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
-    await tester.tap(find.text('어제 돌아보기 만들기'));
-    await tester.pumpAndSettle();
-
-    final visits = await database.select(database.visits).get();
-    final insights = await database.select(database.insights).get();
-    expect(visits, hasLength(1));
-    expect(insights, isNotEmpty);
-  });
-
   testWidgets('settings cleanup removes raw points but keeps insights', (
     tester,
   ) async {
@@ -1128,7 +1128,6 @@ AppDependencies _testDependencies(
   _FakePermissionService? permissionService,
   Future<LocationEventImportResult> Function()? importPendingEvents,
   Future<DailyProcessingResult> Function()? runDailyProcessingNow,
-  bool showDebugValidationTools = false,
 }) {
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
@@ -1143,7 +1142,6 @@ AppDependencies _testDependencies(
         importPendingEvents ??
         () async =>
             const LocationEventImportResult(importedCount: 0, skippedCount: 0),
-    showDebugValidationTools: showDebugValidationTools,
     runDailyProcessingOverride: runDailyProcessingNow,
   );
 }

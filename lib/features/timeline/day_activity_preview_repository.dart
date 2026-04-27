@@ -2,6 +2,7 @@ import '../../core/geo/geo_math.dart';
 import '../storage/app_database.dart';
 import 'day_timeline_models.dart';
 import 'day_timeline_repository.dart';
+import 'location_point_deduplication.dart';
 
 class DayActivityPreviewRepository {
   const DayActivityPreviewRepository(this._database);
@@ -11,7 +12,8 @@ class DayActivityPreviewRepository {
   Future<DayActivityPreview> loadForDate(DateTime date) async {
     final summary = await _loadDailySummary(date);
     final timeline = await DayTimelineRepository(_database).loadForDate(date);
-    final points = await _loadLocationPoints(date);
+    final rawPoints = await _loadLocationPoints(date);
+    final points = compactNearbyLocationPoints(rawPoints);
 
     final fallbackTimeline = timeline.isNotEmpty || points.isEmpty
         ? timeline
@@ -50,7 +52,9 @@ class DayActivityPreviewRepository {
       totalDistanceMeters: totalDistance,
       movingMinutes: totalDistance <= 0
           ? 0
-          : points.last.timestamp.difference(points.first.timestamp).inMinutes,
+          : rawPoints.last.timestamp
+                .difference(rawPoints.first.timestamp)
+                .inMinutes,
       visitCount: timeline.length,
       timeline: fallbackTimeline,
       pointCount: points.length,

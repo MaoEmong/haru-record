@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
+import '../../app/responsive_type.dart';
 import '../background/daily_insight_worker.dart';
-import '../debug/debug_validation_seeder.dart';
 import '../diagnostics/diagnostics_repository.dart';
 import '../diagnostics/diagnostics_snapshot.dart';
 import 'settings_models.dart';
@@ -121,16 +121,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
-  }
-
-  Future<void> _seedDebugYesterdayVisit() async {
-    await DebugValidationSeeder(
-      widget.dependencies.database,
-    ).seedYesterdayVisit();
-    widget.onDataChanged?.call();
-    setState(() {
-      _status = '검증용 어제 기록을 넣었어요';
-    });
   }
 
   String _processingMessage(DailyProcessingResult result) {
@@ -302,12 +292,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: '위치, 장소, 요약, 돌아보기를 모두 지워요',
                   onTap: _busy ? null : _confirmDeleteAllLocalData,
                 ),
-                if (widget.dependencies.showDebugValidationTools)
-                  _SettingsRow(
-                    icon: Icons.bug_report_outlined,
-                    title: '검증용 어제 기록 넣기',
-                    onTap: _busy ? null : _seedDebugYesterdayVisit,
-                  ),
                     ],
                   ),
                   ],
@@ -359,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _confirmDeleteAllLocalData() async {
     final confirmed = await _confirm(
       '이 기기의 기록 모두 지우기',
-      '자세한 위치, 자주 간 곳, 하루 요약, 돌아보기를 모두 지워요.',
+      '자세한 위치, 방문한 곳, 하루 요약, 돌아보기를 모두 지워요.',
     );
     if (!confirmed) return;
     await widget.dependencies.maintenanceService.deleteAllLocalData();
@@ -481,8 +465,8 @@ class _SettingsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(4, 0, 4, 2),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -490,13 +474,18 @@ class _SettingsPageHeader extends StatelessWidget {
             '설정',
             style: TextStyle(
               color: AppColors.ink,
-              fontSize: 30,
+              fontSize: responsiveTitleFontSize(
+                context,
+                30,
+                minScale: 0.92,
+                maxScale: 1.14,
+              ),
               fontWeight: FontWeight.w300,
               height: 1.1,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             '기록 방식과 보관 기준을 조정해요.',
             style: TextStyle(color: AppColors.muted),
           ),

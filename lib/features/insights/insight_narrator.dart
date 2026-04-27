@@ -136,7 +136,7 @@ class RuleBasedInsightNarrator implements InsightNarrator {
 
   InsightText _newPlaceText(InsightNarrationContext context) {
     return InsightText(
-      title: '새롭게 자주 머문 곳이 생겼어요',
+      title: '새롭게 방문한 곳이 생겼어요',
       body: '최근 흐름에 없던 머문 곳이 기록에 남았어요.',
       evidence: '새롭게 보인 곳 ${context.currentValue.round()}곳',
     );
