@@ -217,8 +217,17 @@ class _DailyPatternShellState extends State<DailyPatternShell>
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(_titleForIndex(_selectedIndex))),
-      body: SafeArea(child: screens[_selectedIndex]),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ShellHeader(
+              dependencies: widget.dependencies,
+              refreshVersion: _refreshVersion,
+            ),
+            Expanded(child: screens[_selectedIndex]),
+          ],
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -288,12 +297,107 @@ class _DailyPatternShellState extends State<DailyPatternShell>
     );
   }
 
-  String _titleForIndex(int index) {
-    return switch (index) {
-      0 => '오늘',
-      1 => '돌아보기',
-      2 => '자주 간 곳',
-      _ => '설정',
-    };
+}
+
+class _ShellHeader extends StatefulWidget {
+  const _ShellHeader({
+    required this.dependencies,
+    required this.refreshVersion,
+  });
+
+  final AppDependencies dependencies;
+  final int refreshVersion;
+
+  @override
+  State<_ShellHeader> createState() => _ShellHeaderState();
+}
+
+class _ShellHeaderState extends State<_ShellHeader> {
+  late Future<_ShellHeaderSnapshot> _snapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    _snapshot = _load();
   }
+
+  @override
+  void didUpdateWidget(covariant _ShellHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshVersion != widget.refreshVersion) {
+      setState(() {
+        _snapshot = _load();
+      });
+    }
+  }
+
+  Future<_ShellHeaderSnapshot> _load() async {
+    final settings = await widget.dependencies.settingsRepository.load();
+    final isTracking = await widget.dependencies.trackingService.isTracking();
+    return _ShellHeaderSnapshot(
+      isRecording: settings.trackingEnabled || isTracking,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_ShellHeaderSnapshot>(
+      future: _snapshot,
+      builder: (context, snapshot) {
+        final isRecording = snapshot.data?.isRecording ?? false;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(22, 10, 22, 4),
+          child: Row(
+            children: [
+              const Expanded(child: SizedBox(height: 28)),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: isRecording
+                              ? AppColors.blueGrey
+                              : AppColors.muted,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isRecording ? '기록 중' : '기록 쉼',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ShellHeaderSnapshot {
+  const _ShellHeaderSnapshot({required this.isRecording});
+
+  final bool isRecording;
 }

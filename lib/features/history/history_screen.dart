@@ -56,51 +56,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
         if (insights.isEmpty) {
           return const _HistoryExamples();
         }
-        return ListView.separated(
+        final grouped = _groupByMonth(insights);
+        return ListView(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-          itemCount: insights.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final insight = insights[index];
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () => _openDayDetail(insight),
-                child: DecoratedBox(
-                  decoration: AppThemeDecorations.softCard(),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-                    title: Text(
-                      insight.title,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    subtitle: Text(
-                      '${_dateLabel(insight.date)}\n${insight.body}',
-                      style: const TextStyle(color: AppColors.muted),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: AppColors.muted,
-                    ),
-                    isThreeLine: true,
-                  ),
-                ),
+          children: [
+            for (final entry in grouped.entries)
+              _MonthSection(
+                title: entry.key,
+                insights: entry.value,
+                onOpen: _openDayDetail,
               ),
-            );
-          },
+          ],
         );
       },
     );
   }
 
-  String _dateLabel(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
+  Map<String, List<Insight>> _groupByMonth(List<Insight> insights) {
+    final grouped = <String, List<Insight>>{};
+    for (final insight in insights) {
+      final key =
+          '${insight.date.year}년 ${insight.date.month.toString().padLeft(2, '0')}월';
+      grouped.putIfAbsent(key, () => []).add(insight);
+    }
+    return grouped;
   }
 
   void _openDayDetail(Insight insight) {
@@ -114,6 +93,135 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
       ),
     );
+  }
+}
+
+class _MonthSection extends StatelessWidget {
+  const _MonthSection({
+    required this.title,
+    required this.insights,
+    required this.onOpen,
+  });
+
+  final String title;
+  final List<Insight> insights;
+  final ValueChanged<Insight> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          for (final insight in insights) ...[
+            _HistoryCard(insight: insight, onOpen: onOpen),
+            const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.insight, required this.onOpen});
+
+  final Insight insight;
+  final ValueChanged<Insight> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => onOpen(insight),
+        child: DecoratedBox(
+          decoration: AppThemeDecorations.softCard(),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: Column(
+                    children: [
+                      Text(
+                        insight.date.day.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w300,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _weekdayLabel(insight.date.weekday),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 56,
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                  color: AppColors.border,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        insight.title,
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        insight.body,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.muted,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: AppColors.muted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _weekdayLabel(int weekday) {
+    return const ['월', '화', '수', '목', '금', '토', '일'][weekday - 1];
   }
 }
 

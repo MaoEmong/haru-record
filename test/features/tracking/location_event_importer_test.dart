@@ -73,6 +73,23 @@ void main() {
     expect(await eventFile.readAsString(), isEmpty);
   });
 
+  test('does not store near-duplicate points from the same short window', () async {
+    await eventFile.writeAsString(
+      '{"timestamp":"2026-04-25T10:00:00.000","latitude":37.5665,"longitude":126.978,"accuracy":15,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:05:00.000","latitude":37.56651,"longitude":126.97801,"accuracy":18,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:40:00.000","latitude":37.56652,"longitude":126.97802,"accuracy":18,"source":"android"}\n',
+    );
+    final importer = LocationEventImporter(database, channel: channel);
+
+    final result = await importer.importPendingEvents();
+
+    final points = await database.select(database.locationPoints).get();
+    expect(result.importedCount, 2);
+    expect(points, hasLength(2));
+    expect(points.first.timestamp, DateTime(2026, 4, 25, 10));
+    expect(points.last.timestamp, DateTime(2026, 4, 25, 10, 40));
+  });
+
   test('preserves events appended after the import snapshot is taken', () async {
     await eventFile.writeAsString(
       '{"timestamp":"2026-04-25T10:00:00.000","latitude":37.5665,"longitude":126.978,"accuracy":20}\n',
