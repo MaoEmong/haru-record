@@ -303,6 +303,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('위치 기록 8개'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('하루 요약'), 300);
     expect(find.text('방문 0곳'), findsOneWidget);
     expect(find.text('움직임 14분'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('최근 위치 기록'), 300);
@@ -536,6 +537,7 @@ void main() {
 
     expect(find.text('이동 경로'), findsOneWidget);
     expect(find.text('기록 지점 2개'), findsOneWidget);
+    expect(find.byKey(const ValueKey('day-route-mini-map')), findsOneWidget);
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {
