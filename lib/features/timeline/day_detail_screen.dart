@@ -241,15 +241,150 @@ class _RoutePreviewCard extends StatelessWidget {
                 '경로를 그릴 만큼 위치 기록이 아직 부족해요.',
                 style: TextStyle(color: AppColors.muted),
               )
-            else
+            else ...[
+              _DayRouteMiniMap(points: route.points),
+              const SizedBox(height: 12),
               Text(
                 '${route.points.first.timeLabel} -> ${route.points.last.timeLabel}',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
+            ],
           ],
         ),
       ),
     );
+  }
+}
+
+class _DayRouteMiniMap extends StatelessWidget {
+  const _DayRouteMiniMap({required this.points});
+
+  final List<DayRoutePoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      key: const ValueKey('day-route-mini-map'),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.paleBlue,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: SizedBox(
+          height: 150,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _DayRouteMiniMapPainter(points: points),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayRouteMiniMapPainter extends CustomPainter {
+  const _DayRouteMiniMapPainter({required this.points});
+
+  final List<DayRoutePoint> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+
+    final padding = size.shortestSide * 0.16;
+    final bounds = Rect.fromLTWH(
+      padding,
+      padding,
+      size.width - (padding * 2),
+      size.height - (padding * 2),
+    );
+    final projected = _project(points, bounds);
+
+    final shadowPaint = Paint()
+      ..color = AppColors.border.withValues(alpha: 0.65)
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    final routePaint = Paint()
+      ..color = AppColors.blueGrey
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final route = Path()..moveTo(projected.first.dx, projected.first.dy);
+    for (final point in projected.skip(1)) {
+      route.lineTo(point.dx, point.dy);
+    }
+
+    canvas.drawPath(route, shadowPaint);
+    canvas.drawPath(route, routePaint);
+    _drawEndpoint(
+      canvas,
+      projected.first,
+      fill: AppColors.surface,
+      stroke: AppColors.blueGrey,
+    );
+    _drawEndpoint(
+      canvas,
+      projected.last,
+      fill: AppColors.ink,
+      stroke: AppColors.surface,
+    );
+  }
+
+  List<Offset> _project(List<DayRoutePoint> points, Rect bounds) {
+    var minLat = points.first.latitude;
+    var maxLat = points.first.latitude;
+    var minLng = points.first.longitude;
+    var maxLng = points.first.longitude;
+
+    for (final point in points.skip(1)) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    final latRange = (maxLat - minLat).abs();
+    final lngRange = (maxLng - minLng).abs();
+    final safeLatRange = latRange == 0 ? 1.0 : latRange;
+    final safeLngRange = lngRange == 0 ? 1.0 : lngRange;
+
+    return points.map((point) {
+      final x = bounds.left + ((point.longitude - minLng) / safeLngRange) * bounds.width;
+      final y = bounds.bottom - ((point.latitude - minLat) / safeLatRange) * bounds.height;
+      return Offset(x, y);
+    }).toList(growable: false);
+  }
+
+  void _drawEndpoint(
+    Canvas canvas,
+    Offset center, {
+    required Color fill,
+    required Color stroke,
+  }) {
+    canvas.drawCircle(
+      center,
+      7,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      center,
+      4.5,
+      Paint()
+        ..color = fill
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DayRouteMiniMapPainter oldDelegate) {
+    return oldDelegate.points != points;
   }
 }
 
