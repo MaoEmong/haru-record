@@ -347,6 +347,51 @@ void main() {
     expect(find.text('3번 머문 곳'), findsOneWidget);
   });
 
+  testWidgets('frequent places show map context for each place', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime(2026, 4, 27);
+    final homeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37.5665,
+            centerLongitude: 126.978,
+            radiusMeters: 100,
+            displayName: const Value('집 근처'),
+            createdAt: now,
+            updatedAt: now,
+            visitCount: 4,
+          ),
+        );
+    final cafeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37.57,
+            centerLongitude: 126.982,
+            radiusMeters: 80,
+            displayName: const Value('카페'),
+            createdAt: now,
+            updatedAt: now,
+            visitCount: 2,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('자주 간 곳'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(ValueKey('place-map-$homeId')), findsOneWidget);
+    expect(find.byKey(ValueKey('place-map-$cafeId')), findsOneWidget);
+  });
+
   testWidgets('canceling rename for an unnamed place keeps the app stable', (
     tester,
   ) async {
