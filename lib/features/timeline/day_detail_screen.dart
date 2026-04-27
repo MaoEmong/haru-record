@@ -275,19 +275,24 @@ class _DayRouteMap extends StatelessWidget {
     final points = route.points
         .map((point) => LatLng(point.latitude, point.longitude))
         .toList(growable: false);
-    final bounds = LatLngBounds.fromPoints(points);
+    final cameraPoints = [
+      ...points,
+      for (final visit in route.visits) LatLng(visit.latitude, visit.longitude),
+    ];
+    final bounds = LatLngBounds.fromPoints(cameraPoints);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: SizedBox(
         key: const ValueKey('day-route-map'),
-        height: 150,
+        height: 220,
         width: double.infinity,
         child: CachedMapSnapshot(
           key: ValueKey('map-snapshot-day-route-$dateKey'),
           cacheKey:
-              'day-route-$dateKey-'
+              'day-route-v2-$dateKey-'
               '${route.points.length}-'
+              '${route.visits.length}-'
               '${route.points.last.timeLabel}',
           child: FlutterMap(
             options: MapOptions(
