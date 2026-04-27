@@ -74,7 +74,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _toggleNotifications(AppSettings settings, bool enabled) async {
     final updated = settings.copyWith(notificationEnabled: enabled);
-    await _save(updated);
     if (enabled) {
       final granted = await widget.dependencies.permissionService
           .ensureNotificationPermission();
@@ -84,11 +83,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
         return;
       }
+      await _save(updated);
       await widget.dependencies.notificationService.scheduleDailyInsight(
         hour: updated.notificationHour,
         minute: updated.notificationMinute,
       );
     } else {
+      await _save(updated);
       await widget.dependencies.notificationService.cancelDailyInsight();
     }
   }
@@ -148,6 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             SwitchListTile(
+              key: const ValueKey('notification-switch'),
               tileColor: Theme.of(context).colorScheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
