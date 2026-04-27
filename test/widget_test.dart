@@ -808,6 +808,34 @@ void main() {
     expect(settings.notificationEnabled, isFalse);
     expect(find.text('돌아보기 알림을 받으려면 알림 권한이 필요해요'), findsOneWidget);
   });
+
+  testWidgets('settings sends a test notification', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = _FakeNotificationAdapter();
+    final permissionService = _FakePermissionService(locationGranted: true);
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          permissionService: permissionService,
+          notificationAdapter: notificationAdapter,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('테스트 알림 보내기'), 200);
+    await tester.tap(find.text('테스트 알림 보내기'));
+    await tester.pumpAndSettle();
+
+    expect(permissionService.requestedNotification, isTrue);
+    expect(notificationAdapter.shownId, NotificationService.testNotificationId);
+    expect(find.text('테스트 알림을 보냈어요'), findsWidgets);
+  });
 }
 
 AppDependencies _testDependencies(
@@ -815,15 +843,17 @@ AppDependencies _testDependencies(
   SettingsRepository? settingsRepository,
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
+  _FakeNotificationAdapter? notificationAdapter,
   Future<DailyProcessingResult> Function()? runDailyProcessingNow,
   bool showDebugValidationTools = false,
 }) {
-  final notificationAdapter = _FakeNotificationAdapter();
+  final resolvedNotificationAdapter =
+      notificationAdapter ?? _FakeNotificationAdapter();
   return AppDependencies(
     database: database,
     settingsRepository: settingsRepository ?? SettingsRepository(),
     trackingService: trackingService ?? _FakeTrackingService(),
-    notificationService: NotificationService(notificationAdapter),
+    notificationService: NotificationService(resolvedNotificationAdapter),
     permissionService:
         permissionService ?? _FakePermissionService(locationGranted: true),
     maintenanceService: AppMaintenanceService(database),
@@ -876,6 +906,8 @@ class _FakePermissionService implements AppPermissionService {
 }
 
 class _FakeNotificationAdapter implements NotificationAdapter {
+  int? shownId;
+
   @override
   Future<void> cancel(int id) async {}
 
@@ -890,4 +922,13 @@ class _FakeNotificationAdapter implements NotificationAdapter {
     required String title,
     required String body,
   }) async {}
+
+  @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    shownId = id;
+  }
 }

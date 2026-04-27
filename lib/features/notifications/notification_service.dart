@@ -6,6 +6,12 @@ abstract interface class NotificationAdapter {
 
   Future<void> cancel(int id);
 
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  });
+
   Future<void> scheduleDaily({
     required int id,
     required int hour,
@@ -19,6 +25,7 @@ class NotificationService {
   NotificationService(this._adapter);
 
   static const dailyInsightNotificationId = 2001;
+  static const testNotificationId = 2002;
   final NotificationAdapter _adapter;
 
   Future<bool?> requestNotificationPermission() {
@@ -42,6 +49,14 @@ class NotificationService {
       minute: minute,
       title: title ?? '어제 하루를 정리했어요',
       body: body ?? '어떤 흐름이었는지 가볍게 확인해 보세요.',
+    );
+  }
+
+  Future<void> showTestNotification() {
+    return _adapter.showNow(
+      id: testNotificationId,
+      title: '알림 테스트',
+      body: '이렇게 돌아보기 알림이 도착해요.',
     );
   }
 
@@ -113,6 +128,27 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
   Future<void> cancel(int id) async {
     await initialize();
     await _plugin.cancel(id: id);
+  }
+
+  @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await initialize();
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_pattern_insights',
+          '하루 돌아보기',
+          channelDescription: '하루 돌아보기 알림',
+        ),
+      ),
+    );
   }
 
   @override
