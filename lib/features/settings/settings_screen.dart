@@ -155,132 +155,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: _SettingsStatusArea(
-                message: _status,
-                repository: DiagnosticsRepository(widget.dependencies.database),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+              child: Column(
+                children: [
+                  const _SettingsPageHeader(),
+                  const SizedBox(height: 12),
+                  _SettingsStatusArea(
+                    message: _status,
+                    repository: DiagnosticsRepository(
+                      widget.dependencies.database,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                children: [
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   const _TrustCard(),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    key: const ValueKey('tracking-switch'),
-                    tileColor: AppColors.surface,
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    title: const Text('하루 기록'),
-                    subtitle: Text(
-                      settings.trackingEnabled ? '오늘의 흐름을 기록하고 있어요' : '꺼져 있어요',
-                    ),
+                  const SizedBox(height: 22),
+                  const _SettingsSectionLabel('기록'),
+                  _SettingsGroup(
+                    children: [
+                _SettingsRow(
+                  key: const ValueKey('tracking-switch'),
+                  icon: Icons.route_outlined,
+                  title: '하루 기록',
+                  subtitle: settings.trackingEnabled
+                      ? '오늘의 흐름을 기록하고 있어요'
+                      : '쉬고 있어요',
+                  trailing: Switch(
                     value: settings.trackingEnabled,
                     onChanged: _busy
                         ? null
                         : (enabled) => _toggleTracking(settings, enabled),
                   ),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    key: const ValueKey('notification-switch'),
-                    tileColor: AppColors.surface,
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(24),
+                  onTap: _busy
+                      ? null
+                      : () => _toggleTracking(
+                          settings,
+                          !settings.trackingEnabled,
+                        ),
+                ),
+                _SettingsRow(
+                  key: const ValueKey('movement-threshold-edit'),
+                  icon: Icons.directions_walk,
+                  title: '움직임으로 볼 거리',
+                  trailing: _SettingValue('${settings.minimumMovementMeters} m'),
+                  onTap: () => _editNumber(
+                    title: '움직임으로 볼 거리',
+                    initialValue: settings.minimumMovementMeters,
+                    suffix: 'm',
+                    onSave: (value) => _save(
+                      settings.copyWith(minimumMovementMeters: value),
                     ),
-                    title: const Text('돌아보기 알림'),
-                    subtitle: Text(
-                      settings.notificationEnabled
-                          ? '어제 하루가 정리되면 알려드릴게요'
-                          : '꺼져 있어요',
-                    ),
+                  ),
+                ),
+                _SettingsRow(
+                  key: const ValueKey('stay-threshold-edit'),
+                  icon: Icons.timer_outlined,
+                  title: '머문 곳으로 볼 시간',
+                  trailing: _SettingValue('${settings.minimumStayMinutes}분'),
+                  onTap: () => _editNumber(
+                    title: '머문 곳으로 볼 시간',
+                    initialValue: settings.minimumStayMinutes,
+                    suffix: '분',
+                    onSave: (value) =>
+                        _save(settings.copyWith(minimumStayMinutes: value)),
+                  ),
+                ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const _SettingsSectionLabel('알림'),
+                  _SettingsGroup(
+                    children: [
+                _SettingsRow(
+                  key: const ValueKey('notification-switch'),
+                  icon: Icons.notifications_none_outlined,
+                  title: '돌아보기 알림',
+                  subtitle: settings.notificationEnabled
+                      ? '어제 하루가 정리되면 알려드릴게요'
+                      : '쉬고 있어요',
+                  trailing: Switch(
                     value: settings.notificationEnabled,
                     onChanged: _busy
                         ? null
                         : (enabled) => _toggleNotifications(settings, enabled),
                   ),
-                  const SizedBox(height: 18),
-                  _EditableSettingsValueTile(
-                    key: const ValueKey('movement-threshold-edit'),
-                    title: '움직임으로 볼 거리',
-                    value: '${settings.minimumMovementMeters} m',
-                    icon: Icons.directions_walk,
-                    onTap: () => _editNumber(
-                      title: '움직임으로 볼 거리',
-                      initialValue: settings.minimumMovementMeters,
-                      suffix: 'm',
-                      onSave: (value) => _save(
-                        settings.copyWith(minimumMovementMeters: value),
-                      ),
-                    ),
+                  onTap: _busy
+                      ? null
+                      : () => _toggleNotifications(
+                          settings,
+                          !settings.notificationEnabled,
+                        ),
+                ),
+                _SettingsRow(
+                  key: const ValueKey('notification-time-edit'),
+                  icon: Icons.schedule_outlined,
+                  title: '돌아보기 알림 시간',
+                  trailing: _SettingValue(
+                    '${settings.notificationHour.toString().padLeft(2, '0')}:'
+                    '${settings.notificationMinute.toString().padLeft(2, '0')}',
                   ),
-                  _EditableSettingsValueTile(
-                    key: const ValueKey('stay-threshold-edit'),
-                    title: '머문 곳으로 볼 시간',
-                    value: '${settings.minimumStayMinutes}분',
-                    icon: Icons.timer_outlined,
-                    onTap: () => _editNumber(
-                      title: '머문 곳으로 볼 시간',
-                      initialValue: settings.minimumStayMinutes,
-                      suffix: '분',
-                      onSave: (value) =>
-                          _save(settings.copyWith(minimumStayMinutes: value)),
-                    ),
+                  onTap: () => _editNotificationTime(settings),
+                ),
+                    ],
                   ),
-                  _EditableSettingsValueTile(
-                    key: const ValueKey('retention-days-edit'),
+                  const SizedBox(height: 20),
+                  const _SettingsSectionLabel('데이터'),
+                  _SettingsGroup(
+                    children: [
+                _SettingsRow(
+                  key: const ValueKey('retention-days-edit'),
+                  icon: Icons.storage_outlined,
+                  title: '자세한 위치 보관 기간',
+                  trailing: _SettingValue('${settings.rawPointRetentionDays}일'),
+                  onTap: () => _editNumber(
                     title: '자세한 위치 보관 기간',
-                    value: '${settings.rawPointRetentionDays}일',
-                    icon: Icons.storage_outlined,
-                    onTap: () => _editNumber(
-                      title: '자세한 위치 보관 기간',
-                      initialValue: settings.rawPointRetentionDays,
-                      suffix: '일',
-                      onSave: (value) => _save(
-                        settings.copyWith(rawPointRetentionDays: value),
-                      ),
+                    initialValue: settings.rawPointRetentionDays,
+                    suffix: '일',
+                    onSave: (value) => _save(
+                      settings.copyWith(rawPointRetentionDays: value),
                     ),
                   ),
-                  _EditableSettingsValueTile(
-                    key: const ValueKey('notification-time-edit'),
-                    title: '돌아보기 알림 시간',
-                    value:
-                        '${settings.notificationHour.toString().padLeft(2, '0')}:'
-                        '${settings.notificationMinute.toString().padLeft(2, '0')}',
-                    icon: Icons.notifications_active_outlined,
-                    onTap: () => _editNotificationTime(settings),
+                ),
+                _SettingsRow(
+                  icon: Icons.auto_awesome_outlined,
+                  title: '어제 돌아보기 만들기',
+                  subtitle: '어제 기록으로 돌아보기를 다시 만들어요',
+                  onTap: _busy ? null : _runProcessing,
+                ),
+                _SettingsRow(
+                  key: const ValueKey('delete-raw-points-button'),
+                  icon: Icons.delete_sweep_outlined,
+                  title: '자세한 위치 기록 비우기',
+                  subtitle: '돌아보기와 하루 요약은 남겨둘게요',
+                  onTap: _busy ? null : _confirmDeleteRawPoints,
+                ),
+                _SettingsRow(
+                  icon: Icons.delete_forever_outlined,
+                  title: '이 기기의 기록 모두 지우기',
+                  subtitle: '위치, 장소, 요약, 돌아보기를 모두 지워요',
+                  onTap: _busy ? null : _confirmDeleteAllLocalData,
+                ),
+                if (widget.dependencies.showDebugValidationTools)
+                  _SettingsRow(
+                    icon: Icons.bug_report_outlined,
+                    title: '검증용 어제 기록 넣기',
+                    onTap: _busy ? null : _seedDebugYesterdayVisit,
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _runProcessing,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('어제 돌아보기 만들기'),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    key: const ValueKey('delete-raw-points-button'),
-                    onPressed: _busy ? null : _confirmDeleteRawPoints,
-                    icon: const Icon(Icons.delete_sweep_outlined),
-                    label: const Text('자세한 위치 기록 비우기'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : _confirmDeleteAllLocalData,
-                    icon: const Icon(Icons.delete_forever_outlined),
-                    label: const Text('이 기기의 기록 모두 지우기'),
-                  ),
-                  if (widget.dependencies.showDebugValidationTools) ...[
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _seedDebugYesterdayVisit,
-                      icon: const Icon(Icons.bug_report_outlined),
-                      label: const Text('검증용 어제 기록 넣기'),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
           ],
@@ -445,6 +476,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+class _SettingsPageHeader extends StatelessWidget {
+  const _SettingsPageHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(4, 0, 4, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '설정',
+            style: TextStyle(
+              color: AppColors.ink,
+              fontSize: 30,
+              fontWeight: FontWeight.w300,
+              height: 1.1,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '기록 방식과 보관 기준을 조정해요.',
+            style: TextStyle(color: AppColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TrustCard extends StatelessWidget {
   const _TrustCard();
 
@@ -484,15 +545,14 @@ class _SettingsStatusArea extends StatelessWidget {
     return DecoratedBox(
       key: const ValueKey('settings-status-area'),
       decoration: BoxDecoration(
-        color: message == null ? AppColors.paleBlue : AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: message == null ? Colors.transparent : AppColors.border,
-        ),
+        color: message == null ? AppColors.paleBlue : AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
       ),
       child: SizedBox(
-        height: 44,
-        child: Center(
+        height: 58,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
             child: message == null
@@ -531,39 +591,134 @@ class _SettingsStatusArea extends StatelessWidget {
   }
 }
 
-class _EditableSettingsValueTile extends StatelessWidget {
-  const _EditableSettingsValueTile({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.onTap,
-  });
+class _SettingsSectionLabel extends StatelessWidget {
+  const _SettingsSectionLabel(this.label);
 
-  final String title;
-  final String value;
-  final IconData icon;
-  final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      tileColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: AppColors.border),
-        borderRadius: BorderRadius.circular(24),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
       ),
-      leading: Icon(icon, color: AppColors.ink),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: Column(
         children: [
-          Text(value, style: const TextStyle(color: AppColors.muted)),
-          const SizedBox(width: 8),
-          const Icon(Icons.edit_outlined, color: AppColors.muted),
+          for (var i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i != children.length - 1)
+              const Divider(height: 1, indent: 56, color: AppColors.border),
+          ],
         ],
       ),
-      onTap: onTap,
+    );
+  }
+}
+
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.blueGrey, size: 22),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing!,
+              ] else
+                const Icon(Icons.chevron_right, color: AppColors.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingValue extends StatelessWidget {
+  const _SettingValue(this.value);
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Icon(Icons.edit_outlined, color: AppColors.muted, size: 18),
+      ],
     );
   }
 }

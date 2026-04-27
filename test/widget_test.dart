@@ -63,11 +63,44 @@ void main() {
   testWidgets('home summarizes records from today', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
+    final now = DateTime.now();
+    final today =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    await database
+        .into(database.dailySummaries)
+        .insert(
+          DailySummariesCompanion.insert(
+            date: today,
+            totalDistanceMeters: 1200,
+            movingMinutes: 18,
+            stationaryMinutes: 42,
+            visitCount: 2,
+            newPlaceCount: 1,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1.2km'), findsOneWidget);
+    expect(find.text('2곳'), findsOneWidget);
+    expect(find.text('18분'), findsOneWidget);
+  });
+
+  testWidgets('home estimates today stats from raw points before processing', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day, 9);
     await database
         .into(database.locationPoints)
         .insert(
           LocationPointsCompanion.insert(
-            timestamp: DateTime.now(),
+            timestamp: start,
             latitude: 37,
             longitude: 127,
             accuracy: 20,
@@ -77,9 +110,9 @@ void main() {
         .into(database.locationPoints)
         .insert(
           LocationPointsCompanion.insert(
-            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-            latitude: 37.1,
-            longitude: 127.1,
+            timestamp: start.add(const Duration(minutes: 12)),
+            latitude: 37.01,
+            longitude: 127,
             accuracy: 20,
           ),
         );
@@ -89,8 +122,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('오늘 남긴 기록'), findsOneWidget);
-    expect(find.text('오늘은 2개의 기록이 조용히 쌓였어요'), findsOneWidget);
+    expect(find.text('1.1km'), findsOneWidget);
+    expect(find.text('0곳'), findsOneWidget);
+    expect(find.text('12분'), findsOneWidget);
+    expect(find.text('최근 위치 기록'), findsOneWidget);
   });
 
   testWidgets('app imports pending native location events on startup', (
@@ -127,7 +162,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(imported, isTrue);
-    expect(find.text('오늘은 1개의 기록이 조용히 쌓였어요'), findsOneWidget);
+    await tester.tap(find.text('오늘 기록'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('위치 기록 1개'), findsOneWidget);
   });
 
   testWidgets('home shows a compact timeline preview when visits exist', (
@@ -227,13 +265,49 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('오늘 남긴 기록'));
+    await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
     expect(find.text('오늘 기록'), findsWidgets);
     expect(find.text('오늘 기록중인 위치'), findsOneWidget);
     expect(find.text('위치 기록 1개'), findsOneWidget);
     expect(find.textContaining('37.5665'), findsOneWidget);
+  });
+
+  testWidgets('today detail estimates summary and flow from raw points', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day, 9);
+    for (var i = 0; i < 8; i++) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: start.add(Duration(minutes: i * 2)),
+              latitude: 37 + (i * 0.001),
+              longitude: 127,
+              accuracy: 20,
+            ),
+          );
+    }
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('오늘 기록'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('위치 기록 8개'), findsWidgets);
+    expect(find.text('방문 0곳'), findsOneWidget);
+    expect(find.text('움직임 14분'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('최근 위치 기록'), 300);
+    expect(find.text('최근 위치 기록'), findsOneWidget);
+    expect(find.textContaining('위치 기록 8개 · 머문 곳은 판단 중'), findsOneWidget);
   });
 
   testWidgets('empty history shows example reflection cards', (tester) async {
@@ -300,7 +374,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('이름을 정하지 않은 곳'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('이름 바꾸기'));
+    await tester.tap(find.text('이름을 정하지 않은 곳'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('취소'));
     await tester.pump();
@@ -542,7 +616,7 @@ void main() {
       find.byKey(const ValueKey('retention-days-edit')),
       300,
     );
-    await tester.drag(find.byType(ListView), const Offset(0, -80));
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -80));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('retention-days-edit')));
     await tester.pumpAndSettle();
@@ -557,7 +631,7 @@ void main() {
       find.byKey(const ValueKey('notification-time-edit')),
       300,
     );
-    await tester.drag(find.byType(ListView), const Offset(0, -80));
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, 120));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('notification-time-edit')));
     await tester.pumpAndSettle();
@@ -939,6 +1013,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('notification-switch')),
+      200,
+    );
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, 160));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('notification-switch')));
     await tester.pumpAndSettle();

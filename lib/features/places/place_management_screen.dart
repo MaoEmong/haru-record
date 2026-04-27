@@ -80,38 +80,172 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
         if (places.isEmpty) {
           return const _PlaceExamples();
         }
-        return ListView.separated(
+        return ListView(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-          itemCount: places.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final place = places[index];
-            return DecoratedBox(
-              decoration: AppThemeDecorations.softCard(),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
-                ),
-                leading: const Icon(Icons.place_outlined, color: AppColors.ink),
-                title: Text(
-                  place.displayName ?? '이름을 정하지 않은 곳',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  '${place.visitCount}번 머문 곳',
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-                trailing: IconButton(
-                  tooltip: '이름 바꾸기',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _rename(place),
-                ),
-              ),
-            );
-          },
+          children: [
+            _FeaturedPlaceCard(place: places.first, onRename: _rename),
+            const SizedBox(height: 14),
+            _PlaceGrid(places: places.skip(1).toList(), onRename: _rename),
+          ],
         );
       },
+    );
+  }
+}
+
+class _FeaturedPlaceCard extends StatelessWidget {
+  const _FeaturedPlaceCard({required this.place, required this.onRename});
+
+  final PlaceCluster place;
+  final ValueChanged<PlaceCluster> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(28),
+        onTap: () => onRename(place),
+        child: DecoratedBox(
+          decoration: AppThemeDecorations.inkCard(),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '가장 자주 머문 곳',
+                  style: TextStyle(
+                    color: AppColors.softBlue,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  place.displayName ?? '이름을 정하지 않은 곳',
+                  style: const TextStyle(
+                    color: AppColors.surface,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${place.visitCount}번 머문 곳',
+                  style: const TextStyle(
+                    color: Color(0xB3FCFDFE),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(100),
+                        child: LinearProgressIndicator(
+                          value: (place.visitCount / 10).clamp(0.08, 1),
+                          minHeight: 8,
+                          backgroundColor: const Color(0x33FCFDFE),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.softBlue,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.edit_outlined, color: AppColors.surface),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceGrid extends StatelessWidget {
+  const _PlaceGrid({required this.places, required this.onRename});
+
+  final List<PlaceCluster> places;
+  final ValueChanged<PlaceCluster> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    if (places.isEmpty) {
+      return Text(
+        '조금 더 기록이 쌓이면 다른 장소도 이어서 보여요.',
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+      );
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: places.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.06,
+      ),
+      itemBuilder: (context, index) {
+        return _PlaceGridCard(place: places[index], onRename: onRename);
+      },
+    );
+  }
+}
+
+class _PlaceGridCard extends StatelessWidget {
+  const _PlaceGridCard({required this.place, required this.onRename});
+
+  final PlaceCluster place;
+  final ValueChanged<PlaceCluster> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => onRename(place),
+        child: DecoratedBox(
+          decoration: AppThemeDecorations.softCard(),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.place_outlined, color: AppColors.blueGrey),
+                const Spacer(),
+                Text(
+                  place.displayName ?? '이름을 정하지 않은 곳',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${place.visitCount}번 머문 곳',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

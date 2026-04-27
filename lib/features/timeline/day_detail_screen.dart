@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
+import 'day_activity_preview_repository.dart';
 import 'day_route_models.dart';
 import 'day_route_repository.dart';
 import 'day_timeline_models.dart';
@@ -45,17 +46,9 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
     final route = await DayRouteRepository(
       widget.database,
     ).loadForDate(widget.date);
-    final summaries = await widget.database
-        .select(widget.database.dailySummaries)
-        .get();
-    final dateKey = _dateKey(widget.date);
-    DailySummary? summary;
-    for (final item in summaries) {
-      if (item.date == dateKey) {
-        summary = item;
-        break;
-      }
-    }
+    final preview = await DayActivityPreviewRepository(
+      widget.database,
+    ).loadForDate(widget.date);
     final allPoints = await widget.database
         .select(widget.database.locationPoints)
         .get();
@@ -71,7 +64,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
     return _DayDetailSnapshot(
       timeline: timeline,
       route: route,
-      summary: summary,
+      preview: preview,
       pointCount: points.length,
       latestPoint: points.firstOrNull,
     );
@@ -107,9 +100,9 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                _SummaryCard(summary: data.summary),
+                _SummaryCard(preview: data.preview),
                 const SizedBox(height: 12),
-                _RouteSummaryCard(items: data.timeline),
+                _RouteSummaryCard(items: data.preview.timeline),
               ],
             );
           },
@@ -175,15 +168,15 @@ class _ReflectionHeader extends StatelessWidget {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.summary});
+  const _SummaryCard({required this.preview});
 
-  final DailySummary? summary;
+  final DayActivityPreview preview;
 
   @override
   Widget build(BuildContext context) {
-    final visitCount = summary?.visitCount ?? 0;
-    final distance = summary?.totalDistanceMeters ?? 0;
-    final movingMinutes = summary?.movingMinutes ?? 0;
+    final visitCount = preview.visitCount ?? 0;
+    final distance = preview.totalDistanceMeters ?? 0;
+    final movingMinutes = preview.movingMinutes ?? 0;
     return DecoratedBox(
       decoration: AppThemeDecorations.softCard(),
       child: Padding(
@@ -415,14 +408,14 @@ class _DayDetailSnapshot {
   const _DayDetailSnapshot({
     required this.timeline,
     required this.route,
-    required this.summary,
+    required this.preview,
     required this.pointCount,
     required this.latestPoint,
   });
 
   final List<DayTimelineItem> timeline;
   final DayRouteSnapshot route;
-  final DailySummary? summary;
+  final DayActivityPreview preview;
   final int pointCount;
   final LocationPoint? latestPoint;
 }

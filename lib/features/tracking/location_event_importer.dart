@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/geo/geo_math.dart';
 import '../storage/app_database.dart';
 
 class LocationEventImportResult {
@@ -75,6 +76,10 @@ class LocationEventImporter {
         continue;
       }
 
+      if (await _isNearDuplicateInShortWindow(event)) {
+        continue;
+      }
+
       await _database
           .into(_database.locationPoints)
           .insert(_companionFromEvent(event));
@@ -112,6 +117,42 @@ class LocationEventImporter {
     return await query.getSingleOrNull() != null;
   }
 
+  Future<bool> _isNearDuplicateInShortWindow(_ParsedLocationEvent event) async {
+    final points = await _database.select(_database.locationPoints).get();
+    final candidates = points
+        .where(
+          (point) =>
+              point.source == event.source &&
+              !point.timestamp.isAfter(event.timestamp) &&
+              event.timestamp.difference(point.timestamp) <=
+                  _nearDuplicateWindow,
+        )
+        .toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (candidates.isEmpty) return false;
+
+    final latest = candidates.first;
+    final distance = distanceMeters(
+      latest.latitude,
+      latest.longitude,
+      event.latitude,
+      event.longitude,
+    );
+    final threshold = _nearDuplicateDistanceThreshold(
+      latest.accuracy,
+      event.accuracy,
+    );
+    return distance <= threshold;
+  }
+
+  double _nearDuplicateDistanceThreshold(double storedAccuracy, double accuracy) {
+    final accuracyRadius = storedAccuracy < accuracy ? storedAccuracy : accuracy;
+    if (accuracyRadius > _minimumNearDuplicateDistanceMeters) {
+      return accuracyRadius;
+    }
+    return _minimumNearDuplicateDistanceMeters;
+  }
+
   _ParsedLocationEvent _parseEvent(Map<String, Object?> json) {
     return _ParsedLocationEvent(
       timestamp: DateTime.parse(json['timestamp']! as String),
@@ -145,6 +186,9 @@ class LocationEventImporter {
     return (value as num).toDouble();
   }
 }
+
+const _nearDuplicateWindow = Duration(minutes: 30);
+const _minimumNearDuplicateDistanceMeters = 30.0;
 
 class _ParsedLocationEvent {
   const _ParsedLocationEvent({
