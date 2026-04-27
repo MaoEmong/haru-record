@@ -54,6 +54,9 @@ Completed work:
   - Settings requests location permission before starting tracking.
   - Missing location permission is reported in-app instead of relying only on native service failure.
   - Notification permission is requested before scheduling notifications from Settings.
+- Safe local data maintenance controls implemented:
+  - Raw location points can be deleted while preserving derived summaries and insights.
+  - A full local data delete path is available behind a confirmation dialog.
 
 Latest completed commit:
 
@@ -72,7 +75,7 @@ flutter analyze
 
 Result:
 
-- `flutter test`: passed, 39 tests.
+- `flutter test`: passed, 41 tests.
 - `flutter analyze`: passed, no issues.
 
 Known environment blocker:
@@ -97,9 +100,7 @@ Connect UI state to the implemented services.
 
 Required behavior:
 
-- Add safe database cleanup/delete controls.
 - Refresh Home/History/Places after manual daily processing or place rename without requiring a full app restart.
-- Delete/cleanup controls call retention or database deletion logic safely.
 
 ### 2. Android Device Validation
 

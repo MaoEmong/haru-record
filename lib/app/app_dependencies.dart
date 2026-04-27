@@ -9,6 +9,7 @@ import '../features/notifications/notification_service.dart';
 import '../features/permissions/app_permission_service.dart';
 import '../features/settings/settings_models.dart';
 import '../features/settings/settings_repository.dart';
+import '../features/storage/app_maintenance_service.dart';
 import '../features/storage/app_database.dart';
 import '../features/storage/database_factory.dart';
 import '../features/tracking/location_event_importer.dart';
@@ -22,6 +23,7 @@ class AppDependencies {
     required this.trackingService,
     required this.notificationService,
     required this.permissionService,
+    required this.maintenanceService,
     required this.importPendingEvents,
     this.runDailyProcessingOverride,
   });
@@ -31,6 +33,7 @@ class AppDependencies {
   final LocationTrackingService trackingService;
   final NotificationService notificationService;
   final AppPermissionService permissionService;
+  final AppMaintenanceService maintenanceService;
   final Future<LocationEventImportResult> Function() importPendingEvents;
   final Future<void> Function()? runDailyProcessingOverride;
 
@@ -47,6 +50,7 @@ class AppDependencies {
       trackingService: PlatformLocationTrackingService(),
       notificationService: NotificationService(notificationAdapter),
       permissionService: const PermissionHandlerAppPermissionService(),
+      maintenanceService: AppMaintenanceService(database),
       importPendingEvents: () async {
         final eventDirectory = await getApplicationSupportDirectory();
         final importer = LocationEventImporter.fromFile(
