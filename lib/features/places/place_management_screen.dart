@@ -99,7 +99,7 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
         }
         final places = snapshot.data!;
         if (places.isEmpty) {
-          return const _EmptyPlaces();
+          return const _PlaceExamples();
         }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -137,15 +137,49 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
   }
 }
 
-class _EmptyPlaces extends StatelessWidget {
-  const _EmptyPlaces();
+class _PlaceExamples extends StatelessWidget {
+  const _PlaceExamples();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('아직 자주 머문 곳이 없어요'),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: const [
+        Text(
+          '자주 머문 곳은 이렇게 보여요',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+        SizedBox(height: 10),
+        _ExamplePlaceCard(title: '집 근처', subtitle: '3번 머문 곳'),
+        SizedBox(height: 10),
+        _ExamplePlaceCard(title: '자주 가는 카페', subtitle: '2번 머문 곳'),
+      ],
+    );
+  }
+}
+
+class _ExamplePlaceCard extends StatelessWidget {
+  const _ExamplePlaceCard({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        leading: const Icon(Icons.place_outlined, color: AppColors.ink),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.muted),
+        ),
+        trailing: const Text(
+          '예시',
+          style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }

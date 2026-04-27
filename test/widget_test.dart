@@ -41,6 +41,75 @@ void main() {
     expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
   });
 
+  testWidgets('home summarizes records from today', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime.now(),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+            latitude: 37.1,
+            longitude: 127.1,
+            accuracy: 20,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘 남긴 기록'), findsOneWidget);
+    expect(find.text('오늘은 2개의 기록이 조용히 쌓였어요'), findsOneWidget);
+  });
+
+  testWidgets('empty history shows example reflection cards', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('돌아보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('이런 식으로 하루가 정리돼요'), findsOneWidget);
+    expect(find.text('예시'), findsWidgets);
+    expect(find.text('어제는 조금 조용한 하루였어요'), findsOneWidget);
+  });
+
+  testWidgets('empty places shows example frequent place cards', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('자주 간 곳'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('자주 머문 곳은 이렇게 보여요'), findsOneWidget);
+    expect(find.text('집 근처'), findsOneWidget);
+    expect(find.text('3번 머문 곳'), findsOneWidget);
+  });
+
   testWidgets('settings screen saves tracking state', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     final trackingService = _FakeTrackingService();
