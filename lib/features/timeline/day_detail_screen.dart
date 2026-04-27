@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
@@ -83,6 +85,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
             }
             final data = snapshot.data!;
             return ListView(
+              cacheExtent: 1200,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 _ReflectionHeader(
@@ -91,7 +94,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   body: widget.body,
                 ),
                 const SizedBox(height: 12),
-                _RoutePreviewCard(route: data.route),
+                _SummaryCard(preview: data.preview),
                 const SizedBox(height: 12),
                 if (widget.showRawRecords) ...[
                   _RawRecordsCard(
@@ -100,7 +103,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                _SummaryCard(preview: data.preview),
+                _RoutePreviewCard(route: data.route),
                 const SizedBox(height: 12),
                 _RouteSummaryCard(items: data.preview.timeline),
               ],
@@ -242,7 +245,7 @@ class _RoutePreviewCard extends StatelessWidget {
                 style: TextStyle(color: AppColors.muted),
               )
             else ...[
-              _DayRouteMiniMap(points: route.points),
+              _DayRouteMap(route: route),
               const SizedBox(height: 12),
               Text(
                 '${route.points.first.timeLabel} -> ${route.points.last.timeLabel}',
@@ -256,135 +259,151 @@ class _RoutePreviewCard extends StatelessWidget {
   }
 }
 
-class _DayRouteMiniMap extends StatelessWidget {
-  const _DayRouteMiniMap({required this.points});
+class _DayRouteMap extends StatelessWidget {
+  const _DayRouteMap({required this.route});
 
-  final List<DayRoutePoint> points;
+  final DayRouteSnapshot route;
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      key: const ValueKey('day-route-mini-map'),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.paleBlue,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: SizedBox(
-          height: 150,
-          width: double.infinity,
-          child: CustomPaint(
-            painter: _DayRouteMiniMapPainter(points: points),
+    final points = route.points
+        .map((point) => LatLng(point.latitude, point.longitude))
+        .toList(growable: false);
+    final bounds = LatLngBounds.fromPoints(points);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: SizedBox(
+        key: const ValueKey('day-route-map'),
+        height: 150,
+        width: double.infinity,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCameraFit: CameraFit.bounds(
+              bounds: bounds,
+              padding: const EdgeInsets.all(36),
+              maxZoom: 17,
+            ),
+            interactionOptions: const InteractionOptions(
+              flags:
+                  InteractiveFlag.drag |
+                  InteractiveFlag.pinchZoom |
+                  InteractiveFlag.doubleTapZoom,
+            ),
           ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.projectapp_1',
+            ),
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: points,
+                  color: AppColors.blueGrey,
+                  strokeWidth: 4,
+                  borderColor: AppColors.surface,
+                  borderStrokeWidth: 2,
+                ),
+              ],
+            ),
+            MarkerLayer(markers: _markers(points)),
+          ],
         ),
       ),
     );
   }
+
+  List<Marker> _markers(List<LatLng> points) {
+    final markers = [
+      Marker(
+        point: points.first,
+        width: 34,
+        height: 34,
+        child: const _MapEndpointMarker(
+          icon: Icons.play_arrow_rounded,
+          background: AppColors.surface,
+          foreground: AppColors.blueGrey,
+        ),
+      ),
+      Marker(
+        point: points.last,
+        width: 34,
+        height: 34,
+        child: const _MapEndpointMarker(
+          icon: Icons.stop_rounded,
+          background: AppColors.ink,
+          foreground: AppColors.surface,
+        ),
+      ),
+    ];
+
+    for (final visit in route.visits) {
+      markers.add(
+        Marker(
+          point: LatLng(visit.latitude, visit.longitude),
+          width: 32,
+          height: 32,
+          child: const _MapVisitMarker(),
+        ),
+      );
+    }
+
+    return markers;
+  }
 }
 
-class _DayRouteMiniMapPainter extends CustomPainter {
-  const _DayRouteMiniMapPainter({required this.points});
+class _MapEndpointMarker extends StatelessWidget {
+  const _MapEndpointMarker({
+    required this.icon,
+    required this.background,
+    required this.foreground,
+  });
 
-  final List<DayRoutePoint> points;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-
-    final padding = size.shortestSide * 0.16;
-    final bounds = Rect.fromLTWH(
-      padding,
-      padding,
-      size.width - (padding * 2),
-      size.height - (padding * 2),
-    );
-    final projected = _project(points, bounds);
-
-    final shadowPaint = Paint()
-      ..color = AppColors.border.withValues(alpha: 0.65)
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    final routePaint = Paint()
-      ..color = AppColors.blueGrey
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final route = Path()..moveTo(projected.first.dx, projected.first.dy);
-    for (final point in projected.skip(1)) {
-      route.lineTo(point.dx, point.dy);
-    }
-
-    canvas.drawPath(route, shadowPaint);
-    canvas.drawPath(route, routePaint);
-    _drawEndpoint(
-      canvas,
-      projected.first,
-      fill: AppColors.surface,
-      stroke: AppColors.blueGrey,
-    );
-    _drawEndpoint(
-      canvas,
-      projected.last,
-      fill: AppColors.ink,
-      stroke: AppColors.surface,
-    );
-  }
-
-  List<Offset> _project(List<DayRoutePoint> points, Rect bounds) {
-    var minLat = points.first.latitude;
-    var maxLat = points.first.latitude;
-    var minLng = points.first.longitude;
-    var maxLng = points.first.longitude;
-
-    for (final point in points.skip(1)) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLng) minLng = point.longitude;
-      if (point.longitude > maxLng) maxLng = point.longitude;
-    }
-
-    final latRange = (maxLat - minLat).abs();
-    final lngRange = (maxLng - minLng).abs();
-    final safeLatRange = latRange == 0 ? 1.0 : latRange;
-    final safeLngRange = lngRange == 0 ? 1.0 : lngRange;
-
-    return points.map((point) {
-      final x = bounds.left + ((point.longitude - minLng) / safeLngRange) * bounds.width;
-      final y = bounds.bottom - ((point.latitude - minLat) / safeLatRange) * bounds.height;
-      return Offset(x, y);
-    }).toList(growable: false);
-  }
-
-  void _drawEndpoint(
-    Canvas canvas,
-    Offset center, {
-    required Color fill,
-    required Color stroke,
-  }) {
-    canvas.drawCircle(
-      center,
-      7,
-      Paint()
-        ..color = stroke
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      center,
-      4.5,
-      Paint()
-        ..color = fill
-        ..style = PaintingStyle.fill,
-    );
-  }
+  final IconData icon;
+  final Color background;
+  final Color foreground;
 
   @override
-  bool shouldRepaint(covariant _DayRouteMiniMapPainter oldDelegate) {
-    return oldDelegate.points != points;
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x3317232E),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: foreground, size: 19),
+    );
+  }
+}
+
+class _MapVisitMarker extends StatelessWidget {
+  const _MapVisitMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.softBlue,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x2417232E),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Icon(Icons.place_rounded, color: AppColors.ink, size: 18),
+    );
   }
 }
 
