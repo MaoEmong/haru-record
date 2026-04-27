@@ -13,6 +13,21 @@ void main() {
     expect(adapter.title, '어제 하루를 정리했어요');
   });
 
+  test('schedules daily insight notification with generated copy', () async {
+    final adapter = FakeNotificationAdapter();
+    final service = NotificationService(adapter);
+
+    await service.scheduleDailyInsight(
+      hour: 9,
+      minute: 0,
+      title: '어제는 이동이 평소보다 적었어요',
+      body: '저녁 외출이 줄어든 흐름이 보여요.',
+    );
+
+    expect(adapter.title, '어제는 이동이 평소보다 적었어요');
+    expect(adapter.body, '저녁 외출이 줄어든 흐름이 보여요.');
+  });
+
   test('requests notification permission separately from scheduling', () async {
     final adapter = FakeNotificationAdapter();
     final service = NotificationService(adapter);
@@ -53,6 +68,7 @@ class FakeNotificationAdapter implements NotificationAdapter {
   int? scheduledHour;
   int? scheduledMinute;
   String? title;
+  String? body;
   int permissionRequestCount = 0;
   int? cancelledId;
 
@@ -78,5 +94,6 @@ class FakeNotificationAdapter implements NotificationAdapter {
     scheduledHour = hour;
     scheduledMinute = minute;
     this.title = title;
+    this.body = body;
   }
 }

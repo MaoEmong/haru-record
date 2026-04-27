@@ -91,7 +91,8 @@ void main() {
         hasLength(1),
       );
       expect(
-        summaries.singleWhere((summary) => summary.date == '2026-04-25')
+        summaries
+            .singleWhere((summary) => summary.date == '2026-04-25')
             .newPlaceCount,
         1,
       );
@@ -100,6 +101,8 @@ void main() {
       expect(result.yesterdayPointCount, 2);
       expect(result.createdReflectionCount, 2);
       expect(notificationAdapter.scheduledHour, 9);
+      expect(notificationAdapter.title, insights.first.title);
+      expect(notificationAdapter.body, insights.first.body);
       expect(
         points.every((point) => point.timestamp.isAfter(DateTime(2026, 3, 1))),
         isTrue,
@@ -304,6 +307,8 @@ class FakeDailyWorkerScheduler implements DailyWorkerScheduler {
 class FakeNotificationAdapter implements NotificationAdapter {
   int? scheduledHour;
   int? cancelledId;
+  String? title;
+  String? body;
 
   @override
   Future<bool?> requestPermission() async => true;
@@ -322,5 +327,7 @@ class FakeNotificationAdapter implements NotificationAdapter {
     required String body,
   }) async {
     scheduledHour = hour;
+    this.title = title;
+    this.body = body;
   }
 }

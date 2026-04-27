@@ -29,14 +29,19 @@ class NotificationService {
     return _adapter.cancel(dailyInsightNotificationId);
   }
 
-  Future<void> scheduleDailyInsight({required int hour, required int minute}) {
+  Future<void> scheduleDailyInsight({
+    required int hour,
+    required int minute,
+    String? title,
+    String? body,
+  }) {
     _validateTime(hour: hour, minute: minute);
     return _adapter.scheduleDaily(
       id: dailyInsightNotificationId,
       hour: hour,
       minute: minute,
-      title: '어제 하루를 정리했어요',
-      body: '어떤 흐름이었는지 가볍게 확인해 보세요.',
+      title: title ?? '어제 하루를 정리했어요',
+      body: body ?? '어떤 흐름이었는지 가볍게 확인해 보세요.',
     );
   }
 
