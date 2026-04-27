@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_dependencies.dart';
+import '../../app/app_theme.dart';
 import '../settings/settings_models.dart';
 import '../storage/app_database.dart';
 
@@ -61,12 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final data = snapshot.data!;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             _StatusPanel(snapshot: data),
-            const SizedBox(height: 16),
-            Text('최근 인사이트', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
+            const SizedBox(height: 22),
+            Text('최근 돌아보기', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
             if (data.latestInsight == null)
               const _EmptyPanel()
             else
@@ -85,24 +86,41 @@ class _StatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = snapshot.isTracking || snapshot.settings.trackingEnabled
-        ? '추적 중'
-        : '추적 중지';
+    final isRecording =
+        snapshot.isTracking || snapshot.settings.trackingEnabled;
+    final status = isRecording ? '오늘의 흐름을 기록하고 있어요' : '오늘의 흐름 기록이 쉬고 있어요';
+    final subtitle = isRecording
+        ? '기록은 내 기기에만 머물러요. 하루가 지나면 가볍게 정리해드릴게요.'
+        : '설정에서 하루 기록을 켜면 움직임과 머문 곳을 조용히 정리해요.';
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(status, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
             Text(
-              '위치 기록은 이 기기에만 저장되고 하루 단위로 요약됩니다.',
-              style: Theme.of(context).textTheme.bodyMedium,
+              '하루 기록',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              status,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
             ),
           ],
         ),
@@ -116,12 +134,27 @@ class _EmptyPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      tileColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      leading: const Icon(Icons.insights_outlined),
-      title: const Text('아직 인사이트가 없어요'),
-      subtitle: const Text('위치 기록이 쌓인 뒤 오늘 처리를 실행해 보세요.'),
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: const Padding(
+        padding: EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.more_horiz, color: AppColors.muted),
+            SizedBox(height: 12),
+            Text(
+              '아직 돌아볼 하루가 없어요',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: 6),
+            Text(
+              '하루 정도 기록이 쌓이면 조용히 정리해드릴게요.',
+              style: TextStyle(color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -133,12 +166,32 @@ class _InsightPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      tileColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      leading: const Icon(Icons.insights),
-      title: Text(insight.title),
-      subtitle: Text(insight.body),
+    return DecoratedBox(
+      decoration: AppThemeDecorations.inkCard(),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('어제', style: TextStyle(color: Color(0xFFC6D2DC))),
+            const SizedBox(height: 8),
+            Text(
+              insight.title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppColors.surface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              insight.body,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFDDE7EF)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
