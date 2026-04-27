@@ -1,0 +1,82 @@
+import 'package:flutter/material.dart';
+
+import '../storage/app_database.dart';
+
+class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key, required this.database});
+
+  final AppDatabase database;
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  late Future<List<Insight>> _insights;
+
+  @override
+  void initState() {
+    super.initState();
+    _insights = _load();
+  }
+
+  Future<List<Insight>> _load() async {
+    final insights = await widget.database
+        .select(widget.database.insights)
+        .get();
+    return insights..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Insight>>(
+      future: _insights,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final insights = snapshot.data!;
+        if (insights.isEmpty) {
+          return const _EmptyHistory();
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: insights.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final insight = insights[index];
+            return ListTile(
+              tileColor: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              title: Text(insight.title),
+              subtitle: Text('${_dateLabel(insight.date)}\n${insight.body}'),
+              isThreeLine: true,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _dateLabel(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+}
+
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('No history yet'),
+      ),
+    );
+  }
+}

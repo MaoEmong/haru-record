@@ -43,6 +43,13 @@ Completed work:
   - Preserves pending events on storage failure.
   - Avoids duplicate imports from leftover snapshot files.
   - Generates yesterday's visits, summary, insights, cleanup, and notification updates through Workmanager.
+- App shell implemented:
+  - Replaced the default Flutter counter UI.
+  - Added bottom navigation for Home, History, Places, and Settings.
+  - Added initial real-service wiring for latest insights, history, detected places, settings, tracking start/stop, notification toggle, and manual daily processing.
+- Settings controls made editable:
+  - Notification time can be edited from Settings.
+  - Movement threshold, minimum stay, and raw point retention can be edited from Settings.
 
 Latest completed commit:
 
@@ -52,7 +59,7 @@ Latest completed commit:
 
 ## Verification
 
-Last verified after Task 8:
+Last verified after app shell work:
 
 ```powershell
 flutter test
@@ -61,7 +68,7 @@ flutter analyze
 
 Result:
 
-- `flutter test`: passed, 36 tests.
+- `flutter test`: passed, 38 tests.
 - `flutter analyze`: passed, no issues.
 
 Known environment blocker:
@@ -80,47 +87,18 @@ This is an environment setup issue, not a known Dart/Kotlin code failure.
 
 ## Remaining Work
 
-### 1. App Shell And Screens
-
-Implement the user-facing Flutter app shell.
-
-Planned files:
-
-- `lib/app/app.dart`
-- `lib/app/app_dependencies.dart`
-- `lib/features/home/home_screen.dart`
-- `lib/features/history/history_screen.dart`
-- `lib/features/places/place_management_screen.dart`
-- `lib/features/settings/settings_screen.dart`
-- `test/widget_test.dart`
-
-Expected user-visible result:
-
-- Bottom navigation for Home, History, Places, and Settings.
-- Home shows tracking status and latest insight/empty state.
-- History shows date-grouped insights.
-- Places shows detected places and rename affordance.
-- Settings shows tracking, notification, battery, retention, and diagnostic controls.
-
-Important carryover:
-
-- The original Task 8 plan included a Settings diagnostics action named `Run daily processing now`.
-- Because the Settings screen does not exist yet, implement this in the Settings screen work and call the same `DailyInsightProcessor` path used by Workmanager.
-
-### 2. Wire Screens To Real Services
+### 1. Finish UI Service Wiring And Controls
 
 Connect UI state to the implemented services.
 
 Required behavior:
 
-- Settings loads and saves `AppSettings`.
-- Tracking switch calls `PlatformLocationTrackingService.startTracking` and `stopTracking`.
-- Home reads latest insight and tracking status.
-- Places reads and renames stored place clusters.
-- Diagnostics can import/process pending events without waiting overnight.
+- Add safe database cleanup/delete controls.
+- Add user-facing permission handling before tracking starts on Android.
+- Refresh Home/History/Places after manual daily processing or place rename without requiring a full app restart.
 - Delete/cleanup controls call retention or database deletion logic safely.
 
-### 3. Android Device Validation
+### 2. Android Device Validation
 
 After Android SDK is configured, validate on a physical Android device.
 
@@ -135,7 +113,7 @@ Required checks:
 - Daily notification appears at the configured local time.
 - Retention/delete controls keep the app usable after cleanup.
 
-### 4. Polish And Release Readiness
+### 3. Polish And Release Readiness
 
 After real-device validation:
 
@@ -148,6 +126,6 @@ After real-device validation:
 
 - Current branch should remain `codex/daily-pattern-insight-app`.
 - The working tree was clean before this status document was added.
-- Start next with the app shell, not more background services.
+- Start next with UI control completion and Android permission/device validation.
 - Keep the battery-saving goal central: favor inexact scheduling, threshold-based tracking, local processing, and minimal background work.
 - All new project docs should stay under `.docs/`.
