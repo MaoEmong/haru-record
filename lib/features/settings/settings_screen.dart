@@ -164,14 +164,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? null
                   : (enabled) => _toggleNotifications(settings, enabled),
             ),
-            if (_status != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _status!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.muted),
-              ),
-            ],
+            const SizedBox(height: 8),
+            _SettingsStatusArea(message: _status),
             const SizedBox(height: 16),
             _EditableSettingsValueTile(
               key: const ValueKey('movement-threshold-edit'),
@@ -398,6 +392,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (updated == null) return;
     await _save(updated);
+  }
+}
+
+class _SettingsStatusArea extends StatelessWidget {
+  const _SettingsStatusArea({required this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const ValueKey('settings-status-area'),
+      decoration: BoxDecoration(
+        color: message == null ? AppColors.background : AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: message == null ? Colors.transparent : AppColors.border,
+        ),
+      ),
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Text(
+              message ?? ' ',
+              key: ValueKey(message ?? 'empty-status'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
