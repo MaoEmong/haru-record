@@ -16,6 +16,7 @@ import 'package:projectapp_1/features/storage/app_maintenance_service.dart';
 import 'package:projectapp_1/features/storage/app_database.dart';
 import 'package:projectapp_1/features/tracking/location_event_importer.dart';
 import 'package:projectapp_1/features/tracking/location_tracking_service.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
@@ -230,7 +231,6 @@ void main() {
             createdAt: date,
           ),
         );
-
     await tester.pumpWidget(
       DailyPatternApp(dependencies: _testDependencies(database)),
     );
@@ -522,7 +522,6 @@ void main() {
             createdAt: date,
           ),
         );
-
     await tester.pumpWidget(
       DailyPatternApp(dependencies: _testDependencies(database)),
     );
@@ -576,6 +575,31 @@ void main() {
             createdAt: date,
           ),
         );
+    final routeFarPlaceId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 38,
+            centerLongitude: 128,
+            radiusMeters: 100,
+            displayName: const Value('먼 곳'),
+            createdAt: date,
+            updatedAt: date,
+            visitCount: 1,
+          ),
+        );
+    await database
+        .into(database.visits)
+        .insert(
+          VisitsCompanion.insert(
+            placeClusterId: Value(routeFarPlaceId),
+            startedAt: DateTime(2026, 4, 26, 11),
+            endedAt: DateTime(2026, 4, 26, 12),
+            durationMinutes: 60,
+            representativeLatitude: 38,
+            representativeLongitude: 128,
+          ),
+        );
 
     await tester.pumpWidget(
       DailyPatternApp(dependencies: _testDependencies(database)),
@@ -590,8 +614,15 @@ void main() {
     expect(find.text('이동 경로'), findsOneWidget);
     expect(find.text('기록 지점 2개'), findsOneWidget);
     expect(find.byKey(const ValueKey('day-route-map')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('day-route-map'))).height,
+      220,
+    );
     final routeMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
     expect(routeMap.options.interactionOptions.flags, InteractiveFlag.none);
+    final cameraFit = routeMap.options.initialCameraFit as dynamic;
+    final bounds = cameraFit.bounds as LatLngBounds;
+    expect(bounds.contains(const LatLng(38, 128)), isTrue);
     expect(
       find.byKey(const ValueKey('map-snapshot-day-route-2026-04-26')),
       findsOneWidget,
