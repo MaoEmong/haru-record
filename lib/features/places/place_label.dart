@@ -1,6 +1,6 @@
 import '../storage/app_database.dart';
 
-String placeLabel(PlaceCluster? place, {String fallback = '이름 없는 장소'}) {
+String placeLabel(PlaceCluster? place, {String fallback = '방문한 곳'}) {
   if (place == null) return fallback;
   return _firstNonEmpty([
         place.displayName,

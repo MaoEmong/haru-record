@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
+import '../../app/responsive_type.dart';
 import '../settings/settings_models.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_activity_preview_repository.dart';
@@ -132,8 +133,13 @@ class _DateHero extends StatelessWidget {
             children: [
               Text(
                 '${now.day}',
-                style: const TextStyle(
-                  fontSize: 58,
+                style: TextStyle(
+                  fontSize: responsiveTitleFontSize(
+                    context,
+                    58,
+                    minScale: 0.92,
+                    maxScale: 1.14,
+                  ),
                   fontWeight: FontWeight.w300,
                   color: AppColors.ink,
                   height: 1,
@@ -146,8 +152,8 @@ class _DateHero extends StatelessWidget {
                 children: [
                   Text(
                     '${now.month}월',
-                    style: const TextStyle(
-                      fontSize: 19,
+                    style: TextStyle(
+                      fontSize: responsiveTitleFontSize(context, 19),
                       fontWeight: FontWeight.w500,
                       color: AppColors.ink,
                       height: 1.2,
@@ -334,10 +340,10 @@ class _EmptyInsightBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           '최근 돌아보기',
           style: TextStyle(
             fontSize: 10,
@@ -346,18 +352,18 @@ class _EmptyInsightBody extends StatelessWidget {
             letterSpacing: 1.2,
           ),
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         Text(
           '아직 돌아볼 하루가 없어요',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: responsiveTitleFontSize(context, 20),
             fontWeight: FontWeight.w500,
             color: AppColors.surface,
             height: 1.4,
           ),
         ),
-        SizedBox(height: 8),
-        Text(
+        const SizedBox(height: 8),
+        const Text(
           '하루 정도 기록이 쌓이면 조용히 정리해드릴게요.',
           style: TextStyle(fontSize: 13, color: Color(0x99FCFDFE), height: 1.6),
         ),
@@ -388,8 +394,8 @@ class _FilledInsightBody extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           insight.title,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: responsiveTitleFontSize(context, 20),
             fontWeight: FontWeight.w500,
             color: AppColors.surface,
             height: 1.4,

@@ -19,8 +19,12 @@ class EnvConfig {
     if (_dartDefineKakaoRestApiKey.isNotEmpty) {
       return _dartDefineKakaoRestApiKey;
     }
+    return _getDotenvValue('KAKAO_REST_API_KEY');
+  }
+
+  static String _getDotenvValue(String key) {
     try {
-      return dotenv.maybeGet('KAKAO_REST_API_KEY')?.trim() ?? '';
+      return dotenv.maybeGet(key)?.trim() ?? '';
     } on Object {
       return '';
     }

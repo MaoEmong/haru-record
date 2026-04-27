@@ -61,6 +61,39 @@ void main() {
     expect(route.visits.single.placeLabel, '카페');
   });
 
+  test('compacts repeated nearby location points for route display', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+
+    for (var i = 0; i < 3; i++) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: DateTime(2026, 4, 26, 9, i * 5),
+              latitude: 37,
+              longitude: 127,
+              accuracy: 20,
+            ),
+          );
+    }
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 9, 20),
+            latitude: 37.01,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+
+    final route = await DayRouteRepository(database).loadForDate(date);
+
+    expect(route.points.map((point) => point.timeLabel), ['09:00', '09:20']);
+  });
+
   test('uses resolved address when a place has no custom name', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);

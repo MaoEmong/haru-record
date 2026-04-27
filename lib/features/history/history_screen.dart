@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
+import '../../app/responsive_type.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_detail_screen.dart';
 
@@ -160,9 +161,9 @@ class _HistoryCard extends StatelessWidget {
                     children: [
                       Text(
                         insight.date.day.toString().padLeft(2, '0'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.ink,
-                          fontSize: 24,
+                          fontSize: responsiveTitleFontSize(context, 24),
                           fontWeight: FontWeight.w300,
                           height: 1,
                         ),
@@ -232,20 +233,23 @@ class _HistoryExamples extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-      children: const [
+      children: [
         Text(
           '이런 식으로 하루가 정리돼요',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontSize: responsiveTitleFontSize(context, 20),
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        SizedBox(height: 10),
-        _ExampleReflectionCard(
+        const SizedBox(height: 10),
+        const _ExampleReflectionCard(
           title: '어제는 조금 조용한 하루였어요',
           body: '최근 며칠보다 이동이 적고 차분했어요.',
         ),
-        SizedBox(height: 10),
-        _ExampleReflectionCard(
+        const SizedBox(height: 10),
+        const _ExampleReflectionCard(
           title: '어제는 평소보다 많이 움직였어요',
-          body: '자주 머문 곳과 움직임이 하루 단위로 정리돼요.',
+          body: '방문한 곳과 움직임이 하루 단위로 정리돼요.',
         ),
       ],
     );
@@ -277,7 +281,10 @@ class _ExampleReflectionCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontSize: responsiveTitleFontSize(context, 18),
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 6),
             Text(body, style: const TextStyle(color: AppColors.muted)),

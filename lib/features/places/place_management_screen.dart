@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
+import '../../app/responsive_type.dart';
 import '../maps/cached_map_snapshot.dart';
 import '../storage/app_database.dart';
 import 'place_label.dart';
@@ -82,11 +83,13 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
         }
         final places = snapshot.data!;
         if (places.isEmpty) {
-          return const _PlaceExamples();
+          return _PlaceExamples();
         }
         return ListView(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
           children: [
+            const _PlaceGroupingNotice(),
+            const SizedBox(height: 14),
             _FeaturedPlaceCard(place: places.first, onRename: _rename),
             const SizedBox(height: 14),
             _PlaceGrid(places: places.skip(1).toList(), onRename: _rename),
@@ -106,84 +109,37 @@ class _FeaturedPlaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: ValueKey('place-card-${place.id}'),
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(28),
         onTap: () => onRename(place),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
-          child: Stack(
-            children: [
-              Positioned.fill(child: _PlaceMapPreview(place: place)),
-              Positioned.fill(
-                child: DecoratedBox(
+          child: SizedBox(
+            height: 220,
+            child: Stack(
+              children: [
+                Positioned.fill(child: _PlaceMapPreview(place: place)),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                _PlaceCaptionGradient(
+                  borderRadius: 28,
+                  child: _FeaturedPlaceCaption(place: place),
+                ),
+                DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.58),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.ink),
                   ),
                 ),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: AppColors.ink),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '가장 자주 머문 곳',
-                        style: TextStyle(
-                          color: AppColors.blueGrey,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        placeLabel(place, fallback: '이름을 정하지 않은 곳'),
-                        style: const TextStyle(
-                          color: AppColors.ink,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${place.visitCount}번 머문 곳',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(100),
-                              child: LinearProgressIndicator(
-                                value: (place.visitCount / 10).clamp(0.08, 1),
-                                minHeight: 8,
-                                backgroundColor: AppColors.border,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.blueGrey,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.edit_outlined, color: AppColors.ink),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -233,6 +189,7 @@ class _PlaceGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: ValueKey('place-card-${place.id}'),
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
@@ -247,40 +204,177 @@ class _PlaceGridCard extends StatelessWidget {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.64),
+                      color: AppColors.surface.withValues(alpha: 0.12),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _PlacePinBadge(),
-                      const Spacer(),
-                      Text(
-                        placeLabel(place, fallback: '이름을 정하지 않은 곳'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        '${place.visitCount}번 머문 곳',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
+                const Positioned(top: 16, left: 16, child: _PlacePinBadge()),
+                _PlaceCaptionGradient(
+                  borderRadius: 24,
+                  compact: true,
+                  child: _PlaceGridCaption(place: place),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceCaptionGradient extends StatelessWidget {
+  const _PlaceCaptionGradient({
+    required this.child,
+    required this.borderRadius,
+    this.compact = false,
+  });
+
+  final Widget child;
+  final double borderRadius;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(borderRadius),
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.surface.withValues(alpha: 0),
+              AppColors.surface.withValues(alpha: 0.78),
+              AppColors.surface.withValues(alpha: 0.94),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: compact
+              ? const EdgeInsets.fromLTRB(14, 40, 14, 14)
+              : const EdgeInsets.fromLTRB(22, 62, 22, 22),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedPlaceCaption extends StatelessWidget {
+  const _FeaturedPlaceCaption({required this.place});
+
+  final PlaceCluster place;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          '가장 많이 머문 곳',
+          style: TextStyle(
+            color: AppColors.blueGrey,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Text(
+                placeLabel(place),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.ink,
+                  fontSize: responsiveTitleFontSize(context, 24),
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const _EditPill(),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${place.visitCount}번 머문 곳',
+          style: const TextStyle(color: AppColors.muted, fontSize: 14),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlaceGridCaption extends StatelessWidget {
+  const _PlaceGridCaption({required this.place});
+
+  final PlaceCluster place;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                placeLabel(place),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${place.visitCount}번 머문 곳',
+                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        const _EditPill(compact: true),
+      ],
+    );
+  }
+}
+
+class _EditPill extends StatelessWidget {
+  const _EditPill({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 6 : 8),
+        child: Icon(
+          Icons.edit_outlined,
+          color: AppColors.ink,
+          size: compact ? 15 : 17,
         ),
       ),
     );
@@ -407,50 +501,103 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
   }
 }
 
-class _PlaceExamples extends StatelessWidget {
-  const _PlaceExamples();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-      children: const [
-        Text(
-          '자주 머문 곳은 이렇게 보여요',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        SizedBox(height: 10),
-        _ExamplePlaceCard(title: '집 근처', subtitle: '3번 머문 곳'),
-        SizedBox(height: 10),
-        _ExamplePlaceCard(title: '자주 가는 카페', subtitle: '2번 머문 곳'),
-      ],
-    );
-  }
-}
-
-class _ExamplePlaceCard extends StatelessWidget {
-  const _ExamplePlaceCard({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
+class _PlaceGroupingNotice extends StatelessWidget {
+  const _PlaceGroupingNotice();
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: AppThemeDecorations.softCard(),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        leading: const Icon(Icons.place_outlined, color: AppColors.ink),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(color: AppColors.muted),
-        ),
-        trailing: const Text(
-          '예시',
-          style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w700),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline_rounded, color: AppColors.blueGrey),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '머문 위치가 생기면 이곳에 방문한 곳으로 모아요. 가까운 위치는 같은 장소로 묶고, 이름은 눌러서 바꿀 수 있어요.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _PlaceExamples extends StatelessWidget {
+  _PlaceExamples();
+
+  final List<PlaceCluster> _places = _examplePlaces();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+      children: [
+        const _PlaceGroupingNotice(),
+        const SizedBox(height: 14),
+        Text(
+          '방문한 곳은 이렇게 보여요',
+          style: TextStyle(
+            fontSize: responsiveTitleFontSize(context, 20),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '실제 기록이 쌓이면 아래처럼 지도 위에 장소가 표시돼요.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+        ),
+        const SizedBox(height: 14),
+        _FeaturedPlaceCard(place: _places.first, onRename: (_) {}),
+        const SizedBox(height: 14),
+        _PlaceGrid(places: _places.skip(1).toList(), onRename: (_) {}),
+      ],
+    );
+  }
+}
+
+List<PlaceCluster> _examplePlaces() {
+  final now = DateTime(2026, 4, 27);
+  return [
+    PlaceCluster(
+      id: -101,
+      centerLatitude: 37.5665,
+      centerLongitude: 126.978,
+      radiusMeters: 80,
+      roadAddressName: '서울 중구 세종대로 근처',
+      createdAt: now,
+      updatedAt: now,
+      visitCount: 4,
+    ),
+    PlaceCluster(
+      id: -102,
+      centerLatitude: 37.5559,
+      centerLongitude: 126.9723,
+      radiusMeters: 70,
+      displayName: '카페로 이름 바꾼 곳',
+      addressName: '서울 용산구 근처',
+      createdAt: now,
+      updatedAt: now,
+      visitCount: 2,
+    ),
+    PlaceCluster(
+      id: -103,
+      centerLatitude: 37.5512,
+      centerLongitude: 126.9882,
+      radiusMeters: 70,
+      addressName: '서울 중구 근처',
+      createdAt: now,
+      updatedAt: now,
+      visitCount: 1,
+    ),
+  ];
 }

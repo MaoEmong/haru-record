@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  static const background = Color(0xFFEDF3F7);
-  static const surface = Color(0xFFFCFDFE);
-  static const surfaceAlt = Color(0xFFF5F9FB);
-  static const border = Color(0xFFD3E0E8);
-  static const ink = Color(0xFF17232E);
-  static const muted = Color(0xFF536676);
-  static const softBlue = Color(0xFFAEC7D8);
-  static const blueGrey = Color(0xFF3F6F8A);
-  static const paleBlue = Color(0xFFE2ECF2);
-  static const pressedBlue = Color(0xFFD5E4ED);
+  static const background = Color(0xFFECEFD8);
+  static const surface = Color(0xFFFEF9EC);
+  static const surfaceAlt = Color(0xFFECEFD8);
+  static const border = Color(0xFF849561);
+  static const ink = Color(0xFF202B08);
+  static const muted = Color(0xFF45664F);
+  static const softBlue = Color(0xFFADBF8D);
+  static const blueGrey = Color(0xFF417939);
+  static const paleBlue = Color(0xFFD6E1B7);
+  static const pressedBlue = Color(0xFFC9D7A4);
 }
 
 class AppThemeDecorations {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../features/history/history_screen.dart';
 import '../features/home/home_screen.dart';
@@ -20,7 +21,6 @@ class DailyPatternApp extends StatelessWidget {
       title: '하루 기록',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'KyoboHandwriting',
         textTheme: _appTextTheme(),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.ink,
@@ -130,8 +130,7 @@ class DailyPatternApp extends StatelessWidget {
 }
 
 TextTheme _appTextTheme() {
-  const family = 'KyoboHandwriting';
-  final base = Typography.material2021().black.apply(fontFamily: family);
+  final base = Typography.material2021().black;
   return base.copyWith(
     headlineSmall: base.headlineSmall?.copyWith(fontSize: 25),
     titleLarge: base.titleLarge?.copyWith(fontSize: 23),
@@ -216,50 +215,81 @@ class _DailyPatternShellState extends State<DailyPatternShell>
       ),
     ];
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _ShellHeader(
-              dependencies: widget.dependencies,
-              refreshVersion: _refreshVersion,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _confirmExit();
+        if (shouldExit && mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              _ShellHeader(
+                dependencies: widget.dependencies,
+                refreshVersion: _refreshVersion,
+              ),
+              Expanded(child: screens[_selectedIndex]),
+            ],
+          ),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+            _importPendingLocationEvents();
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: '오늘',
             ),
-            Expanded(child: screens[_selectedIndex]),
+            NavigationDestination(
+              icon: Icon(Icons.timeline_outlined),
+              selectedIcon: Icon(Icons.timeline),
+              label: '돌아보기',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.place_outlined),
+              selectedIcon: Icon(Icons.place),
+              label: '방문한 곳',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: '설정',
+            ),
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          _importPendingLocationEvents();
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '오늘',
+    );
+  }
+
+  Future<bool> _confirmExit() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('앱을 종료할까요?'),
+        content: const Text('지금 화면을 닫고 앱을 종료할게요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('계속 사용'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.timeline_outlined),
-            selectedIcon: Icon(Icons.timeline),
-            label: '돌아보기',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.place_outlined),
-            selectedIcon: Icon(Icons.place),
-            label: '자주 간 곳',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: '설정',
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('종료'),
           ),
         ],
       ),
     );
+    return result ?? false;
   }
 
   void _refreshAll() {
@@ -278,7 +308,6 @@ class _DailyPatternShellState extends State<DailyPatternShell>
           appBarTitle: '오늘 기록',
           title: '오늘 기록',
           body: '오늘 기기 안에 쌓이고 있는 위치 기록과 머문 곳을 확인해요.',
-          showRawRecords: true,
         ),
       ),
     );
@@ -296,7 +325,6 @@ class _DailyPatternShellState extends State<DailyPatternShell>
       ),
     );
   }
-
 }
 
 class _ShellHeader extends StatefulWidget {

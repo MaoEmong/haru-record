@@ -1,6 +1,7 @@
 import '../storage/app_database.dart';
 import '../places/place_label.dart';
 import 'day_route_models.dart';
+import 'location_point_deduplication.dart';
 
 class DayRouteRepository {
   const DayRouteRepository(this._database);
@@ -11,7 +12,7 @@ class DayRouteRepository {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
     final allPoints = await _database.select(_database.locationPoints).get();
-    final points =
+    final rawPoints =
         allPoints
             .where(
               (point) =>
@@ -22,6 +23,7 @@ class DayRouteRepository {
             )
             .toList()
           ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    final points = compactNearbyLocationPoints(rawPoints);
 
     final allVisits = await _database.select(_database.visits).get();
     final visits =
