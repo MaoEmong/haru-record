@@ -218,7 +218,7 @@ class DailyInsightProcessor {
     );
     await _replaceDailyOutputs(yesterday, persistedVisits, summary, insights);
     await _placeClusterRepository.recalculateVisitCounts();
-    await _finishRetentionAndNotifications(now);
+    await _finishRetentionAndNotifications(now, insights: insights);
 
     return DailyProcessingResult(
       outcome: insights.isEmpty
@@ -230,16 +230,22 @@ class DailyInsightProcessor {
     );
   }
 
-  Future<void> _finishRetentionAndNotifications(DateTime now) async {
+  Future<void> _finishRetentionAndNotifications(
+    DateTime now, {
+    List<GeneratedInsight> insights = const [],
+  }) async {
     await _retentionService.deleteRawPointsOlderThan(
       now,
       retentionDays: _settings.rawPointRetentionDays,
     );
 
     if (_settings.notificationEnabled) {
+      final leadInsight = insights.firstOrNull;
       await _notificationService.scheduleDailyInsight(
         hour: _settings.notificationHour,
         minute: _settings.notificationMinute,
+        title: leadInsight?.title,
+        body: leadInsight?.body,
       );
     } else {
       await _notificationService.cancelDailyInsight();

@@ -700,7 +700,12 @@ git commit -m "Add narrator boundary for reflections"
 - Modify: `test/features/background/daily_insight_worker_test.dart`
 - Modify: `test/features/notifications/notification_service_test.dart`
 
-- [ ] **Step 1: Update notification adapter test**
+Implementation note: completed with optional `title`/`body` parameters on
+`scheduleDailyInsight` instead of a separate `scheduleDailyReflection` method,
+so existing settings flows keep the fallback copy while daily processing can
+pass the strongest generated reflection directly.
+
+- [x] **Step 1: Update notification adapter test**
 
 Modify `FakeNotificationAdapter` in `test/features/background/daily_insight_worker_test.dart` to capture `title` and `body`.
 
@@ -711,7 +716,7 @@ expect(notificationAdapter.scheduledTitle, '어제 하루를 정리했어요');
 expect(notificationAdapter.scheduledBody, contains('조금 조용한 하루'));
 ```
 
-- [ ] **Step 2: Run test to verify RED**
+- [x] **Step 2: Run test to verify RED**
 
 ```powershell
 flutter test test\features\background\daily_insight_worker_test.dart
@@ -719,7 +724,7 @@ flutter test test\features\background\daily_insight_worker_test.dart
 
 Expected: fail because notification body is still generic.
 
-- [ ] **Step 3: Add notification API**
+- [x] **Step 3: Add notification API**
 
 Modify `lib/features/notifications/notification_service.dart`:
 
@@ -752,7 +757,7 @@ Future<void> scheduleDailyInsight({required int hour, required int minute}) {
 }
 ```
 
-- [ ] **Step 4: Use strongest reflection from processor**
+- [x] **Step 4: Use strongest reflection from processor**
 
 In `DailyInsightProcessor._finishRetentionAndNotifications`, accept `String? strongestReflectionTitle`.
 
@@ -768,7 +773,7 @@ await _notificationService.scheduleDailyReflection(
 
 Pass `insights.firstOrNull?.title` from `run`.
 
-- [ ] **Step 5: Run notification/background tests**
+- [x] **Step 5: Run notification/background tests**
 
 ```powershell
 flutter test test\features\notifications\notification_service_test.dart test\features\background\daily_insight_worker_test.dart
@@ -776,7 +781,7 @@ flutter test test\features\notifications\notification_service_test.dart test\fea
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add lib\features\notifications\notification_service.dart lib\features\background\daily_insight_worker.dart test\features\notifications\notification_service_test.dart test\features\background\daily_insight_worker_test.dart
@@ -1066,4 +1071,3 @@ Expected:
 8. Task 8: Route-map decision.
 
 This order deliberately avoids building a map before the underlying movement/place data is trustworthy.
-
