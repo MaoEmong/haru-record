@@ -20,6 +20,7 @@ class DailyPatternApp extends StatelessWidget {
       title: '하루 기록',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'KyoboHandwriting',
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.ink,
           brightness: Brightness.light,

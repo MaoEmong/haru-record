@@ -42,6 +42,22 @@ void main() {
     expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
   });
 
+  testWidgets('app uses the bundled Kyobo handwriting font', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(
+      materialApp.theme?.textTheme.bodyMedium?.fontFamily,
+      'KyoboHandwriting',
+    );
+  });
+
   testWidgets('home summarizes records from today', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
