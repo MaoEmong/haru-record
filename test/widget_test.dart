@@ -153,6 +153,105 @@ void main() {
     expect(find.text('3번 머문 곳'), findsOneWidget);
   });
 
+  testWidgets('history insight opens a day detail route summary', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+    final homeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37,
+            centerLongitude: 127,
+            radiusMeters: 100,
+            displayName: const Value('집 근처'),
+            createdAt: date,
+            updatedAt: date,
+            visitCount: 1,
+          ),
+        );
+    final cafeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37.1,
+            centerLongitude: 127.1,
+            radiusMeters: 100,
+            displayName: const Value('카페'),
+            createdAt: date,
+            updatedAt: date,
+            visitCount: 1,
+          ),
+        );
+    await database
+        .into(database.dailySummaries)
+        .insert(
+          DailySummariesCompanion.insert(
+            date: '2026-04-26',
+            totalDistanceMeters: 1200,
+            movingMinutes: 18,
+            stationaryMinutes: 70,
+            visitCount: 2,
+            newPlaceCount: 1,
+            longestStayPlaceId: Value(homeId),
+          ),
+        );
+    await database
+        .into(database.visits)
+        .insert(
+          VisitsCompanion.insert(
+            placeClusterId: Value(homeId),
+            startedAt: DateTime(2026, 4, 26, 9),
+            endedAt: DateTime(2026, 4, 26, 10),
+            durationMinutes: 60,
+            representativeLatitude: 37,
+            representativeLongitude: 127,
+          ),
+        );
+    await database
+        .into(database.visits)
+        .insert(
+          VisitsCompanion.insert(
+            placeClusterId: Value(cafeId),
+            startedAt: DateTime(2026, 4, 26, 14),
+            endedAt: DateTime(2026, 4, 26, 14, 30),
+            durationMinutes: 30,
+            representativeLatitude: 37.1,
+            representativeLongitude: 127.1,
+          ),
+        );
+    await database
+        .into(database.insights)
+        .insert(
+          InsightsCompanion.insert(
+            date: date,
+            type: 'movementChange',
+            severity: 'notable',
+            title: '어제는 조금 조용한 하루였어요',
+            body: '최근 며칠보다 이동이 적고 차분했어요.',
+            evidence: '1200m',
+            createdAt: date,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('돌아보기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('어제는 조금 조용한 하루였어요'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('하루 자세히 보기'), findsOneWidget);
+    expect(find.text('집 근처 -> 카페'), findsOneWidget);
+    expect(find.text('방문 2곳'), findsOneWidget);
+    expect(find.text('이동 1.2 km'), findsOneWidget);
+  });
+
   testWidgets('settings screen saves tracking state', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     final trackingService = _FakeTrackingService();

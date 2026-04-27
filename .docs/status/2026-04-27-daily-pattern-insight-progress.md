@@ -19,6 +19,8 @@ Core capabilities completed:
 - Visit detection from location points with movement/stay thresholds.
 - Persistent place clusters linked from generated visits.
 - Today timeline preview from stored visits and places.
+- Day detail route summary from History, showing reflection context, visit
+  count, movement distance, moving minutes, and ordered place flow.
 - Home, History, Places, and Settings tabs with Korean product copy.
 - Editable settings for movement threshold, stay threshold, raw point retention,
   and daily notification time.
@@ -98,12 +100,11 @@ Details:
 - Decide whether raw coordinate export/delete language needs stronger privacy
   framing.
 
-### 4. Optional Day Detail / Route Summary
+### 4. Optional Map Rendering
 
 - Do not add a map dependency yet.
-- If route context is needed, build a day detail screen first:
-  `집 근처 -> 회사 근처 -> 카페`, distance between visits, and ordered timeline.
-- Revisit actual map rendering only after the route summary proves insufficient.
+- A lightweight day detail and route summary now exists.
+- Revisit actual map rendering only if the route summary proves insufficient.
 
 ### 5. Documentation Cleanup
 

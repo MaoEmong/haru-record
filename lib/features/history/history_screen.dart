@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
+import '../timeline/day_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({
@@ -61,22 +62,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
           separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final insight = insights[index];
-            return DecoratedBox(
-              decoration: AppThemeDecorations.softCard(),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _openDayDetail(insight),
+                child: DecoratedBox(
+                  decoration: AppThemeDecorations.softCard(),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
+                    title: Text(
+                      insight.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text(
+                      '${_dateLabel(insight.date)}\n${insight.body}',
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.muted,
+                    ),
+                    isThreeLine: true,
+                  ),
                 ),
-                title: Text(
-                  insight.title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  '${_dateLabel(insight.date)}\n${insight.body}',
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-                isThreeLine: true,
               ),
             );
           },
@@ -89,6 +101,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
+  }
+
+  void _openDayDetail(Insight insight) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => DayDetailScreen(
+          database: widget.database,
+          date: insight.date,
+          title: insight.title,
+          body: insight.body,
+        ),
+      ),
+    );
   }
 }
 
