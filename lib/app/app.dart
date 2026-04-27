@@ -4,6 +4,8 @@ import '../features/history/history_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/places/place_management_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/storage/app_database.dart';
+import '../features/timeline/day_detail_screen.dart';
 import 'app_dependencies.dart';
 import 'app_theme.dart';
 
@@ -98,6 +100,8 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
       HomeScreen(
         dependencies: widget.dependencies,
         refreshVersion: _refreshVersion,
+        onOpenTodayRecords: _openTodayRecords,
+        onOpenLatestInsight: _openInsightDetail,
       ),
       HistoryScreen(
         database: widget.dependencies.database,
@@ -154,6 +158,35 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
     setState(() {
       _refreshVersion++;
     });
+  }
+
+  void _openTodayRecords() {
+    final now = DateTime.now();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => DayDetailScreen(
+          database: widget.dependencies.database,
+          date: now,
+          appBarTitle: '오늘 기록',
+          title: '오늘 기록',
+          body: '오늘 기기 안에 쌓이고 있는 위치 기록과 머문 곳을 확인해요.',
+          showRawRecords: true,
+        ),
+      ),
+    );
+  }
+
+  void _openInsightDetail(Insight insight) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => DayDetailScreen(
+          database: widget.dependencies.database,
+          date: insight.date,
+          title: insight.title,
+          body: insight.body,
+        ),
+      ),
+    );
   }
 
   String _titleForIndex(int index) {
