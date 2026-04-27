@@ -21,6 +21,7 @@ class DailyPatternApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'KyoboHandwriting',
+        textTheme: _appTextTheme(),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.ink,
           brightness: Brightness.light,
@@ -36,7 +37,7 @@ class DailyPatternApp extends StatelessWidget {
           centerTitle: false,
           titleTextStyle: TextStyle(
             color: AppColors.ink,
-            fontSize: 18,
+            fontSize: 19,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -48,7 +49,7 @@ class DailyPatternApp extends StatelessWidget {
               color: states.contains(WidgetState.selected)
                   ? AppColors.ink
                   : AppColors.muted,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: states.contains(WidgetState.selected)
                   ? FontWeight.w700
                   : FontWeight.w500,
@@ -80,6 +81,23 @@ class DailyPatternApp extends StatelessWidget {
       home: DailyPatternShell(dependencies: dependencies),
     );
   }
+}
+
+TextTheme _appTextTheme() {
+  const family = 'KyoboHandwriting';
+  final base = Typography.material2021().black.apply(fontFamily: family);
+  return base.copyWith(
+    headlineSmall: base.headlineSmall?.copyWith(fontSize: 25),
+    titleLarge: base.titleLarge?.copyWith(fontSize: 23),
+    titleMedium: base.titleMedium?.copyWith(fontSize: 17),
+    titleSmall: base.titleSmall?.copyWith(fontSize: 15),
+    bodyLarge: base.bodyLarge?.copyWith(fontSize: 17),
+    bodyMedium: base.bodyMedium?.copyWith(fontSize: 15),
+    bodySmall: base.bodySmall?.copyWith(fontSize: 13),
+    labelLarge: base.labelLarge?.copyWith(fontSize: 15),
+    labelMedium: base.labelMedium?.copyWith(fontSize: 13),
+    labelSmall: base.labelSmall?.copyWith(fontSize: 12),
+  );
 }
 
 class DailyPatternShell extends StatefulWidget {
