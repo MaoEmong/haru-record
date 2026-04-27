@@ -281,14 +281,11 @@ class _DayRouteMap extends StatelessWidget {
           options: MapOptions(
             initialCameraFit: CameraFit.bounds(
               bounds: bounds,
-              padding: const EdgeInsets.all(36),
-              maxZoom: 17,
+              padding: const EdgeInsets.all(18),
+              maxZoom: 18,
             ),
             interactionOptions: const InteractionOptions(
-              flags:
-                  InteractiveFlag.drag |
-                  InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom,
+              flags: InteractiveFlag.none,
             ),
           ),
           children: [

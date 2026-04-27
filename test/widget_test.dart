@@ -3,6 +3,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/app/app.dart';
 import 'package:projectapp_1/app/app_dependencies.dart';
@@ -390,6 +391,11 @@ void main() {
 
     expect(find.byKey(ValueKey('place-map-$homeId')), findsOneWidget);
     expect(find.byKey(ValueKey('place-map-$cafeId')), findsOneWidget);
+    final homeMap = tester.widget<FlutterMap>(
+      find.byKey(ValueKey('place-map-$homeId')),
+    );
+    expect(homeMap.options.initialZoom, 16);
+    expect(homeMap.options.interactionOptions.flags, InteractiveFlag.none);
   });
 
   testWidgets('canceling rename for an unnamed place keeps the app stable', (
@@ -583,6 +589,8 @@ void main() {
     expect(find.text('이동 경로'), findsOneWidget);
     expect(find.text('기록 지점 2개'), findsOneWidget);
     expect(find.byKey(const ValueKey('day-route-map')), findsOneWidget);
+    final routeMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
+    expect(routeMap.options.interactionOptions.flags, InteractiveFlag.none);
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {

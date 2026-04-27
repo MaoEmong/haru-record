@@ -116,7 +116,7 @@ class _FeaturedPlaceCard extends StatelessWidget {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppColors.ink.withValues(alpha: 0.74),
+                    color: AppColors.surface.withValues(alpha: 0.58),
                   ),
                 ),
               ),
@@ -133,7 +133,7 @@ class _FeaturedPlaceCard extends StatelessWidget {
                       const Text(
                         '가장 자주 머문 곳',
                         style: TextStyle(
-                          color: AppColors.softBlue,
+                          color: AppColors.blueGrey,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.1,
@@ -143,7 +143,7 @@ class _FeaturedPlaceCard extends StatelessWidget {
                       Text(
                         place.displayName ?? '이름을 정하지 않은 곳',
                         style: const TextStyle(
-                          color: AppColors.surface,
+                          color: AppColors.ink,
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
                           height: 1.2,
@@ -153,7 +153,7 @@ class _FeaturedPlaceCard extends StatelessWidget {
                       Text(
                         '${place.visitCount}번 머문 곳',
                         style: const TextStyle(
-                          color: Color(0xB3FCFDFE),
+                          color: AppColors.muted,
                           fontSize: 14,
                         ),
                       ),
@@ -166,18 +166,15 @@ class _FeaturedPlaceCard extends StatelessWidget {
                               child: LinearProgressIndicator(
                                 value: (place.visitCount / 10).clamp(0.08, 1),
                                 minHeight: 8,
-                                backgroundColor: const Color(0x33FCFDFE),
+                                backgroundColor: AppColors.border,
                                 valueColor: const AlwaysStoppedAnimation<Color>(
-                                  AppColors.softBlue,
+                                  AppColors.blueGrey,
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Icon(
-                            Icons.edit_outlined,
-                            color: AppColors.surface,
-                          ),
+                          const Icon(Icons.edit_outlined, color: AppColors.ink),
                         ],
                       ),
                     ],
@@ -248,7 +245,7 @@ class _PlaceGridCard extends StatelessWidget {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.78),
+                      color: AppColors.surface.withValues(alpha: 0.64),
                     ),
                   ),
                 ),
@@ -301,7 +298,7 @@ class _PlaceMapPreview extends StatelessWidget {
         key: ValueKey('place-map-${place.id}'),
         options: MapOptions(
           initialCenter: center,
-          initialZoom: 15,
+          initialZoom: 16,
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.none,
           ),
