@@ -44,6 +44,8 @@ class DailyPatternApp extends StatelessWidget {
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: AppColors.surface,
           indicatorColor: AppColors.softBlue,
+          elevation: 0,
+          height: 72,
           labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               color: states.contains(WidgetState.selected)
@@ -54,6 +56,49 @@ class DailyPatternApp extends StatelessWidget {
                   ? FontWeight.w700
                   : FontWeight.w500,
             ),
+          ),
+          iconTheme: WidgetStateProperty.resolveWith(
+            (states) => IconThemeData(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.ink
+                  : AppColors.muted,
+              size: states.contains(WidgetState.selected) ? 25 : 23,
+            ),
+          ),
+        ),
+        listTileTheme: ListTileThemeData(
+          iconColor: AppColors.ink,
+          textColor: AppColors.ink,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.surfaceAlt,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.blueGrey, width: 1.4),
+          ),
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? AppColors.ink
+                : AppColors.muted,
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? AppColors.softBlue
+                : AppColors.paleBlue,
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
@@ -69,6 +114,7 @@ class DailyPatternApp extends StatelessWidget {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.ink,
+            backgroundColor: AppColors.surface,
             side: const BorderSide(color: AppColors.border),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
