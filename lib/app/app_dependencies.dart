@@ -23,6 +23,7 @@ class AppDependencies {
     required this.notificationService,
     required this.permissionService,
     required this.importPendingEvents,
+    this.runDailyProcessingOverride,
   });
 
   final AppDatabase database;
@@ -31,6 +32,7 @@ class AppDependencies {
   final NotificationService notificationService;
   final AppPermissionService permissionService;
   final Future<LocationEventImportResult> Function() importPendingEvents;
+  final Future<void> Function()? runDailyProcessingOverride;
 
   static Future<AppDependencies> production() async {
     final database = AppDatabase(openAppDatabaseConnection());
@@ -57,6 +59,10 @@ class AppDependencies {
   }
 
   Future<void> runDailyProcessingNow() async {
+    if (runDailyProcessingOverride != null) {
+      await runDailyProcessingOverride!();
+      return;
+    }
     final settings = await settingsRepository.load();
     final processor = DailyInsightProcessor(
       database: database,

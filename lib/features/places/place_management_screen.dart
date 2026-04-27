@@ -4,9 +4,16 @@ import 'package:flutter/material.dart';
 import '../storage/app_database.dart';
 
 class PlaceManagementScreen extends StatefulWidget {
-  const PlaceManagementScreen({super.key, required this.database});
+  const PlaceManagementScreen({
+    super.key,
+    required this.database,
+    required this.refreshVersion,
+    this.onPlacesChanged,
+  });
 
   final AppDatabase database;
+  final int refreshVersion;
+  final VoidCallback? onPlacesChanged;
 
   @override
   State<PlaceManagementScreen> createState() => _PlaceManagementScreenState();
@@ -19,6 +26,16 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
   void initState() {
     super.initState();
     _places = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlaceManagementScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshVersion != widget.refreshVersion) {
+      setState(() {
+        _places = _load();
+      });
+    }
   }
 
   Future<List<PlaceCluster>> _load() async {
@@ -68,6 +85,7 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
     setState(() {
       _places = _load();
     });
+    widget.onPlacesChanged?.call();
   }
 
   @override

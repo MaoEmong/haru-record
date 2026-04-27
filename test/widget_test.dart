@@ -152,12 +152,56 @@ void main() {
     expect(trackingService.started, isFalse);
     expect(find.text('Location permission is required'), findsOneWidget);
   });
+
+  testWidgets('manual daily processing refreshes visible insight state', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    var processingRuns = 0;
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          runDailyProcessingNow: () async {
+            processingRuns++;
+            await database.into(database.insights).insert(
+                  InsightsCompanion.insert(
+                    date: DateTime(2026, 4, 27),
+                    type: 'movementChange',
+                    severity: 'notable',
+                    title: 'Movement was lower than usual',
+                    body: 'Yesterday was quieter than your recent average.',
+                    evidence: '100m vs 400m recent average',
+                    createdAt: DateTime(2026, 4, 27, 9),
+                  ),
+                );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No insights yet'), findsOneWidget);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Run daily processing now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Home'));
+    await tester.pumpAndSettle();
+
+    expect(processingRuns, 1);
+    expect(find.text('Movement was lower than usual'), findsOneWidget);
+  });
 }
 
 AppDependencies _testDependencies(
   AppDatabase database, {
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
+  Future<void> Function()? runDailyProcessingNow,
 }) {
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
@@ -169,6 +213,7 @@ AppDependencies _testDependencies(
         permissionService ?? _FakePermissionService(locationGranted: true),
     importPendingEvents: () async =>
         const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+    runDailyProcessingOverride: runDailyProcessingNow,
   );
 }
 

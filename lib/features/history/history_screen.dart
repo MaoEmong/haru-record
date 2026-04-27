@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import '../storage/app_database.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, required this.database});
+  const HistoryScreen({
+    super.key,
+    required this.database,
+    required this.refreshVersion,
+  });
 
   final AppDatabase database;
+  final int refreshVersion;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -18,6 +23,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _insights = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant HistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshVersion != widget.refreshVersion) {
+      setState(() {
+        _insights = _load();
+      });
+    }
   }
 
   Future<List<Insight>> _load() async {

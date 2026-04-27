@@ -40,14 +40,28 @@ class DailyPatternShell extends StatefulWidget {
 
 class _DailyPatternShellState extends State<DailyPatternShell> {
   int _selectedIndex = 0;
+  int _refreshVersion = 0;
 
   @override
   Widget build(BuildContext context) {
     final screens = [
-      HomeScreen(dependencies: widget.dependencies),
-      HistoryScreen(database: widget.dependencies.database),
-      PlaceManagementScreen(database: widget.dependencies.database),
-      SettingsScreen(dependencies: widget.dependencies),
+      HomeScreen(
+        dependencies: widget.dependencies,
+        refreshVersion: _refreshVersion,
+      ),
+      HistoryScreen(
+        database: widget.dependencies.database,
+        refreshVersion: _refreshVersion,
+      ),
+      PlaceManagementScreen(
+        database: widget.dependencies.database,
+        refreshVersion: _refreshVersion,
+        onPlacesChanged: _refreshAll,
+      ),
+      SettingsScreen(
+        dependencies: widget.dependencies,
+        onDataChanged: _refreshAll,
+      ),
     ];
 
     return Scaffold(
@@ -84,5 +98,11 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
         ],
       ),
     );
+  }
+
+  void _refreshAll() {
+    setState(() {
+      _refreshVersion++;
+    });
   }
 }
