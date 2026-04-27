@@ -62,17 +62,6 @@ void main() {
 
     expect(adapter.cancelledId, NotificationService.dailyInsightNotificationId);
   });
-
-  test('shows a test notification immediately', () async {
-    final adapter = FakeNotificationAdapter();
-    final service = NotificationService(adapter);
-
-    await service.showTestNotification();
-
-    expect(adapter.shownId, NotificationService.testNotificationId);
-    expect(adapter.title, '알림 테스트');
-    expect(adapter.body, '이렇게 돌아보기 알림이 도착해요.');
-  });
 }
 
 class FakeNotificationAdapter implements NotificationAdapter {
@@ -82,7 +71,6 @@ class FakeNotificationAdapter implements NotificationAdapter {
   String? body;
   int permissionRequestCount = 0;
   int? cancelledId;
-  int? shownId;
 
   @override
   Future<bool?> requestPermission() async {
@@ -105,17 +93,6 @@ class FakeNotificationAdapter implements NotificationAdapter {
   }) async {
     scheduledHour = hour;
     scheduledMinute = minute;
-    this.title = title;
-    this.body = body;
-  }
-
-  @override
-  Future<void> showNow({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-    shownId = id;
     this.title = title;
     this.body = body;
   }
