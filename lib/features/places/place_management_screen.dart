@@ -51,20 +51,20 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Rename place'),
+          title: const Text('장소 이름 변경'),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Display name'),
+            decoration: const InputDecoration(labelText: '장소 이름'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('취소'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(controller.text),
-              child: const Text('Save'),
+              child: const Text('저장'),
             ),
           ],
         );
@@ -112,10 +112,10 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               leading: const Icon(Icons.place_outlined),
-              title: Text(place.displayName ?? 'Unnamed place'),
-              subtitle: Text('${place.visitCount} visits'),
+              title: Text(place.displayName ?? '이름 없는 장소'),
+              subtitle: Text('${place.visitCount}회 방문'),
               trailing: IconButton(
-                tooltip: 'Rename',
+                tooltip: '이름 변경',
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () => _rename(place),
               ),
@@ -135,7 +135,7 @@ class _EmptyPlaces extends StatelessWidget {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Text('No places detected yet'),
+        child: Text('아직 감지된 장소가 없어요'),
       ),
     );
   }

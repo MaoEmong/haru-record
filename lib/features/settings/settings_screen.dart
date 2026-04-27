@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .ensureLocationTrackingPermission();
         if (!granted) {
           setState(() {
-            _status = 'Location permission is required';
+            _status = '위치 권한이 필요합니다';
           });
           return;
         }
@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (error) {
       setState(() {
-        _status = 'Tracking update failed';
+        _status = '추적 상태를 변경하지 못했습니다';
       });
     } finally {
       if (mounted) {
@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .ensureNotificationPermission();
       if (!granted) {
         setState(() {
-          _status = 'Notification permission is required';
+          _status = '알림 권한이 필요합니다';
         });
         return;
       }
@@ -103,11 +103,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.dependencies.runDailyProcessingNow();
       widget.onDataChanged?.call();
       setState(() {
-        _status = 'Daily processing finished';
+        _status = '오늘 처리를 완료했습니다';
       });
     } catch (_) {
       setState(() {
-        _status = 'Daily processing failed';
+        _status = '오늘 처리를 완료하지 못했습니다';
       });
     } finally {
       if (mounted) {
@@ -136,12 +136,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              title: const Text('Tracking'),
-              subtitle: Text(
-                settings.trackingEnabled
-                    ? 'Tracking active'
-                    : 'Tracking paused',
-              ),
+              title: const Text('위치 추적'),
+              subtitle: Text(settings.trackingEnabled ? '추적 중' : '추적 중지'),
               value: settings.trackingEnabled,
               onChanged: _busy
                   ? null
@@ -154,8 +150,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              title: const Text('Daily notification'),
-              subtitle: Text(settings.notificationEnabled ? 'On' : 'Off'),
+              title: const Text('일일 알림'),
+              subtitle: Text(settings.notificationEnabled ? '켜짐' : '꺼짐'),
               value: settings.notificationEnabled,
               onChanged: _busy
                   ? null
@@ -168,11 +164,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _EditableSettingsValueTile(
               key: const ValueKey('movement-threshold-edit'),
-              title: 'Movement threshold',
+              title: '이동 기준 거리',
               value: '${settings.minimumMovementMeters} m',
               icon: Icons.directions_walk,
               onTap: () => _editNumber(
-                title: 'Movement threshold',
+                title: '이동 기준 거리',
                 initialValue: settings.minimumMovementMeters,
                 suffix: 'm',
                 onSave: (value) =>
@@ -181,33 +177,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('stay-threshold-edit'),
-              title: 'Minimum stay',
-              value: '${settings.minimumStayMinutes} min',
+              title: '최소 체류 시간',
+              value: '${settings.minimumStayMinutes}분',
               icon: Icons.timer_outlined,
               onTap: () => _editNumber(
-                title: 'Minimum stay',
+                title: '최소 체류 시간',
                 initialValue: settings.minimumStayMinutes,
-                suffix: 'min',
+                suffix: '분',
                 onSave: (value) =>
                     _save(settings.copyWith(minimumStayMinutes: value)),
               ),
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('retention-days-edit'),
-              title: 'Raw point retention',
-              value: '${settings.rawPointRetentionDays} days',
+              title: '원본 위치 보관 기간',
+              value: '${settings.rawPointRetentionDays}일',
               icon: Icons.storage_outlined,
               onTap: () => _editNumber(
-                title: 'Raw point retention',
+                title: '원본 위치 보관 기간',
                 initialValue: settings.rawPointRetentionDays,
-                suffix: 'days',
+                suffix: '일',
                 onSave: (value) =>
                     _save(settings.copyWith(rawPointRetentionDays: value)),
               ),
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('notification-time-edit'),
-              title: 'Notification time',
+              title: '알림 시간',
               value:
                   '${settings.notificationHour.toString().padLeft(2, '0')}:'
                   '${settings.notificationMinute.toString().padLeft(2, '0')}',
@@ -218,19 +214,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             FilledButton.icon(
               onPressed: _busy ? null : _runProcessing,
               icon: const Icon(Icons.play_arrow),
-              label: const Text('Run daily processing now'),
+              label: const Text('오늘 처리 실행'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _busy ? null : _confirmDeleteRawPoints,
               icon: const Icon(Icons.delete_sweep_outlined),
-              label: const Text('Delete raw location points'),
+              label: const Text('원본 위치 기록 삭제'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _busy ? null : _confirmDeleteAllLocalData,
               icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('Delete all local data'),
+              label: const Text('모든 로컬 데이터 삭제'),
             ),
           ],
         );
@@ -248,11 +244,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
+                  child: const Text('취소'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Delete'),
+                  child: const Text('삭제'),
                 ),
               ],
             );
@@ -262,28 +258,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmDeleteRawPoints() async {
-    final confirmed = await _confirm(
-      'Delete raw location points',
-      'Summaries and insights will stay available.',
-    );
+    final confirmed = await _confirm('원본 위치 기록 삭제', '요약과 인사이트는 유지됩니다.');
     if (!confirmed) return;
     await widget.dependencies.maintenanceService.deleteRawLocationPoints();
     widget.onDataChanged?.call();
     setState(() {
-      _status = 'Raw location points deleted';
+      _status = '원본 위치 기록을 삭제했습니다';
     });
   }
 
   Future<void> _confirmDeleteAllLocalData() async {
     final confirmed = await _confirm(
-      'Delete all local data',
-      'This removes points, places, visits, summaries, and insights from this device.',
+      '모든 로컬 데이터 삭제',
+      '이 기기의 위치 기록, 장소, 방문, 요약, 인사이트를 모두 삭제합니다.',
     );
     if (!confirmed) return;
     await widget.dependencies.maintenanceService.deleteAllLocalData();
     widget.onDataChanged?.call();
     setState(() {
-      _status = 'All local data deleted';
+      _status = '모든 로컬 데이터를 삭제했습니다';
     });
   }
 
@@ -311,14 +304,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('취소'),
             ),
             FilledButton(
               onPressed: () {
                 final parsed = int.tryParse(input);
                 Navigator.of(context).pop(parsed);
               },
-              child: const Text('Save'),
+              child: const Text('저장'),
             ),
           ],
         );
@@ -335,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Notification time'),
+          title: const Text('알림 시간'),
           content: Row(
             children: [
               Expanded(
@@ -343,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   key: const ValueKey('hour-setting-field'),
                   initialValue: settings.notificationHour.toString(),
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Hour'),
+                  decoration: const InputDecoration(labelText: '시'),
                   onChanged: (value) {
                     hourInput = value;
                   },
@@ -355,7 +348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   key: const ValueKey('minute-setting-field'),
                   initialValue: settings.notificationMinute.toString(),
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Minute'),
+                  decoration: const InputDecoration(labelText: '분'),
                   onChanged: (value) {
                     minuteInput = value;
                   },
@@ -366,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('취소'),
             ),
             FilledButton(
               onPressed: () {
@@ -383,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 );
               },
-              child: const Text('Save'),
+              child: const Text('저장'),
             ),
           ],
         );

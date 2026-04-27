@@ -35,8 +35,8 @@ class NotificationService {
       id: dailyInsightNotificationId,
       hour: hour,
       minute: minute,
-      title: 'Your daily insight is ready',
-      body: 'Open the app to review yesterday.',
+      title: '오늘의 인사이트가 준비됐어요',
+      body: '앱에서 어제의 패턴을 확인해 보세요.',
     );
   }
 
@@ -59,8 +59,8 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
 
   static const _androidChannel = AndroidNotificationChannel(
     'daily_pattern_insights',
-    'Daily pattern insights',
-    description: 'Daily life pattern insight reminders',
+    '하루 패턴 인사이트',
+    description: '하루 패턴 인사이트 알림',
     importance: Importance.defaultImportance,
   );
 
@@ -127,8 +127,8 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_pattern_insights',
-          'Daily pattern insights',
-          channelDescription: 'Daily life pattern insight reminders',
+          '하루 패턴 인사이트',
+          channelDescription: '하루 패턴 인사이트 알림',
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

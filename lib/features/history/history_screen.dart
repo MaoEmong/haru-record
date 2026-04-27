@@ -88,10 +88,7 @@ class _EmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('No history yet'),
-      ),
+      child: Padding(padding: EdgeInsets.all(24), child: Text('아직 기록이 없어요')),
     );
   }
 }

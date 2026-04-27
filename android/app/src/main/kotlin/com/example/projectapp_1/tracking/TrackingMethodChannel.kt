@@ -21,7 +21,7 @@ class TrackingMethodChannel(private val context: Context) {
                     if (!hasLocationPermission()) {
                         result.error(
                             "location_permission_missing",
-                            "Location permission is required to start tracking.",
+                            "추적을 시작하려면 위치 권한이 필요합니다.",
                             null
                         )
                         return@setMethodCallHandler
@@ -35,7 +35,7 @@ class TrackingMethodChannel(private val context: Context) {
                     } catch (exception: RuntimeException) {
                         result.error(
                             "tracking_start_failed",
-                            exception.message ?: "Failed to start tracking service.",
+                            exception.message ?: "추적 서비스를 시작하지 못했습니다.",
                             null
                         )
                     }

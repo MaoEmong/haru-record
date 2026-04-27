@@ -19,9 +19,9 @@ class InsightGenerationService {
         GeneratedInsight(
           type: InsightType.newPlace,
           severity: InsightSeverity.notable,
-          title: 'A new place appeared',
-          body: 'A new frequently visited place candidate was detected.',
-          evidence: '${yesterday.newPlaceCount} new place candidates',
+          title: '새로운 장소가 감지됐어요',
+          body: '자주 방문할 가능성이 있는 새 장소가 감지됐어요.',
+          evidence: '새 장소 후보 ${yesterday.newPlaceCount}개',
         ),
       );
     }
@@ -51,11 +51,10 @@ class InsightGenerationService {
       return GeneratedInsight(
         type: InsightType.movementChange,
         severity: InsightSeverity.notable,
-        title: 'Movement was lower than usual',
-        body:
-            'Yesterday was quieter than your recent average for movement and distance.',
+        title: '평소보다 이동이 적었어요',
+        body: '어제는 최근 평균보다 이동과 거리가 적은 날이었어요.',
         evidence:
-            '${yesterday.totalDistanceMeters.round()}m vs ${recentAverage.totalDistanceMeters.round()}m recent average',
+            '${yesterday.totalDistanceMeters.round()}m 대 최근 평균 ${recentAverage.totalDistanceMeters.round()}m',
       );
     }
 
@@ -63,11 +62,10 @@ class InsightGenerationService {
       return GeneratedInsight(
         type: InsightType.movementChange,
         severity: InsightSeverity.notable,
-        title: 'Movement was higher than usual',
-        body:
-            'Yesterday was more active than your recent average for movement and distance.',
+        title: '평소보다 이동이 많았어요',
+        body: '어제는 최근 평균보다 더 활발하게 움직인 날이었어요.',
         evidence:
-            '${yesterday.totalDistanceMeters.round()}m vs ${recentAverage.totalDistanceMeters.round()}m recent average',
+            '${yesterday.totalDistanceMeters.round()}m 대 최근 평균 ${recentAverage.totalDistanceMeters.round()}m',
       );
     }
 
@@ -84,10 +82,10 @@ class InsightGenerationService {
       return GeneratedInsight(
         type: InsightType.visitChange,
         severity: InsightSeverity.neutral,
-        title: 'You visited fewer places',
-        body: 'Your visit count was below your recent average.',
+        title: '방문한 장소가 평소보다 적었어요',
+        body: '방문 횟수가 최근 평균보다 낮았어요.',
         evidence:
-            '${yesterday.visitCount} visits vs ${recentAverage.visitCount} recent average',
+            '${yesterday.visitCount}회 방문, 최근 평균 ${recentAverage.visitCount}회',
       );
     }
 
@@ -95,10 +93,10 @@ class InsightGenerationService {
       return GeneratedInsight(
         type: InsightType.visitChange,
         severity: InsightSeverity.neutral,
-        title: 'You visited more places',
-        body: 'Your visit count was above your recent average.',
+        title: '방문한 장소가 평소보다 많았어요',
+        body: '방문 횟수가 최근 평균보다 높았어요.',
         evidence:
-            '${yesterday.visitCount} visits vs ${recentAverage.visitCount} recent average',
+            '${yesterday.visitCount}회 방문, 최근 평균 ${recentAverage.visitCount}회',
       );
     }
 
