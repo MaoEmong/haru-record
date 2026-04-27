@@ -245,10 +245,48 @@ void main() {
     expect(insights, hasLength(1));
     expect(find.text('Raw location points deleted'), findsOneWidget);
   });
+
+  testWidgets('notification toggle stays off when permission is denied', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final settingsRepository = SettingsRepository();
+    final permissionService = _FakePermissionService(
+      locationGranted: true,
+      notificationGranted: false,
+    );
+    addTearDown(database.close);
+
+    await settingsRepository.save(
+      AppSettings.defaults().copyWith(notificationEnabled: false),
+    );
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          settingsRepository: settingsRepository,
+          permissionService: permissionService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('notification-switch')));
+    await tester.pumpAndSettle();
+
+    final settings = await settingsRepository.load();
+    expect(permissionService.requestedNotification, isTrue);
+    expect(settings.notificationEnabled, isFalse);
+    expect(find.text('Notification permission is required'), findsOneWidget);
+  });
 }
 
 AppDependencies _testDependencies(
   AppDatabase database, {
+  SettingsRepository? settingsRepository,
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
   Future<void> Function()? runDailyProcessingNow,
@@ -256,7 +294,7 @@ AppDependencies _testDependencies(
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
     database: database,
-    settingsRepository: SettingsRepository(),
+    settingsRepository: settingsRepository ?? SettingsRepository(),
     trackingService: trackingService ?? _FakeTrackingService(),
     notificationService: NotificationService(notificationAdapter),
     permissionService:
@@ -286,10 +324,15 @@ class _FakeTrackingService implements LocationTrackingService {
 }
 
 class _FakePermissionService implements AppPermissionService {
-  _FakePermissionService({required this.locationGranted});
+  _FakePermissionService({
+    required this.locationGranted,
+    this.notificationGranted = true,
+  });
 
   bool locationGranted;
+  bool notificationGranted;
   bool requestedLocation = false;
+  bool requestedNotification = false;
 
   @override
   Future<bool> ensureLocationTrackingPermission() async {
@@ -298,7 +341,10 @@ class _FakePermissionService implements AppPermissionService {
   }
 
   @override
-  Future<bool> ensureNotificationPermission() async => true;
+  Future<bool> ensureNotificationPermission() async {
+    requestedNotification = true;
+    return notificationGranted;
+  }
 }
 
 class _FakeNotificationAdapter implements NotificationAdapter {
