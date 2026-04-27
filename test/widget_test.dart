@@ -153,6 +153,44 @@ void main() {
     expect(find.text('하루를 기록하려면 위치 권한이 필요해요'), findsOneWidget);
   });
 
+  testWidgets('settings status message stays in the fixed notice area', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final trackingService = _FakeTrackingService();
+    final permissionService = _FakePermissionService(locationGranted: false);
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          trackingService: trackingService,
+          permissionService: permissionService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+
+    final before = tester.getTopLeft(
+      find.byKey(const ValueKey('movement-threshold-edit')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('tracking-switch')));
+    await tester.pumpAndSettle();
+
+    final after = tester.getTopLeft(
+      find.byKey(const ValueKey('movement-threshold-edit')),
+    );
+
+    expect(before.dy, after.dy);
+    expect(find.byKey(const ValueKey('settings-status-area')), findsOneWidget);
+    expect(find.text('하루를 기록하려면 위치 권한이 필요해요'), findsOneWidget);
+  });
+
   testWidgets('manual daily processing refreshes visible insight state', (
     tester,
   ) async {
@@ -189,6 +227,7 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
     await tester.tap(find.text('지금 하루 정리하기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('오늘'));
