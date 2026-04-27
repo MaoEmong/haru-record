@@ -14,6 +14,7 @@ import '../insights/insight_generation_service.dart';
 import '../insights/insight_models.dart';
 import '../notifications/notification_service.dart';
 import '../places/place_clustering_service.dart';
+import '../places/place_cluster_repository.dart';
 import '../settings/settings_models.dart';
 import '../settings/settings_repository.dart';
 import '../storage/app_database.dart';
@@ -86,6 +87,7 @@ class DailyInsightProcessor {
     required Future<LocationEventImportResult> Function() importPendingEvents,
     required AppSettings settings,
     PlaceClusteringService? placeClusteringService,
+    PlaceClusterRepository? placeClusterRepository,
     DailySummaryService? dailySummaryService,
     InsightGenerationService? insightGenerationService,
     RetentionService? retentionService,
@@ -99,6 +101,8 @@ class DailyInsightProcessor {
              clusterRadiusMeters: settings.minimumMovementMeters.toDouble(),
              minimumStayMinutes: settings.minimumStayMinutes,
            ),
+       _placeClusterRepository =
+           placeClusterRepository ?? PlaceClusterRepository(database),
        _dailySummaryService = dailySummaryService ?? DailySummaryService(),
        _insightGenerationService =
            insightGenerationService ?? InsightGenerationService(),
@@ -109,6 +113,7 @@ class DailyInsightProcessor {
   final Future<LocationEventImportResult> Function() _importPendingEvents;
   final AppSettings _settings;
   final PlaceClusteringService _placeClusteringService;
+  final PlaceClusterRepository _placeClusterRepository;
   final DailySummaryService _dailySummaryService;
   final InsightGenerationService _insightGenerationService;
   final RetentionService _retentionService;
@@ -158,9 +163,31 @@ class DailyInsightProcessor {
           .toList(),
     );
 
+    final persistedVisits = <_PersistableVisit>[];
+    for (final visit in visits) {
+      final match = await _placeClusterRepository.findOrCreateForVisit(
+        latitude: visit.latitude,
+        longitude: visit.longitude,
+        radiusMeters: _settings.minimumMovementMeters.toDouble(),
+        visitedAt: visit.startedAt,
+      );
+      final hasEarlierVisit = await _hasEarlierVisitForPlace(
+        placeClusterId: match.cluster.id,
+        before: yesterday,
+      );
+      persistedVisits.add(
+        _PersistableVisit(
+          visit: visit,
+          placeClusterId: match.cluster.id,
+          isNewPlace: !hasEarlierVisit,
+        ),
+      );
+    }
+
     final visitSnapshots = <VisitSnapshot>[];
     DetectedVisit? previousVisit;
-    for (final visit in visits) {
+    for (final item in persistedVisits) {
+      final visit = item.visit;
       visitSnapshots.add(
         VisitSnapshot(
           durationMinutes: visit.durationMinutes,
@@ -172,7 +199,8 @@ class DailyInsightProcessor {
                   visit.latitude,
                   visit.longitude,
                 ),
-          isNewPlace: false,
+          isNewPlace: item.isNewPlace,
+          placeClusterId: item.placeClusterId,
         ),
       );
       previousVisit = visit;
@@ -188,7 +216,8 @@ class DailyInsightProcessor {
       yesterday: summary,
       recentAverage: recentAverage,
     );
-    await _replaceDailyOutputs(yesterday, visits, summary, insights);
+    await _replaceDailyOutputs(yesterday, persistedVisits, summary, insights);
+    await _placeClusterRepository.recalculateVisitCounts();
     await _finishRetentionAndNotifications(now);
 
     return DailyProcessingResult(
@@ -235,9 +264,24 @@ class DailyInsightProcessor {
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }
 
+  Future<bool> _hasEarlierVisitForPlace({
+    required int placeClusterId,
+    required DateTime before,
+  }) async {
+    final start = DateTime(before.year, before.month, before.day);
+    final query = _database.select(_database.visits)
+      ..where(
+        (visit) =>
+            visit.placeClusterId.equals(placeClusterId) &
+            visit.startedAt.isSmallerThanValue(start),
+      );
+    final visits = await query.get();
+    return visits.isNotEmpty;
+  }
+
   Future<void> _replaceDailyOutputs(
     DateTime date,
-    List<DetectedVisit> visits,
+    List<_PersistableVisit> visits,
     DailySummarySnapshot summary,
     List<GeneratedInsight> insights,
   ) async {
@@ -260,11 +304,13 @@ class DailyInsightProcessor {
       await (_database.delete(
         _database.dailySummaries,
       )..where((summary) => summary.date.equals(dateKey))).go();
-      for (final visit in visits) {
+      for (final item in visits) {
+        final visit = item.visit;
         await _database
             .into(_database.visits)
             .insert(
               VisitsCompanion.insert(
+                placeClusterId: Value(item.placeClusterId),
                 startedAt: visit.startedAt,
                 endedAt: visit.endedAt,
                 durationMinutes: visit.durationMinutes,
@@ -367,6 +413,18 @@ class DailyInsightProcessor {
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
   }
+}
+
+class _PersistableVisit {
+  const _PersistableVisit({
+    required this.visit,
+    required this.placeClusterId,
+    required this.isNewPlace,
+  });
+
+  final DetectedVisit visit;
+  final int placeClusterId;
+  final bool isNewPlace;
 }
 
 Future<void> initializeDailyInsightWorker({

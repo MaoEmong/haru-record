@@ -78,13 +78,22 @@ void main() {
       final result = await processor.run(now: now);
 
       final visits = await database.select(database.visits).get();
+      final places = await database.select(database.placeClusters).get();
       final summaries = await database.select(database.dailySummaries).get();
       final insights = await database.select(database.insights).get();
       final points = await database.select(database.locationPoints).get();
       expect(visits, hasLength(1));
+      expect(places, hasLength(1));
+      expect(visits.single.placeClusterId, places.single.id);
+      expect(places.single.visitCount, 1);
       expect(
         summaries.where((summary) => summary.date == '2026-04-25'),
         hasLength(1),
+      );
+      expect(
+        summaries.singleWhere((summary) => summary.date == '2026-04-25')
+            .newPlaceCount,
+        1,
       );
       expect(insights, isNotEmpty);
       expect(result.outcome, DailyProcessingOutcome.createdReflection);
@@ -149,9 +158,13 @@ void main() {
     await processor.run(now: now);
 
     final visits = await database.select(database.visits).get();
+    final places = await database.select(database.placeClusters).get();
     final summaries = await database.select(database.dailySummaries).get();
     final insights = await database.select(database.insights).get();
     expect(visits, hasLength(1));
+    expect(places, hasLength(1));
+    expect(visits.single.placeClusterId, places.single.id);
+    expect(places.single.visitCount, 1);
     expect(
       summaries.where((summary) => summary.date == '2026-04-25'),
       hasLength(1),
