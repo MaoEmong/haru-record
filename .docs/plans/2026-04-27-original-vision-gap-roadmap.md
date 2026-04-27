@@ -1017,7 +1017,7 @@ git commit -m "Record Android device validation results"
 **Files:**
 - Create: `.docs/specs/2026-04-27-route-map-options.md`
 
-- [ ] **Step 1: Write route-map option spec**
+- [x] **Step 1: Write route-map option spec**
 
 Create `.docs/specs/2026-04-27-route-map-options.md`:
 
@@ -1039,7 +1039,7 @@ Do not add a map dependency until place clustering, timeline, and real-device tr
 Build timeline and place reliability first. Revisit map after device validation proves records are reliable.
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```powershell
 git add .docs\specs\2026-04-27-route-map-options.md
