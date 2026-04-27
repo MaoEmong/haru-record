@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/app/app.dart';
 import 'package:projectapp_1/app/app_dependencies.dart';
+import 'package:projectapp_1/features/background/daily_insight_worker.dart';
 import 'package:projectapp_1/features/notifications/notification_service.dart';
 import 'package:projectapp_1/features/permissions/app_permission_service.dart';
 import 'package:projectapp_1/features/settings/settings_models.dart';
@@ -217,6 +218,12 @@ void main() {
                     createdAt: DateTime(2026, 4, 27, 9),
                   ),
                 );
+            return const DailyProcessingResult(
+              outcome: DailyProcessingOutcome.createdReflection,
+              totalPointCount: 2,
+              yesterdayPointCount: 2,
+              createdReflectionCount: 1,
+            );
           },
         ),
       ),
@@ -235,6 +242,102 @@ void main() {
 
     expect(processingRuns, 1);
     expect(find.text('어제는 조금 조용한 하루였어요'), findsOneWidget);
+  });
+
+  testWidgets('manual daily processing explains when there is no record yet', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          runDailyProcessingNow: () async {
+            return const DailyProcessingResult(
+              outcome: DailyProcessingOutcome.noRawRecords,
+              totalPointCount: 0,
+              yesterdayPointCount: 0,
+              createdReflectionCount: 0,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
+    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('아직 정리할 기록이 없어요'), findsOneWidget);
+  });
+
+  testWidgets('manual daily processing explains when yesterday has no record', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          runDailyProcessingNow: () async {
+            return const DailyProcessingResult(
+              outcome: DailyProcessingOutcome.noYesterdayRecords,
+              totalPointCount: 3,
+              yesterdayPointCount: 0,
+              createdReflectionCount: 0,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
+    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('어제 기록이 쌓이면 돌아보기를 만들 수 있어요'), findsOneWidget);
+  });
+
+  testWidgets('manual daily processing explains when no highlight was found', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          runDailyProcessingNow: () async {
+            return const DailyProcessingResult(
+              outcome: DailyProcessingOutcome.noHighlights,
+              totalPointCount: 4,
+              yesterdayPointCount: 4,
+              createdReflectionCount: 0,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
+    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('기록은 정리했지만 특별한 변화는 없었어요'), findsOneWidget);
   });
 
   testWidgets('settings cleanup removes raw points but keeps insights', (
@@ -330,7 +433,7 @@ AppDependencies _testDependencies(
   SettingsRepository? settingsRepository,
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
-  Future<void> Function()? runDailyProcessingNow,
+  Future<DailyProcessingResult> Function()? runDailyProcessingNow,
 }) {
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
