@@ -20,10 +20,9 @@ Date: 2026-04-27
 Build note:
 
 - The debug APK is produced successfully.
-- The command also prints Kotlin daemon incremental cache errors after the success line.
-- The repeated error mentions cache close/registration failures under plugin build directories such as `build\flutter_timezone\kotlin\compileDebugKotlin` and `build\workmanager_android\kotlin\compileDebugKotlin`.
-- A clean rebuild with `flutter clean`, `flutter pub get`, and `flutter build apk --debug` still produced the APK and repeated the Kotlin daemon cache warning.
-- This is recorded as an environment/toolchain warning to monitor, not as a blocking app code failure, because the command exits 0 and the APK exists.
+- An earlier build printed Kotlin daemon incremental cache errors after the success line.
+- After a follow-up `flutter build apk --debug`, the debug APK built cleanly without the Kotlin daemon warning.
+- This is recorded as a transient toolchain cache warning to monitor, not as a blocking app code failure.
 
 ## Device Checks
 
@@ -45,4 +44,4 @@ Build note:
 
 - Physical-device behavioral validation is still pending.
 - The local Android toolchain is available, and debug APK creation is no longer blocked by missing SDK setup.
-- Kotlin daemon cache warnings should be watched during future Android builds. If they turn into non-zero build failures, disable Kotlin incremental compilation or investigate plugin cache path handling on Windows.
+- Kotlin daemon cache warnings should be watched during future Android builds. If they return as non-zero build failures, disable Kotlin incremental compilation or investigate plugin cache path handling on Windows.
