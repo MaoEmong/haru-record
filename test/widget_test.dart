@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/app/app.dart';
 import 'package:projectapp_1/app/app_dependencies.dart';
 import 'package:projectapp_1/features/notifications/notification_service.dart';
+import 'package:projectapp_1/features/permissions/app_permission_service.dart';
 import 'package:projectapp_1/features/settings/settings_models.dart';
 import 'package:projectapp_1/features/settings/settings_repository.dart';
 import 'package:projectapp_1/features/storage/app_database.dart';
@@ -122,11 +123,41 @@ void main() {
     expect(find.text('14 days'), findsOneWidget);
     expect(find.text('08:30'), findsOneWidget);
   });
+
+  testWidgets('tracking toggle explains missing location permission', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final trackingService = _FakeTrackingService();
+    final permissionService = _FakePermissionService(locationGranted: false);
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          trackingService: trackingService,
+          permissionService: permissionService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tracking-switch')));
+    await tester.pumpAndSettle();
+
+    expect(permissionService.requestedLocation, isTrue);
+    expect(trackingService.started, isFalse);
+    expect(find.text('Location permission is required'), findsOneWidget);
+  });
 }
 
 AppDependencies _testDependencies(
   AppDatabase database, {
   _FakeTrackingService? trackingService,
+  _FakePermissionService? permissionService,
 }) {
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
@@ -134,6 +165,8 @@ AppDependencies _testDependencies(
     settingsRepository: SettingsRepository(),
     trackingService: trackingService ?? _FakeTrackingService(),
     notificationService: NotificationService(notificationAdapter),
+    permissionService:
+        permissionService ?? _FakePermissionService(locationGranted: true),
     importPendingEvents: () async =>
         const LocationEventImportResult(importedCount: 0, skippedCount: 0),
   );
@@ -154,6 +187,22 @@ class _FakeTrackingService implements LocationTrackingService {
   Future<void> stopTracking() async {
     started = false;
   }
+}
+
+class _FakePermissionService implements AppPermissionService {
+  _FakePermissionService({required this.locationGranted});
+
+  bool locationGranted;
+  bool requestedLocation = false;
+
+  @override
+  Future<bool> ensureLocationTrackingPermission() async {
+    requestedLocation = true;
+    return locationGranted;
+  }
+
+  @override
+  Future<bool> ensureNotificationPermission() async => true;
 }
 
 class _FakeNotificationAdapter implements NotificationAdapter {

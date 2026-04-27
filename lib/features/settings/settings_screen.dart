@@ -36,6 +36,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _status = null;
     });
     try {
+      if (enabled) {
+        final granted = await widget.dependencies.permissionService
+            .ensureLocationTrackingPermission();
+        if (!granted) {
+          setState(() {
+            _status = 'Location permission is required';
+          });
+          return;
+        }
+      }
       await widget.dependencies.saveTrackingEnabled(
         settings: settings,
         enabled: enabled,
@@ -61,8 +71,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final updated = settings.copyWith(notificationEnabled: enabled);
     await _save(updated);
     if (enabled) {
-      await widget.dependencies.notificationService
-          .requestNotificationPermission();
+      final granted = await widget.dependencies.permissionService
+          .ensureNotificationPermission();
+      if (!granted) {
+        setState(() {
+          _status = 'Notification permission is required';
+        });
+        return;
+      }
       await widget.dependencies.notificationService.scheduleDailyInsight(
         hour: updated.notificationHour,
         minute: updated.notificationMinute,
@@ -137,6 +153,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? null
                   : (enabled) => _toggleNotifications(settings, enabled),
             ),
+            if (_status != null) ...[
+              const SizedBox(height: 12),
+              Text(_status!, textAlign: TextAlign.center),
+            ],
             const SizedBox(height: 16),
             _EditableSettingsValueTile(
               key: const ValueKey('movement-threshold-edit'),
@@ -192,10 +212,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Run daily processing now'),
             ),
-            if (_status != null) ...[
-              const SizedBox(height: 12),
-              Text(_status!, textAlign: TextAlign.center),
-            ],
           ],
         );
       },
