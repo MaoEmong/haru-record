@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
@@ -106,62 +108,83 @@ class _FeaturedPlaceCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(28),
         onTap: () => onRename(place),
-        child: DecoratedBox(
-          decoration: AppThemeDecorations.inkCard(),
-          child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '가장 자주 머문 곳',
-                  style: TextStyle(
-                    color: AppColors.softBlue,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              Positioned.fill(child: _PlaceMapPreview(place: place)),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.ink.withValues(alpha: 0.74),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  place.displayName ?? '이름을 정하지 않은 곳',
-                  style: const TextStyle(
-                    color: AppColors.surface,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
-                  ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: AppColors.ink),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${place.visitCount}번 머문 곳',
-                  style: const TextStyle(
-                    color: Color(0xB3FCFDFE),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(100),
-                        child: LinearProgressIndicator(
-                          value: (place.visitCount / 10).clamp(0.08, 1),
-                          minHeight: 8,
-                          backgroundColor: const Color(0x33FCFDFE),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.softBlue,
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '가장 자주 머문 곳',
+                        style: TextStyle(
+                          color: AppColors.softBlue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.edit_outlined, color: AppColors.surface),
-                  ],
+                      const SizedBox(height: 12),
+                      Text(
+                        place.displayName ?? '이름을 정하지 않은 곳',
+                        style: const TextStyle(
+                          color: AppColors.surface,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${place.visitCount}번 머문 곳',
+                        style: const TextStyle(
+                          color: Color(0xB3FCFDFE),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(100),
+                              child: LinearProgressIndicator(
+                                value: (place.visitCount / 10).clamp(0.08, 1),
+                                minHeight: 8,
+                                backgroundColor: const Color(0x33FCFDFE),
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.softBlue,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.surface,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -215,36 +238,117 @@ class _PlaceGridCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () => onRename(place),
-        child: DecoratedBox(
-          decoration: AppThemeDecorations.softCard(),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: DecoratedBox(
+            decoration: AppThemeDecorations.softCard(),
+            child: Stack(
               children: [
-                const Icon(Icons.place_outlined, color: AppColors.blueGrey),
-                const Spacer(),
-                Text(
-                  place.displayName ?? '이름을 정하지 않은 곳',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w800,
+                Positioned.fill(child: _PlaceMapPreview(place: place)),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.78),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  '${place.visitCount}번 머문 곳',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _PlacePinBadge(),
+                      const Spacer(),
+                      Text(
+                        place.displayName ?? '이름을 정하지 않은 곳',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${place.visitCount}번 머문 곳',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PlaceMapPreview extends StatelessWidget {
+  const _PlaceMapPreview({required this.place});
+
+  final PlaceCluster place;
+
+  @override
+  Widget build(BuildContext context) {
+    final center = LatLng(place.centerLatitude, place.centerLongitude);
+    return IgnorePointer(
+      child: FlutterMap(
+        key: ValueKey('place-map-${place.id}'),
+        options: MapOptions(
+          initialCenter: center,
+          initialZoom: 15,
+          interactionOptions: const InteractionOptions(
+            flags: InteractiveFlag.none,
+          ),
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.projectapp_1',
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: center,
+                width: 34,
+                height: 34,
+                child: const _PlacePinBadge(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlacePinBadge extends StatelessWidget {
+  const _PlacePinBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x3317232E),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.place_rounded,
+        color: AppColors.surface,
+        size: 18,
       ),
     );
   }
