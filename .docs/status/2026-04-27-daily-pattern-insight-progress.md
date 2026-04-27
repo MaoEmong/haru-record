@@ -84,13 +84,15 @@ Known environment blocker:
 flutter build apk --debug
 ```
 
-Currently fails because this machine does not have Android SDK configured:
+This is no longer blocked by missing Android SDK setup. The local Android
+toolchain is configured and `flutter build apk --debug` creates
+`build\app\outputs\flutter-apk\app-debug.apk`.
 
-```text
-[!] No Android SDK found. Try setting the ANDROID_HOME environment variable.
-```
+Known build warning:
 
-This is an environment setup issue, not a known Dart/Kotlin code failure.
+- Debug APK build exits 0 and produces the APK.
+- Kotlin daemon incremental cache errors are printed after the success line.
+- See `.docs/status/2026-04-27-android-device-validation.md`.
 
 ## Remaining Work
 
@@ -104,11 +106,10 @@ Required behavior:
 
 ### 2. Android Device Validation
 
-After Android SDK is configured, validate on a physical Android device.
+Validate on a physical Android device.
 
 Required checks:
 
-- Debug APK builds.
 - App launches on device.
 - Foreground/background location permissions work.
 - Foreground tracking notification appears.
@@ -116,6 +117,10 @@ Required checks:
 - Visit detection and insight generation work from real movement/stay data.
 - Daily notification appears at the configured local time.
 - Retention/delete controls keep the app usable after cleanup.
+
+Tracking document:
+
+- `.docs/status/2026-04-27-android-device-validation.md`
 
 ### 3. Polish And Release Readiness
 
