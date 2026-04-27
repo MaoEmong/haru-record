@@ -304,6 +304,37 @@ void main() {
     expect(find.text('하루를 기록하려면 위치 권한이 필요해요'), findsOneWidget);
   });
 
+  testWidgets('settings shows diagnostics in the fixed notice area', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 27, 9),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('settings-diagnostics-summary')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('위치 1개'), findsOneWidget);
+  });
+
   testWidgets('manual daily processing refreshes visible insight state', (
     tester,
   ) async {
