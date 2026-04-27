@@ -112,6 +112,66 @@ void main() {
     },
   );
 
+  test('includes routine trend insight from recent daily summaries', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults(),
+    );
+
+    for (final item in const [
+      ('2026-04-22', 5000.0),
+      ('2026-04-23', 4000.0),
+      ('2026-04-24', 3000.0),
+    ]) {
+      await database
+          .into(database.dailySummaries)
+          .insert(
+            DailySummariesCompanion.insert(
+              date: item.$1,
+              totalDistanceMeters: item.$2,
+              movingMinutes: 45,
+              stationaryMinutes: 600,
+              visitCount: 3,
+              newPlaceCount: 0,
+            ),
+          );
+    }
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 25, 10),
+            latitude: 37.5665,
+            longitude: 126.9780,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 25, 10, 11),
+            latitude: 37.5666,
+            longitude: 126.9781,
+            accuracy: 20,
+          ),
+        );
+
+    final result = await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    final insights = await database.select(database.insights).get();
+    expect(result.outcome, DailyProcessingOutcome.createdReflection);
+    expect(insights.first.type, 'routineTrend');
+    expect(notificationAdapter.title, insights.first.title);
+
+    await database.close();
+  });
+
   test('daily processing is idempotent for the same day', () async {
     final database = AppDatabase(NativeDatabase.memory());
     final notificationAdapter = FakeNotificationAdapter();

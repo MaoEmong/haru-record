@@ -1,6 +1,7 @@
 import '../analysis/daily_summary_service.dart';
 import 'insight_models.dart';
 import 'insight_narrator.dart';
+import 'pattern_analysis_models.dart';
 
 class InsightGenerationService {
   InsightGenerationService({InsightNarrator? narrator})
@@ -11,8 +12,13 @@ class InsightGenerationService {
   List<GeneratedInsight> generate({
     required DailySummarySnapshot yesterday,
     required DailySummaryBaseline recentAverage,
+    List<PatternSignal> patternSignals = const [],
   }) {
     final insights = <GeneratedInsight>[];
+
+    for (final signal in patternSignals) {
+      insights.add(_patternInsight(signal));
+    }
 
     final movementInsight = _movementInsight(yesterday, recentAverage);
     if (movementInsight != null) insights.add(movementInsight);
@@ -34,6 +40,17 @@ class InsightGenerationService {
 
     insights.sort(_compareInsightStrength);
     return insights.take(2).toList(growable: false);
+  }
+
+  GeneratedInsight _patternInsight(PatternSignal signal) {
+    final text = _narrator.narratePattern(signal);
+    return GeneratedInsight(
+      type: InsightType.routineTrend,
+      severity: InsightSeverity.important,
+      title: text.title,
+      body: text.body,
+      evidence: text.evidence,
+    );
   }
 
   GeneratedInsight? _movementInsight(
@@ -147,6 +164,7 @@ class InsightGenerationService {
 
   int _typeRank(InsightType type) {
     return switch (type) {
+      InsightType.routineTrend => 6,
       InsightType.movementChange => 5,
       InsightType.newPlace => 4,
       InsightType.longestStay => 3,

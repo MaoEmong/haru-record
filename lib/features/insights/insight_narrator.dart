@@ -1,4 +1,5 @@
 import 'insight_models.dart';
+import 'pattern_analysis_models.dart';
 
 class InsightText {
   const InsightText({
@@ -32,6 +33,8 @@ enum InsightDirection { lower, higher, newValue }
 
 abstract interface class InsightNarrator {
   InsightText narrate(InsightNarrationContext context);
+
+  InsightText narratePattern(PatternSignal signal);
 }
 
 class RuleBasedInsightNarrator implements InsightNarrator {
@@ -40,6 +43,11 @@ class RuleBasedInsightNarrator implements InsightNarrator {
   @override
   InsightText narrate(InsightNarrationContext context) {
     return switch (context.type) {
+      InsightType.routineTrend => const InsightText(
+        title: '최근 흐름이 달라지고 있어요',
+        body: '며칠간의 기록을 함께 보면 평소와 다른 흐름이 보여요.',
+        evidence: '최근 기록 비교',
+      ),
       InsightType.movementChange => _movementText(context),
       InsightType.visitChange => _visitText(context),
       InsightType.newPlace => _newPlaceText(context),
@@ -47,6 +55,32 @@ class RuleBasedInsightNarrator implements InsightNarrator {
         title: '하루 흐름이 조금 달랐어요',
         body: '최근 며칠과 다른 움직임이 있었어요.',
         evidence: '최근 평균과 비교',
+      ),
+    };
+  }
+
+  @override
+  InsightText narratePattern(PatternSignal signal) {
+    return switch (signal.type) {
+      PatternSignalType.decreasingMovement => InsightText(
+        title: '최근 이동이 차분해지고 있어요',
+        body: '며칠간의 흐름을 보면 이동량이 줄어드는 쪽으로 이어지고 있어요.',
+        evidence: signal.evidence,
+      ),
+      PatternSignalType.increasingMovement => InsightText(
+        title: '최근 이동 반경이 넓어지고 있어요',
+        body: '며칠간의 흐름을 보면 더 많이 움직이는 날이 이어지고 있어요.',
+        evidence: signal.evidence,
+      ),
+      PatternSignalType.decreasingVisits => InsightText(
+        title: '최근 머무는 곳이 단순해지고 있어요',
+        body: '방문한 곳의 수가 줄어드는 흐름이 보여요.',
+        evidence: signal.evidence,
+      ),
+      PatternSignalType.increasingVisits => InsightText(
+        title: '최근 들르는 곳이 다양해지고 있어요',
+        body: '방문한 곳의 수가 늘어나는 흐름이 보여요.',
+        evidence: signal.evidence,
       ),
     };
   }
