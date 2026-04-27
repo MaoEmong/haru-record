@@ -32,6 +32,8 @@ Build note:
 - [ ] Tracking switch starts the foreground service.
 - [ ] Foreground tracking notification appears.
 - [ ] Native location events are written to `location_events.jsonl`.
+- [ ] Settings diagnostics shows last stored point after tracking is enabled.
+- [ ] Settings diagnostics visit/reflection counts increase after daily processing.
 - [ ] `Run daily processing now` imports pending events.
 - [ ] Home shows the latest generated insight.
 - [ ] History shows generated insights.
