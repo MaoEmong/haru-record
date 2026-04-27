@@ -373,6 +373,58 @@ void main() {
     expect(find.text('이동 1.2 km'), findsOneWidget);
   });
 
+  testWidgets('day detail shows route preview from raw points', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 9),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 10),
+            latitude: 37.1,
+            longitude: 127.1,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.insights)
+        .insert(
+          InsightsCompanion.insert(
+            date: date,
+            type: 'movementChange',
+            severity: 'notable',
+            title: '어제는 이동이 있었어요',
+            body: '두 지점 사이의 흐름이 남았어요.',
+            evidence: 'route',
+            createdAt: date,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('돌아보기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('어제는 이동이 있었어요'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('이동 경로'), findsOneWidget);
+    expect(find.text('기록 지점 2개'), findsOneWidget);
+  });
+
   testWidgets('settings screen saves tracking state', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     final trackingService = _FakeTrackingService();
