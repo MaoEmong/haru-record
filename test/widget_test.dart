@@ -377,8 +377,8 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
-    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
+    await tester.tap(find.text('어제 돌아보기 만들기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('오늘'));
     await tester.pumpAndSettle();
@@ -412,11 +412,11 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
-    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
+    await tester.tap(find.text('어제 돌아보기 만들기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('아직 정리할 기록이 없어요'), findsOneWidget);
+    expect(find.text('아직 돌아볼 기록이 없어요'), findsOneWidget);
   });
 
   testWidgets('manual daily processing explains when yesterday has no record', (
@@ -444,11 +444,11 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
-    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
+    await tester.tap(find.text('어제 돌아보기 만들기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('어제 기록이 쌓이면 돌아보기를 만들 수 있어요'), findsOneWidget);
+    expect(find.text('어제 기록이 아직 없어요. 오늘 기록은 내일 돌아볼 수 있어요'), findsOneWidget);
   });
 
   testWidgets('manual daily processing explains when no highlight was found', (
@@ -476,11 +476,11 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('지금 하루 정리하기'), 200);
-    await tester.tap(find.text('지금 하루 정리하기'));
+    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
+    await tester.tap(find.text('어제 돌아보기 만들기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('기록은 정리했지만 특별한 변화는 없었어요'), findsOneWidget);
+    expect(find.text('어제 기록은 봤지만 특별한 변화는 없었어요'), findsOneWidget);
   });
 
   testWidgets('settings cleanup removes raw points but keeps insights', (

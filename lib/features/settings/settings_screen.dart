@@ -101,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _runProcessing() async {
     setState(() {
       _busy = true;
-      _status = '하루를 정리하고 있어요...';
+      _status = '어제 기록으로 돌아보기를 만들고 있어요...';
     });
     try {
       final result = await widget.dependencies.runDailyProcessingNow();
@@ -111,7 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (_) {
       setState(() {
-        _status = '하루 정리를 마치지 못했어요';
+        _status = '돌아보기를 만들지 못했어요';
       });
     } finally {
       if (mounted) {
@@ -124,10 +124,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _processingMessage(DailyProcessingResult result) {
     return switch (result.outcome) {
-      DailyProcessingOutcome.createdReflection => '하루 정리를 마쳤어요',
-      DailyProcessingOutcome.noRawRecords => '아직 정리할 기록이 없어요',
-      DailyProcessingOutcome.noYesterdayRecords => '어제 기록이 쌓이면 돌아보기를 만들 수 있어요',
-      DailyProcessingOutcome.noHighlights => '기록은 정리했지만 특별한 변화는 없었어요',
+      DailyProcessingOutcome.createdReflection => '어제 돌아보기를 만들었어요',
+      DailyProcessingOutcome.noRawRecords => '아직 돌아볼 기록이 없어요',
+      DailyProcessingOutcome.noYesterdayRecords => '어제 기록이 아직 없어요. 오늘 기록은 내일 돌아볼 수 있어요',
+      DailyProcessingOutcome.noHighlights => '어제 기록은 봤지만 특별한 변화는 없었어요',
     };
   }
 
@@ -234,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             FilledButton.icon(
               onPressed: _busy ? null : _runProcessing,
               icon: const Icon(Icons.play_arrow),
-              label: const Text('지금 하루 정리하기'),
+              label: const Text('어제 돌아보기 만들기'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
