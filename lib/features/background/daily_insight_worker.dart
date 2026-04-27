@@ -7,8 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:timezone/timezone.dart' as timezone;
 import 'package:workmanager/workmanager.dart';
 
-import '../../core/time/local_timezone.dart';
+import '../../core/config/env_config.dart';
 import '../../core/geo/geo_math.dart';
+import '../../core/time/local_timezone.dart';
 import '../analysis/daily_summary_service.dart';
 import '../insights/insight_generation_service.dart';
 import '../insights/insight_models.dart';
@@ -487,6 +488,7 @@ Future<void> initializeDailyInsightWorker({
 void dailyInsightWorkerDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     WidgetsFlutterBinding.ensureInitialized();
+    await EnvConfig.load();
     await configureLocalTimezone();
     if (taskName != dailyInsightWorkerName) return true;
 

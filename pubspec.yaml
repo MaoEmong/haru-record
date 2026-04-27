@@ -47,6 +47,7 @@ dependencies:
   flutter_timezone: ^5.0.2
   flutter_map: ^8.3.0
   latlong2: ^0.9.1
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +77,9 @@ flutter:
     - family: KyoboHandwriting
       fonts:
         - asset: assets/KyoboHandwriting2025lyb.ttf
+
+  assets:
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

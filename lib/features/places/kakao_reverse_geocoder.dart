@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../core/config/env_config.dart';
 import 'place_address.dart';
 
 typedef KakaoHttpRequest =
@@ -18,16 +19,13 @@ class KakaoReverseGeocoder implements ReverseGeocoder {
     : _restApiKey = restApiKey,
       _request = request ?? _defaultRequest;
 
-  static const _environmentApiKey = String.fromEnvironment(
-    'KAKAO_REST_API_KEY',
-  );
-
   final String _restApiKey;
   final KakaoHttpRequest _request;
 
   static KakaoReverseGeocoder? fromEnvironment() {
-    if (_environmentApiKey.isEmpty) return null;
-    return KakaoReverseGeocoder(restApiKey: _environmentApiKey);
+    final apiKey = EnvConfig.kakaoRestApiKey;
+    if (apiKey.isEmpty) return null;
+    return KakaoReverseGeocoder(restApiKey: apiKey);
   }
 
   @override
