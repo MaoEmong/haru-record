@@ -92,7 +92,8 @@ toolchain is configured and `flutter build apk --debug` creates
 Known build warning:
 
 - Debug APK build exits 0 and produces the APK.
-- Kotlin daemon incremental cache errors are printed after the success line.
+- An earlier build printed Kotlin daemon incremental cache errors after the success line.
+- A later build completed without that warning.
 - See `.docs/status/2026-04-27-android-device-validation.md`.
 
 ## Remaining Work
