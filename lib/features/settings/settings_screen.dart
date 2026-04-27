@@ -123,6 +123,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _sendTestNotification() async {
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
+    try {
+      final granted = await widget.dependencies.permissionService
+          .ensureNotificationPermission();
+      if (!granted) {
+        setState(() {
+          _status = '테스트 알림을 보내려면 알림 권한이 필요해요';
+        });
+        _showFeedback('테스트 알림을 보내려면 알림 권한이 필요해요');
+        return;
+      }
+      await widget.dependencies.notificationService.showTestNotification();
+      setState(() {
+        _status = '테스트 알림을 보냈어요';
+      });
+      _showFeedback('테스트 알림을 보냈어요');
+    } catch (_) {
+      setState(() {
+        _status = '테스트 알림을 보내지 못했어요';
+      });
+      _showFeedback('테스트 알림을 보내지 못했어요');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  void _showFeedback(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _seedDebugYesterdayVisit() async {
     await DebugValidationSeeder(
       widget.dependencies.database,
@@ -152,122 +193,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         final settings = snapshot.data!;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        return Column(
           children: [
-            SwitchListTile(
-              key: const ValueKey('tracking-switch'),
-              tileColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: AppColors.border),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: const Text('하루 기록'),
-              subtitle: Text(
-                settings.trackingEnabled ? '오늘의 흐름을 기록하고 있어요' : '꺼져 있어요',
-              ),
-              value: settings.trackingEnabled,
-              onChanged: _busy
-                  ? null
-                  : (enabled) => _toggleTracking(settings, enabled),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              key: const ValueKey('notification-switch'),
-              tileColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                side: const BorderSide(color: AppColors.border),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: const Text('돌아보기 알림'),
-              subtitle: Text(
-                settings.notificationEnabled ? '어제 하루가 정리되면 알려드릴게요' : '꺼져 있어요',
-              ),
-              value: settings.notificationEnabled,
-              onChanged: _busy
-                  ? null
-                  : (enabled) => _toggleNotifications(settings, enabled),
-            ),
-            const SizedBox(height: 8),
-            _SettingsStatusArea(
-              message: _status,
-              repository: DiagnosticsRepository(widget.dependencies.database),
-            ),
-            const SizedBox(height: 16),
-            _EditableSettingsValueTile(
-              key: const ValueKey('movement-threshold-edit'),
-              title: '움직임으로 볼 거리',
-              value: '${settings.minimumMovementMeters} m',
-              icon: Icons.directions_walk,
-              onTap: () => _editNumber(
-                title: '움직임으로 볼 거리',
-                initialValue: settings.minimumMovementMeters,
-                suffix: 'm',
-                onSave: (value) =>
-                    _save(settings.copyWith(minimumMovementMeters: value)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: _SettingsStatusArea(
+                message: _status,
+                repository: DiagnosticsRepository(widget.dependencies.database),
               ),
             ),
-            _EditableSettingsValueTile(
-              key: const ValueKey('stay-threshold-edit'),
-              title: '머문 곳으로 볼 시간',
-              value: '${settings.minimumStayMinutes}분',
-              icon: Icons.timer_outlined,
-              onTap: () => _editNumber(
-                title: '머문 곳으로 볼 시간',
-                initialValue: settings.minimumStayMinutes,
-                suffix: '분',
-                onSave: (value) =>
-                    _save(settings.copyWith(minimumStayMinutes: value)),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                children: [
+                  SwitchListTile(
+                    key: const ValueKey('tracking-switch'),
+                    tileColor: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Text('하루 기록'),
+                    subtitle: Text(
+                      settings.trackingEnabled ? '오늘의 흐름을 기록하고 있어요' : '꺼져 있어요',
+                    ),
+                    value: settings.trackingEnabled,
+                    onChanged: _busy
+                        ? null
+                        : (enabled) => _toggleTracking(settings, enabled),
+                  ),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    key: const ValueKey('notification-switch'),
+                    tileColor: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Text('돌아보기 알림'),
+                    subtitle: Text(
+                      settings.notificationEnabled
+                          ? '어제 하루가 정리되면 알려드릴게요'
+                          : '꺼져 있어요',
+                    ),
+                    value: settings.notificationEnabled,
+                    onChanged: _busy
+                        ? null
+                        : (enabled) => _toggleNotifications(settings, enabled),
+                  ),
+                  const SizedBox(height: 16),
+                  _EditableSettingsValueTile(
+                    key: const ValueKey('movement-threshold-edit'),
+                    title: '움직임으로 볼 거리',
+                    value: '${settings.minimumMovementMeters} m',
+                    icon: Icons.directions_walk,
+                    onTap: () => _editNumber(
+                      title: '움직임으로 볼 거리',
+                      initialValue: settings.minimumMovementMeters,
+                      suffix: 'm',
+                      onSave: (value) => _save(
+                        settings.copyWith(minimumMovementMeters: value),
+                      ),
+                    ),
+                  ),
+                  _EditableSettingsValueTile(
+                    key: const ValueKey('stay-threshold-edit'),
+                    title: '머문 곳으로 볼 시간',
+                    value: '${settings.minimumStayMinutes}분',
+                    icon: Icons.timer_outlined,
+                    onTap: () => _editNumber(
+                      title: '머문 곳으로 볼 시간',
+                      initialValue: settings.minimumStayMinutes,
+                      suffix: '분',
+                      onSave: (value) =>
+                          _save(settings.copyWith(minimumStayMinutes: value)),
+                    ),
+                  ),
+                  _EditableSettingsValueTile(
+                    key: const ValueKey('retention-days-edit'),
+                    title: '자세한 위치 보관 기간',
+                    value: '${settings.rawPointRetentionDays}일',
+                    icon: Icons.storage_outlined,
+                    onTap: () => _editNumber(
+                      title: '자세한 위치 보관 기간',
+                      initialValue: settings.rawPointRetentionDays,
+                      suffix: '일',
+                      onSave: (value) => _save(
+                        settings.copyWith(rawPointRetentionDays: value),
+                      ),
+                    ),
+                  ),
+                  _EditableSettingsValueTile(
+                    key: const ValueKey('notification-time-edit'),
+                    title: '돌아보기 알림 시간',
+                    value:
+                        '${settings.notificationHour.toString().padLeft(2, '0')}:'
+                        '${settings.notificationMinute.toString().padLeft(2, '0')}',
+                    icon: Icons.notifications_active_outlined,
+                    onTap: () => _editNotificationTime(settings),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _runProcessing,
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('어제 돌아보기 만들기'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _sendTestNotification,
+                    icon: const Icon(Icons.notifications_outlined),
+                    label: const Text('테스트 알림 보내기'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _confirmDeleteRawPoints,
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    label: const Text('자세한 위치 기록 비우기'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _confirmDeleteAllLocalData,
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: const Text('이 기기의 기록 모두 지우기'),
+                  ),
+                  if (widget.dependencies.showDebugValidationTools) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _seedDebugYesterdayVisit,
+                      icon: const Icon(Icons.bug_report_outlined),
+                      label: const Text('검증용 어제 기록 넣기'),
+                    ),
+                  ],
+                ],
               ),
             ),
-            _EditableSettingsValueTile(
-              key: const ValueKey('retention-days-edit'),
-              title: '자세한 위치 보관 기간',
-              value: '${settings.rawPointRetentionDays}일',
-              icon: Icons.storage_outlined,
-              onTap: () => _editNumber(
-                title: '자세한 위치 보관 기간',
-                initialValue: settings.rawPointRetentionDays,
-                suffix: '일',
-                onSave: (value) =>
-                    _save(settings.copyWith(rawPointRetentionDays: value)),
-              ),
-            ),
-            _EditableSettingsValueTile(
-              key: const ValueKey('notification-time-edit'),
-              title: '돌아보기 알림 시간',
-              value:
-                  '${settings.notificationHour.toString().padLeft(2, '0')}:'
-                  '${settings.notificationMinute.toString().padLeft(2, '0')}',
-              icon: Icons.notifications_active_outlined,
-              onTap: () => _editNotificationTime(settings),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _busy ? null : _runProcessing,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('어제 돌아보기 만들기'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _confirmDeleteRawPoints,
-              icon: const Icon(Icons.delete_sweep_outlined),
-              label: const Text('자세한 위치 기록 비우기'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _confirmDeleteAllLocalData,
-              icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('이 기기의 기록 모두 지우기'),
-            ),
-            if (widget.dependencies.showDebugValidationTools) ...[
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _seedDebugYesterdayVisit,
-                icon: const Icon(Icons.bug_report_outlined),
-                label: const Text('검증용 어제 기록 넣기'),
-              ),
-            ],
           ],
         );
       },
