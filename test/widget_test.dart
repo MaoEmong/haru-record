@@ -153,6 +153,47 @@ void main() {
     expect(find.text('3번 머문 곳'), findsOneWidget);
   });
 
+  testWidgets('canceling rename for an unnamed place keeps the app stable', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime(2026, 4, 27);
+    await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37,
+            centerLongitude: 127,
+            radiusMeters: 100,
+            createdAt: now,
+            updatedAt: now,
+            visitCount: 1,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('자주 간 곳'));
+    await tester.pumpAndSettle();
+    expect(find.text('이름을 정하지 않은 곳'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('이름 바꾸기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('취소'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    await tester.pumpAndSettle();
+    expect(find.text('이름을 정하지 않은 곳'), findsOneWidget);
+
+    final places = await database.select(database.placeClusters).get();
+    expect(places.single.displayName, isNull);
+  });
+
   testWidgets('history insight opens a day detail route summary', (
     tester,
   ) async {
