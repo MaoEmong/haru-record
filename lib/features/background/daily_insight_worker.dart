@@ -12,6 +12,7 @@ import '../../core/geo/geo_math.dart';
 import '../analysis/daily_summary_service.dart';
 import '../insights/insight_generation_service.dart';
 import '../insights/insight_models.dart';
+import '../insights/pattern_analysis_service.dart';
 import '../notifications/notification_service.dart';
 import '../places/place_clustering_service.dart';
 import '../places/place_cluster_repository.dart';
@@ -90,6 +91,7 @@ class DailyInsightProcessor {
     PlaceClusterRepository? placeClusterRepository,
     DailySummaryService? dailySummaryService,
     InsightGenerationService? insightGenerationService,
+    PatternAnalysisService? patternAnalysisService,
     RetentionService? retentionService,
   }) : _database = database,
        _notificationService = notificationService,
@@ -106,6 +108,8 @@ class DailyInsightProcessor {
        _dailySummaryService = dailySummaryService ?? DailySummaryService(),
        _insightGenerationService =
            insightGenerationService ?? InsightGenerationService(),
+       _patternAnalysisService =
+           patternAnalysisService ?? const PatternAnalysisService(),
        _retentionService = retentionService ?? RetentionService(database);
 
   final AppDatabase _database;
@@ -116,6 +120,7 @@ class DailyInsightProcessor {
   final PlaceClusterRepository _placeClusterRepository;
   final DailySummaryService _dailySummaryService;
   final InsightGenerationService _insightGenerationService;
+  final PatternAnalysisService _patternAnalysisService;
   final RetentionService _retentionService;
 
   Future<DailyProcessingResult> run({required DateTime now}) async {
@@ -212,9 +217,14 @@ class DailyInsightProcessor {
     );
 
     final recentAverage = baseline ?? _baselineFromSummary(summary);
+    final patternSignals = _patternAnalysisService.analyze([
+      ...await _recentSummaries(before: yesterday),
+      summary,
+    ]);
     final insights = _insightGenerationService.generate(
       yesterday: summary,
       recentAverage: recentAverage,
+      patternSignals: patternSignals,
     );
     await _replaceDailyOutputs(yesterday, persistedVisits, summary, insights);
     await _placeClusterRepository.recalculateVisitCounts();
@@ -362,6 +372,34 @@ class DailyInsightProcessor {
                   ) /
                   candidates.length)
               .round(),
+    );
+  }
+
+  Future<List<DailySummarySnapshot>> _recentSummaries({
+    required DateTime before,
+  }) async {
+    final summaries = await _database.select(_database.dailySummaries).get();
+    final start = before.subtract(const Duration(days: 7));
+    final candidates = summaries
+        .where((summary) {
+          final date = DateTime.parse(summary.date);
+          return date.isBefore(before) && !date.isBefore(start);
+        })
+        .map(_summarySnapshotFromRow)
+        .toList();
+    candidates.sort((a, b) => a.date.compareTo(b.date));
+    return candidates;
+  }
+
+  DailySummarySnapshot _summarySnapshotFromRow(DailySummary row) {
+    return DailySummarySnapshot(
+      date: DateTime.parse(row.date),
+      totalDistanceMeters: row.totalDistanceMeters,
+      movingMinutes: row.movingMinutes,
+      stationaryMinutes: row.stationaryMinutes,
+      visitCount: row.visitCount,
+      newPlaceCount: row.newPlaceCount,
+      longestStayPlaceId: row.longestStayPlaceId,
     );
   }
 

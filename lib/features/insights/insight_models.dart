@@ -1,4 +1,5 @@
 enum InsightType {
+  routineTrend,
   movementChange,
   visitChange,
   newPlace,

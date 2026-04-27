@@ -3,6 +3,7 @@ import 'package:projectapp_1/features/analysis/daily_summary_service.dart';
 import 'package:projectapp_1/features/insights/insight_generation_service.dart';
 import 'package:projectapp_1/features/insights/insight_models.dart';
 import 'package:projectapp_1/features/insights/insight_narrator.dart';
+import 'package:projectapp_1/features/insights/pattern_analysis_models.dart';
 
 void main() {
   test('generates lower movement insight against baseline', () {
@@ -106,6 +107,37 @@ void main() {
     );
   });
 
+  test('generates decreasing movement trend insight from pattern signal', () {
+    final service = InsightGenerationService();
+
+    final insights = service.generate(
+      yesterday: DailySummarySnapshot(
+        date: DateTime(2026, 4, 25),
+        totalDistanceMeters: 1000,
+        movingMinutes: 15,
+        stationaryMinutes: 700,
+        visitCount: 1,
+        newPlaceCount: 0,
+      ),
+      recentAverage: DailySummaryBaseline(
+        totalDistanceMeters: 3000,
+        movingMinutes: 30,
+        visitCount: 2,
+      ),
+      patternSignals: const [
+        PatternSignal(
+          type: PatternSignalType.decreasingMovement,
+          strength: 0.7,
+          evidence: '최근 이동이 계속 줄었어요',
+        ),
+      ],
+    );
+
+    expect(insights.first.type, InsightType.routineTrend);
+    expect(insights.first.title, contains('최근'));
+    expect(insights.first.evidence, '최근 이동이 계속 줄었어요');
+  });
+
   test('uses injected narrator wording for generated insights', () {
     final service = InsightGenerationService(narrator: _FakeInsightNarrator());
 
@@ -138,6 +170,15 @@ class _FakeInsightNarrator implements InsightNarrator {
       title: 'custom ${context.type.name}',
       body: 'custom ${context.severity.name} body',
       evidence: 'custom evidence',
+    );
+  }
+
+  @override
+  InsightText narratePattern(PatternSignal signal) {
+    return InsightText(
+      title: 'custom pattern',
+      body: 'custom pattern body',
+      evidence: signal.evidence,
     );
   }
 }
