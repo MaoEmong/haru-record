@@ -165,6 +165,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 children: [
+                  const _TrustCard(),
+                  const SizedBox(height: 8),
                   SwitchListTile(
                     key: const ValueKey('tracking-switch'),
                     tileColor: AppColors.surface,
@@ -259,6 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
+                    key: const ValueKey('delete-raw-points-button'),
                     onPressed: _busy ? null : _confirmDeleteRawPoints,
                     icon: const Icon(Icons.delete_sweep_outlined),
                     label: const Text('자세한 위치 기록 비우기'),
@@ -439,6 +442,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (updated == null) return;
     await _save(updated);
+  }
+}
+
+class _TrustCard extends StatelessWidget {
+  const _TrustCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
+      child: const Padding(
+        padding: EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '기록은 이 기기에만 저장돼요',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: 6),
+            Text(
+              '움직임이 있을 때 중심으로 살펴 배터리 사용을 줄여요',
+              style: TextStyle(color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
