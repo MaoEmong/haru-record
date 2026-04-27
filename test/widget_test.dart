@@ -483,6 +483,41 @@ void main() {
     expect(find.text('어제 기록은 봤지만 특별한 변화는 없었어요'), findsOneWidget);
   });
 
+  testWidgets('debug seed supports device validation of yesterday reflection', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          showDebugValidationTools: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('검증용 어제 기록 넣기'), 200);
+    await tester.tap(find.text('검증용 어제 기록 넣기'));
+    await tester.pumpAndSettle();
+
+    final seededPoints = await database.select(database.locationPoints).get();
+    expect(seededPoints, hasLength(2));
+
+    await tester.scrollUntilVisible(find.text('어제 돌아보기 만들기'), 200);
+    await tester.tap(find.text('어제 돌아보기 만들기'));
+    await tester.pumpAndSettle();
+
+    final visits = await database.select(database.visits).get();
+    final insights = await database.select(database.insights).get();
+    expect(visits, hasLength(1));
+    expect(insights, isNotEmpty);
+  });
+
   testWidgets('settings cleanup removes raw points but keeps insights', (
     tester,
   ) async {
@@ -577,6 +612,7 @@ AppDependencies _testDependencies(
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
   Future<DailyProcessingResult> Function()? runDailyProcessingNow,
+  bool showDebugValidationTools = false,
 }) {
   final notificationAdapter = _FakeNotificationAdapter();
   return AppDependencies(
@@ -589,6 +625,7 @@ AppDependencies _testDependencies(
     maintenanceService: AppMaintenanceService(database),
     importPendingEvents: () async =>
         const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+    showDebugValidationTools: showDebugValidationTools,
     runDailyProcessingOverride: runDailyProcessingNow,
   );
 }

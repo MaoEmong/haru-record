@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
 import '../background/daily_insight_worker.dart';
+import '../debug/debug_validation_seeder.dart';
 import '../diagnostics/diagnostics_repository.dart';
 import '../diagnostics/diagnostics_snapshot.dart';
 import 'settings_models.dart';
@@ -122,11 +123,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _seedDebugYesterdayVisit() async {
+    await DebugValidationSeeder(
+      widget.dependencies.database,
+    ).seedYesterdayVisit();
+    widget.onDataChanged?.call();
+    setState(() {
+      _status = '검증용 어제 기록을 넣었어요';
+    });
+  }
+
   String _processingMessage(DailyProcessingResult result) {
     return switch (result.outcome) {
       DailyProcessingOutcome.createdReflection => '어제 돌아보기를 만들었어요',
       DailyProcessingOutcome.noRawRecords => '아직 돌아볼 기록이 없어요',
-      DailyProcessingOutcome.noYesterdayRecords => '어제 기록이 아직 없어요. 오늘 기록은 내일 돌아볼 수 있어요',
+      DailyProcessingOutcome.noYesterdayRecords =>
+        '어제 기록이 아직 없어요. 오늘 기록은 내일 돌아볼 수 있어요',
       DailyProcessingOutcome.noHighlights => '어제 기록은 봤지만 특별한 변화는 없었어요',
     };
   }
@@ -248,6 +260,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.delete_forever_outlined),
               label: const Text('이 기기의 기록 모두 지우기'),
             ),
+            if (widget.dependencies.showDebugValidationTools) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _seedDebugYesterdayVisit,
+                icon: const Icon(Icons.bug_report_outlined),
+                label: const Text('검증용 어제 기록 넣기'),
+              ),
+            ],
           ],
         );
       },

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -25,6 +26,7 @@ class AppDependencies {
     required this.permissionService,
     required this.maintenanceService,
     required this.importPendingEvents,
+    this.showDebugValidationTools = kDebugMode,
     this.runDailyProcessingOverride,
   });
 
@@ -35,6 +37,7 @@ class AppDependencies {
   final AppPermissionService permissionService;
   final AppMaintenanceService maintenanceService;
   final Future<LocationEventImportResult> Function() importPendingEvents;
+  final bool showDebugValidationTools;
   final Future<DailyProcessingResult> Function()? runDailyProcessingOverride;
 
   static Future<AppDependencies> production() async {
