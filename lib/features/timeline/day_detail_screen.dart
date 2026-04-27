@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
+import 'day_route_models.dart';
+import 'day_route_repository.dart';
 import 'day_timeline_models.dart';
 import 'day_timeline_repository.dart';
 
@@ -40,6 +42,9 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
     final timeline = await DayTimelineRepository(
       widget.database,
     ).loadForDate(widget.date);
+    final route = await DayRouteRepository(
+      widget.database,
+    ).loadForDate(widget.date);
     final summaries = await widget.database
         .select(widget.database.dailySummaries)
         .get();
@@ -65,6 +70,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
           ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return _DayDetailSnapshot(
       timeline: timeline,
+      route: route,
       summary: summary,
       pointCount: points.length,
       latestPoint: points.firstOrNull,
@@ -91,6 +97,8 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   title: widget.title,
                   body: widget.body,
                 ),
+                const SizedBox(height: 12),
+                _RoutePreviewCard(route: data.route),
                 const SizedBox(height: 12),
                 if (widget.showRawRecords) ...[
                   _RawRecordsCard(
@@ -208,6 +216,47 @@ class _SummaryCard extends StatelessWidget {
       return '${(meters / 1000).toStringAsFixed(1)} km';
     }
     return '${meters.round()} m';
+  }
+}
+
+class _RoutePreviewCard extends StatelessWidget {
+  const _RoutePreviewCard({required this.route});
+
+  final DayRouteSnapshot route;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '이동 경로',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '기록 지점 ${route.points.length}개',
+              style: const TextStyle(color: AppColors.muted),
+            ),
+            const SizedBox(height: 12),
+            if (route.points.length < 2)
+              const Text(
+                '경로를 그릴 만큼 위치 기록이 아직 부족해요.',
+                style: TextStyle(color: AppColors.muted),
+              )
+            else
+              Text(
+                '${route.points.first.timeLabel} -> ${route.points.last.timeLabel}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -365,12 +414,14 @@ class _MetricChip extends StatelessWidget {
 class _DayDetailSnapshot {
   const _DayDetailSnapshot({
     required this.timeline,
+    required this.route,
     required this.summary,
     required this.pointCount,
     required this.latestPoint,
   });
 
   final List<DayTimelineItem> timeline;
+  final DayRouteSnapshot route;
   final DailySummary? summary;
   final int pointCount;
   final LocationPoint? latestPoint;
