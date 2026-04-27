@@ -449,6 +449,24 @@ void main() {
     expect(find.text('오늘의 흐름을 기록하고 있어요'), findsOneWidget);
   });
 
+  testWidgets('settings explains local privacy and battery behavior', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('기록은 이 기기에만 저장돼요'), findsOneWidget);
+    expect(find.text('움직임이 있을 때 중심으로 살펴 배터리 사용을 줄여요'), findsOneWidget);
+  });
+
   testWidgets('settings screen edits thresholds and notification time', (
     tester,
   ) async {
@@ -481,6 +499,12 @@ void main() {
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('retention-days-edit')),
+      300,
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -80));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('retention-days-edit')));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -490,6 +514,12 @@ void main() {
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('notification-time-edit')),
+      300,
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -80));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('notification-time-edit')));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -827,8 +857,11 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('자세한 위치 기록 비우기'), 200);
-    await tester.tap(find.text('자세한 위치 기록 비우기'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('delete-raw-points-button')),
+      500,
+    );
+    await tester.tap(find.byKey(const ValueKey('delete-raw-points-button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();
