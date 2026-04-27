@@ -33,12 +33,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('하루 패턴'), findsOneWidget);
-    expect(find.text('홈'), findsWidgets);
-    expect(find.text('기록'), findsOneWidget);
-    expect(find.text('장소'), findsOneWidget);
+    expect(find.text('오늘'), findsWidgets);
+    expect(find.text('돌아보기'), findsOneWidget);
+    expect(find.text('자주 간 곳'), findsOneWidget);
     expect(find.text('설정'), findsOneWidget);
-    expect(find.text('아직 인사이트가 없어요'), findsOneWidget);
+    expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {
@@ -62,7 +61,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(trackingService.started, isTrue);
-    expect(find.text('추적 중'), findsOneWidget);
+    expect(find.text('오늘의 흐름을 기록하고 있어요'), findsOneWidget);
   });
 
   testWidgets('settings screen edits thresholds and notification time', (
@@ -151,7 +150,7 @@ void main() {
 
     expect(permissionService.requestedLocation, isTrue);
     expect(trackingService.started, isFalse);
-    expect(find.text('위치 권한이 필요합니다'), findsOneWidget);
+    expect(find.text('하루를 기록하려면 위치 권한이 필요해요'), findsOneWidget);
   });
 
   testWidgets('manual daily processing refreshes visible insight state', (
@@ -174,8 +173,8 @@ void main() {
                     date: DateTime(2026, 4, 27),
                     type: 'movementChange',
                     severity: 'notable',
-                    title: '평소보다 이동이 적었어요',
-                    body: '어제는 최근 평균보다 이동이 조용한 날이었어요.',
+                    title: '어제는 조금 조용한 하루였어요',
+                    body: '최근 며칠보다 이동이 적고 차분했어요.',
                     evidence: '100m 대 최근 평균 400m',
                     createdAt: DateTime(2026, 4, 27, 9),
                   ),
@@ -186,17 +185,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('아직 인사이트가 없어요'), findsOneWidget);
+    expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('오늘 처리 실행'));
+    await tester.tap(find.text('지금 하루 정리하기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('홈'));
+    await tester.tap(find.text('오늘'));
     await tester.pumpAndSettle();
 
     expect(processingRuns, 1);
-    expect(find.text('평소보다 이동이 적었어요'), findsOneWidget);
+    expect(find.text('어제는 조금 조용한 하루였어요'), findsOneWidget);
   });
 
   testWidgets('settings cleanup removes raw points but keeps insights', (
@@ -222,7 +221,7 @@ void main() {
             date: DateTime(2026, 4, 27),
             type: 'movementChange',
             severity: 'notable',
-            title: '기존 인사이트',
+            title: '기존 돌아보기',
             body: '원본 정리 후에도 유지됩니다.',
             evidence: '시드 데이터',
             createdAt: DateTime(2026, 4, 27),
@@ -236,8 +235,8 @@ void main() {
 
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('원본 위치 기록 삭제'), 200);
-    await tester.tap(find.text('원본 위치 기록 삭제'));
+    await tester.scrollUntilVisible(find.text('자세한 위치 기록 비우기'), 200);
+    await tester.tap(find.text('자세한 위치 기록 비우기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();
@@ -246,7 +245,7 @@ void main() {
     final insights = await database.select(database.insights).get();
     expect(points, isEmpty);
     expect(insights, hasLength(1));
-    expect(find.text('원본 위치 기록을 삭제했습니다'), findsOneWidget);
+    expect(find.text('자세한 위치 기록을 비웠어요'), findsOneWidget);
   });
 
   testWidgets('notification toggle stays off when permission is denied', (
@@ -283,7 +282,7 @@ void main() {
     final settings = await settingsRepository.load();
     expect(permissionService.requestedNotification, isTrue);
     expect(settings.notificationEnabled, isFalse);
-    expect(find.text('알림 권한이 필요합니다'), findsOneWidget);
+    expect(find.text('돌아보기 알림을 받으려면 알림 권한이 필요해요'), findsOneWidget);
   });
 }
 

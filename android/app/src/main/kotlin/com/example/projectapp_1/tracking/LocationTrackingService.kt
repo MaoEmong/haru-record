@@ -106,7 +106,7 @@ class LocationTrackingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "하루 패턴 추적",
+                "하루 기록",
                 NotificationManager.IMPORTANCE_LOW
             )
             manager.createNotificationChannel(channel)
@@ -120,8 +120,8 @@ class LocationTrackingService : Service() {
         }
 
         return builder
-            .setContentTitle("하루 패턴")
-            .setContentText("의미 있는 위치 변화를 기록 중입니다")
+            .setContentTitle("하루 기록")
+            .setContentText("오늘의 흐름을 조용히 남기고 있어요")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()

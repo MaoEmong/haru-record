@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_dependencies.dart';
+import '../../app/app_theme.dart';
 import 'settings_models.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -46,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .ensureLocationTrackingPermission();
         if (!granted) {
           setState(() {
-            _status = '위치 권한이 필요합니다';
+            _status = '하루를 기록하려면 위치 권한이 필요해요';
           });
           return;
         }
@@ -61,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (error) {
       setState(() {
-        _status = '추적 상태를 변경하지 못했습니다';
+        _status = '하루 기록을 바꾸지 못했어요';
       });
     } finally {
       if (mounted) {
@@ -79,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .ensureNotificationPermission();
       if (!granted) {
         setState(() {
-          _status = '알림 권한이 필요합니다';
+          _status = '돌아보기 알림을 받으려면 알림 권한이 필요해요';
         });
         return;
       }
@@ -103,11 +104,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.dependencies.runDailyProcessingNow();
       widget.onDataChanged?.call();
       setState(() {
-        _status = '오늘 처리를 완료했습니다';
+        _status = '하루 정리를 마쳤어요';
       });
     } catch (_) {
       setState(() {
-        _status = '오늘 처리를 완료하지 못했습니다';
+        _status = '하루 정리를 마치지 못했어요';
       });
     } finally {
       if (mounted) {
@@ -128,16 +129,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         final settings = snapshot.data!;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             SwitchListTile(
               key: const ValueKey('tracking-switch'),
-              tileColor: Theme.of(context).colorScheme.surface,
+              tileColor: AppColors.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text('위치 추적'),
-              subtitle: Text(settings.trackingEnabled ? '추적 중' : '추적 중지'),
+              title: const Text('하루 기록'),
+              subtitle: Text(
+                settings.trackingEnabled ? '오늘의 흐름을 기록하고 있어요' : '꺼져 있어요',
+              ),
               value: settings.trackingEnabled,
               onChanged: _busy
                   ? null
@@ -146,12 +150,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
             SwitchListTile(
               key: const ValueKey('notification-switch'),
-              tileColor: Theme.of(context).colorScheme.surface,
+              tileColor: AppColors.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text('일일 알림'),
-              subtitle: Text(settings.notificationEnabled ? '켜짐' : '꺼짐'),
+              title: const Text('돌아보기 알림'),
+              subtitle: Text(
+                settings.notificationEnabled ? '어제 하루가 정리되면 알려드릴게요' : '꺼져 있어요',
+              ),
               value: settings.notificationEnabled,
               onChanged: _busy
                   ? null
@@ -159,16 +166,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (_status != null) ...[
               const SizedBox(height: 12),
-              Text(_status!, textAlign: TextAlign.center),
+              Text(
+                _status!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.muted),
+              ),
             ],
             const SizedBox(height: 16),
             _EditableSettingsValueTile(
               key: const ValueKey('movement-threshold-edit'),
-              title: '이동 기준 거리',
+              title: '움직임으로 볼 거리',
               value: '${settings.minimumMovementMeters} m',
               icon: Icons.directions_walk,
               onTap: () => _editNumber(
-                title: '이동 기준 거리',
+                title: '움직임으로 볼 거리',
                 initialValue: settings.minimumMovementMeters,
                 suffix: 'm',
                 onSave: (value) =>
@@ -177,11 +188,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('stay-threshold-edit'),
-              title: '최소 체류 시간',
+              title: '머문 곳으로 볼 시간',
               value: '${settings.minimumStayMinutes}분',
               icon: Icons.timer_outlined,
               onTap: () => _editNumber(
-                title: '최소 체류 시간',
+                title: '머문 곳으로 볼 시간',
                 initialValue: settings.minimumStayMinutes,
                 suffix: '분',
                 onSave: (value) =>
@@ -190,11 +201,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('retention-days-edit'),
-              title: '원본 위치 보관 기간',
+              title: '자세한 위치 보관 기간',
               value: '${settings.rawPointRetentionDays}일',
               icon: Icons.storage_outlined,
               onTap: () => _editNumber(
-                title: '원본 위치 보관 기간',
+                title: '자세한 위치 보관 기간',
                 initialValue: settings.rawPointRetentionDays,
                 suffix: '일',
                 onSave: (value) =>
@@ -203,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _EditableSettingsValueTile(
               key: const ValueKey('notification-time-edit'),
-              title: '알림 시간',
+              title: '돌아보기 알림 시간',
               value:
                   '${settings.notificationHour.toString().padLeft(2, '0')}:'
                   '${settings.notificationMinute.toString().padLeft(2, '0')}',
@@ -214,19 +225,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             FilledButton.icon(
               onPressed: _busy ? null : _runProcessing,
               icon: const Icon(Icons.play_arrow),
-              label: const Text('오늘 처리 실행'),
+              label: const Text('지금 하루 정리하기'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _busy ? null : _confirmDeleteRawPoints,
               icon: const Icon(Icons.delete_sweep_outlined),
-              label: const Text('원본 위치 기록 삭제'),
+              label: const Text('자세한 위치 기록 비우기'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _busy ? null : _confirmDeleteAllLocalData,
               icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('모든 로컬 데이터 삭제'),
+              label: const Text('이 기기의 기록 모두 지우기'),
             ),
           ],
         );
@@ -258,25 +269,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmDeleteRawPoints() async {
-    final confirmed = await _confirm('원본 위치 기록 삭제', '요약과 인사이트는 유지됩니다.');
+    final confirmed = await _confirm(
+      '자세한 위치 기록 비우기',
+      '돌아보기와 하루 요약은 그대로 남겨둘게요.',
+    );
     if (!confirmed) return;
     await widget.dependencies.maintenanceService.deleteRawLocationPoints();
     widget.onDataChanged?.call();
     setState(() {
-      _status = '원본 위치 기록을 삭제했습니다';
+      _status = '자세한 위치 기록을 비웠어요';
     });
   }
 
   Future<void> _confirmDeleteAllLocalData() async {
     final confirmed = await _confirm(
-      '모든 로컬 데이터 삭제',
-      '이 기기의 위치 기록, 장소, 방문, 요약, 인사이트를 모두 삭제합니다.',
+      '이 기기의 기록 모두 지우기',
+      '자세한 위치, 자주 간 곳, 하루 요약, 돌아보기를 모두 지워요.',
     );
     if (!confirmed) return;
     await widget.dependencies.maintenanceService.deleteAllLocalData();
     widget.onDataChanged?.call();
     setState(() {
-      _status = '모든 로컬 데이터를 삭제했습니다';
+      _status = '이 기기의 기록을 모두 지웠어요';
     });
   }
 
@@ -404,16 +418,19 @@ class _EditableSettingsValueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      tileColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      leading: Icon(icon),
-      title: Text(title),
+      tileColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      leading: Icon(icon, color: AppColors.ink),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value),
+          Text(value, style: const TextStyle(color: AppColors.muted)),
           const SizedBox(width: 8),
-          const Icon(Icons.edit_outlined),
+          const Icon(Icons.edit_outlined, color: AppColors.muted),
         ],
       ),
       onTap: onTap,

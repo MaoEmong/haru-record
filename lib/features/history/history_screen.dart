@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -55,19 +56,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
           return const _EmptyHistory();
         }
         return ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: insights.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final insight = insights[index];
-            return ListTile(
-              tileColor: Theme.of(context).colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            return DecoratedBox(
+              decoration: AppThemeDecorations.softCard(),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                title: Text(
+                  insight.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  '${_dateLabel(insight.date)}\n${insight.body}',
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+                isThreeLine: true,
               ),
-              title: Text(insight.title),
-              subtitle: Text('${_dateLabel(insight.date)}\n${insight.body}'),
-              isThreeLine: true,
             );
           },
         );
@@ -88,7 +98,10 @@ class _EmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(padding: EdgeInsets.all(24), child: Text('아직 기록이 없어요')),
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('아직 돌아볼 하루가 없어요'),
+      ),
     );
   }
 }

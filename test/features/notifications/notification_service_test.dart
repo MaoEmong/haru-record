@@ -10,7 +10,7 @@ void main() {
 
     expect(adapter.scheduledHour, 9);
     expect(adapter.scheduledMinute, 0);
-    expect(adapter.title, '오늘의 인사이트가 준비됐어요');
+    expect(adapter.title, '어제 하루를 정리했어요');
   });
 
   test('requests notification permission separately from scheduling', () async {

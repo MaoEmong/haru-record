@@ -24,8 +24,8 @@ void main() {
       ),
     );
 
-    expect(insights.first.title, '평소보다 이동이 적었어요');
-    expect(insights.first.body, contains('최근 평균'));
+    expect(insights.first.title, '어제는 조금 조용한 하루였어요');
+    expect(insights.first.body, contains('최근 며칠'));
   });
 
   test('generates higher movement insight against baseline', () {
@@ -47,7 +47,7 @@ void main() {
       ),
     );
 
-    expect(insights.first.title, '평소보다 이동이 많았어요');
+    expect(insights.first.title, '어제는 평소보다 많이 움직였어요');
   });
 
   test(

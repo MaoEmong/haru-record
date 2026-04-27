@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
+import '../../app/app_theme.dart';
 import '../storage/app_database.dart';
 
 class PlaceManagementScreen extends StatefulWidget {
@@ -51,11 +52,11 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('장소 이름 변경'),
+          title: const Text('이곳의 이름 바꾸기'),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(labelText: '장소 이름'),
+            decoration: const InputDecoration(labelText: '내가 부를 이름'),
           ),
           actions: [
             TextButton(
@@ -101,23 +102,32 @@ class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
           return const _EmptyPlaces();
         }
         return ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: places.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final place = places[index];
-            return ListTile(
-              tileColor: Theme.of(context).colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              leading: const Icon(Icons.place_outlined),
-              title: Text(place.displayName ?? '이름 없는 장소'),
-              subtitle: Text('${place.visitCount}회 방문'),
-              trailing: IconButton(
-                tooltip: '이름 변경',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => _rename(place),
+            return DecoratedBox(
+              decoration: AppThemeDecorations.softCard(),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                leading: const Icon(Icons.place_outlined, color: AppColors.ink),
+                title: Text(
+                  place.displayName ?? '이름을 정하지 않은 곳',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  '${place.visitCount}번 머문 곳',
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+                trailing: IconButton(
+                  tooltip: '이름 바꾸기',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _rename(place),
+                ),
               ),
             );
           },
@@ -135,7 +145,7 @@ class _EmptyPlaces extends StatelessWidget {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Text('아직 감지된 장소가 없어요'),
+        child: Text('아직 자주 머문 곳이 없어요'),
       ),
     );
   }
