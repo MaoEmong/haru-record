@@ -33,12 +33,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Daily Pattern'), findsOneWidget);
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('History'), findsOneWidget);
-    expect(find.text('Places'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('No insights yet'), findsOneWidget);
+    expect(find.text('하루 패턴'), findsOneWidget);
+    expect(find.text('홈'), findsWidgets);
+    expect(find.text('기록'), findsOneWidget);
+    expect(find.text('장소'), findsOneWidget);
+    expect(find.text('설정'), findsOneWidget);
+    expect(find.text('아직 인사이트가 없어요'), findsOneWidget);
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {
@@ -56,13 +56,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tracking-switch')));
     await tester.pumpAndSettle();
 
     expect(trackingService.started, isTrue);
-    expect(find.text('Tracking active'), findsOneWidget);
+    expect(find.text('추적 중'), findsOneWidget);
   });
 
   testWidgets('settings screen edits thresholds and notification time', (
@@ -76,7 +76,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('movement-threshold-edit')));
@@ -85,7 +85,7 @@ void main() {
       find.byKey(const ValueKey('number-setting-field')),
       '250',
     );
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('stay-threshold-edit')));
@@ -94,7 +94,7 @@ void main() {
       find.byKey(const ValueKey('number-setting-field')),
       '20',
     );
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('retention-days-edit')));
@@ -103,7 +103,7 @@ void main() {
       find.byKey(const ValueKey('number-setting-field')),
       '14',
     );
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('notification-time-edit')));
@@ -116,12 +116,12 @@ void main() {
       find.byKey(const ValueKey('minute-setting-field')),
       '30',
     );
-    await tester.tap(find.text('Save'));
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
     expect(find.text('250 m'), findsOneWidget);
-    expect(find.text('20 min'), findsOneWidget);
-    expect(find.text('14 days'), findsOneWidget);
+    expect(find.text('20분'), findsOneWidget);
+    expect(find.text('14일'), findsOneWidget);
     expect(find.text('08:30'), findsOneWidget);
   });
 
@@ -144,14 +144,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tracking-switch')));
     await tester.pumpAndSettle();
 
     expect(permissionService.requestedLocation, isTrue);
     expect(trackingService.started, isFalse);
-    expect(find.text('Location permission is required'), findsOneWidget);
+    expect(find.text('위치 권한이 필요합니다'), findsOneWidget);
   });
 
   testWidgets('manual daily processing refreshes visible insight state', (
@@ -167,14 +167,16 @@ void main() {
           database,
           runDailyProcessingNow: () async {
             processingRuns++;
-            await database.into(database.insights).insert(
+            await database
+                .into(database.insights)
+                .insert(
                   InsightsCompanion.insert(
                     date: DateTime(2026, 4, 27),
                     type: 'movementChange',
                     severity: 'notable',
-                    title: 'Movement was lower than usual',
-                    body: 'Yesterday was quieter than your recent average.',
-                    evidence: '100m vs 400m recent average',
+                    title: '평소보다 이동이 적었어요',
+                    body: '어제는 최근 평균보다 이동이 조용한 날이었어요.',
+                    evidence: '100m 대 최근 평균 400m',
                     createdAt: DateTime(2026, 4, 27, 9),
                   ),
                 );
@@ -184,17 +186,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No insights yet'), findsOneWidget);
+    expect(find.text('아직 인사이트가 없어요'), findsOneWidget);
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Run daily processing now'));
+    await tester.tap(find.text('오늘 처리 실행'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.text('홈'));
     await tester.pumpAndSettle();
 
     expect(processingRuns, 1);
-    expect(find.text('Movement was lower than usual'), findsOneWidget);
+    expect(find.text('평소보다 이동이 적었어요'), findsOneWidget);
   });
 
   testWidgets('settings cleanup removes raw points but keeps insights', (
@@ -203,7 +205,9 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
-    await database.into(database.locationPoints).insert(
+    await database
+        .into(database.locationPoints)
+        .insert(
           LocationPointsCompanion.insert(
             timestamp: DateTime(2026, 1, 1),
             latitude: 37,
@@ -211,14 +215,16 @@ void main() {
             accuracy: 20,
           ),
         );
-    await database.into(database.insights).insert(
+    await database
+        .into(database.insights)
+        .insert(
           InsightsCompanion.insert(
             date: DateTime(2026, 4, 27),
             type: 'movementChange',
             severity: 'notable',
-            title: 'Existing insight',
-            body: 'Kept after raw cleanup.',
-            evidence: 'seed data',
+            title: '기존 인사이트',
+            body: '원본 정리 후에도 유지됩니다.',
+            evidence: '시드 데이터',
             createdAt: DateTime(2026, 4, 27),
           ),
         );
@@ -228,22 +234,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Delete raw location points'),
-      200,
-    );
-    await tester.tap(find.text('Delete raw location points'));
+    await tester.scrollUntilVisible(find.text('원본 위치 기록 삭제'), 200);
+    await tester.tap(find.text('원본 위치 기록 삭제'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
+    await tester.tap(find.text('삭제'));
     await tester.pumpAndSettle();
 
     final points = await database.select(database.locationPoints).get();
     final insights = await database.select(database.insights).get();
     expect(points, isEmpty);
     expect(insights, hasLength(1));
-    expect(find.text('Raw location points deleted'), findsOneWidget);
+    expect(find.text('원본 위치 기록을 삭제했습니다'), findsOneWidget);
   });
 
   testWidgets('notification toggle stays off when permission is denied', (
@@ -272,7 +275,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('notification-switch')));
     await tester.pumpAndSettle();
@@ -280,7 +283,7 @@ void main() {
     final settings = await settingsRepository.load();
     expect(permissionService.requestedNotification, isTrue);
     expect(settings.notificationEnabled, isFalse);
-    expect(find.text('Notification permission is required'), findsOneWidget);
+    expect(find.text('알림 권한이 필요합니다'), findsOneWidget);
   });
 }
 

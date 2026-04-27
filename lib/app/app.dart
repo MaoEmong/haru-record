@@ -14,7 +14,7 @@ class DailyPatternApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Daily Pattern',
+      title: '하루 패턴',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -65,7 +65,7 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Daily Pattern')),
+      appBar: AppBar(title: const Text('하루 패턴')),
       body: SafeArea(child: screens[_selectedIndex]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
@@ -78,22 +78,22 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            label: '홈',
           ),
           NavigationDestination(
             icon: Icon(Icons.timeline_outlined),
             selectedIcon: Icon(Icons.timeline),
-            label: 'History',
+            label: '기록',
           ),
           NavigationDestination(
             icon: Icon(Icons.place_outlined),
             selectedIcon: Icon(Icons.place),
-            label: 'Places',
+            label: '장소',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: '설정',
           ),
         ],
       ),

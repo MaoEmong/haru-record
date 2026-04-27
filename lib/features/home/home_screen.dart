@@ -65,10 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _StatusPanel(snapshot: data),
             const SizedBox(height: 16),
-            Text(
-              'Latest insight',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('최근 인사이트', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             if (data.latestInsight == null)
               const _EmptyPanel()
@@ -89,8 +86,8 @@ class _StatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = snapshot.isTracking || snapshot.settings.trackingEnabled
-        ? 'Tracking active'
-        : 'Tracking paused';
+        ? '추적 중'
+        : '추적 중지';
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primaryContainer,
@@ -104,7 +101,7 @@ class _StatusPanel extends StatelessWidget {
             Text(status, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
-              'Daily summaries use local location points and stay on this device.',
+              '위치 기록은 이 기기에만 저장되고 하루 단위로 요약됩니다.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -123,8 +120,8 @@ class _EmptyPanel extends StatelessWidget {
       tileColor: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       leading: const Icon(Icons.insights_outlined),
-      title: const Text('No insights yet'),
-      subtitle: const Text('Run daily processing after location data exists.'),
+      title: const Text('아직 인사이트가 없어요'),
+      subtitle: const Text('위치 기록이 쌓인 뒤 오늘 처리를 실행해 보세요.'),
     );
   }
 }
