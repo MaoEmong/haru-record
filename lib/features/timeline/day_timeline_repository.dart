@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../storage/app_database.dart';
+import '../places/place_label.dart';
 import 'day_timeline_models.dart';
 
 class DayTimelineRepository {
@@ -11,24 +12,26 @@ class DayTimelineRepository {
   Future<List<DayTimelineItem>> loadForDate(DateTime date) async {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    final visits = await (_database.select(_database.visits)
-          ..where(
-            (visit) =>
-                visit.startedAt.isBiggerOrEqualValue(start) &
-                visit.startedAt.isSmallerThanValue(end),
-          ))
-        .get();
+    final visits =
+        await (_database.select(_database.visits)..where(
+              (visit) =>
+                  visit.startedAt.isBiggerOrEqualValue(start) &
+                  visit.startedAt.isSmallerThanValue(end),
+            ))
+            .get();
     visits.sort((a, b) => a.startedAt.compareTo(b.startedAt));
 
     final places = await _database.select(_database.placeClusters).get();
-    return visits.map((visit) {
-      final place = _findPlace(places, visit.placeClusterId);
-      return DayTimelineItem(
-        timeLabel: _timeLabel(visit.startedAt),
-        placeLabel: place?.displayName ?? '이름 없는 장소',
-        durationLabel: _durationLabel(visit.durationMinutes),
-      );
-    }).toList(growable: false);
+    return visits
+        .map((visit) {
+          final place = _findPlace(places, visit.placeClusterId);
+          return DayTimelineItem(
+            timeLabel: _timeLabel(visit.startedAt),
+            placeLabel: placeLabel(place),
+            durationLabel: _durationLabel(visit.durationMinutes),
+          );
+        })
+        .toList(growable: false);
   }
 
   PlaceCluster? _findPlace(List<PlaceCluster> places, int? placeClusterId) {

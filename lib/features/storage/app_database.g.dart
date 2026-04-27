@@ -562,6 +562,51 @@ class $PlaceClustersTable extends PlaceClusters
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _addressNameMeta = const VerificationMeta(
+    'addressName',
+  );
+  @override
+  late final GeneratedColumn<String> addressName = GeneratedColumn<String>(
+    'address_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roadAddressNameMeta = const VerificationMeta(
+    'roadAddressName',
+  );
+  @override
+  late final GeneratedColumn<String> roadAddressName = GeneratedColumn<String>(
+    'road_address_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _regionNameMeta = const VerificationMeta(
+    'regionName',
+  );
+  @override
+  late final GeneratedColumn<String> regionName = GeneratedColumn<String>(
+    'region_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressResolvedAtMeta = const VerificationMeta(
+    'addressResolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addressResolvedAt =
+      GeneratedColumn<DateTime>(
+        'address_resolved_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -602,6 +647,10 @@ class $PlaceClustersTable extends PlaceClusters
     centerLongitude,
     radiusMeters,
     displayName,
+    addressName,
+    roadAddressName,
+    regionName,
+    addressResolvedAt,
     createdAt,
     updatedAt,
     visitCount,
@@ -663,6 +712,39 @@ class $PlaceClustersTable extends PlaceClusters
         ),
       );
     }
+    if (data.containsKey('address_name')) {
+      context.handle(
+        _addressNameMeta,
+        addressName.isAcceptableOrUnknown(
+          data['address_name']!,
+          _addressNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('road_address_name')) {
+      context.handle(
+        _roadAddressNameMeta,
+        roadAddressName.isAcceptableOrUnknown(
+          data['road_address_name']!,
+          _roadAddressNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('region_name')) {
+      context.handle(
+        _regionNameMeta,
+        regionName.isAcceptableOrUnknown(data['region_name']!, _regionNameMeta),
+      );
+    }
+    if (data.containsKey('address_resolved_at')) {
+      context.handle(
+        _addressResolvedAtMeta,
+        addressResolvedAt.isAcceptableOrUnknown(
+          data['address_resolved_at']!,
+          _addressResolvedAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -716,6 +798,22 @@ class $PlaceClustersTable extends PlaceClusters
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
       ),
+      addressName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_name'],
+      ),
+      roadAddressName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}road_address_name'],
+      ),
+      regionName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}region_name'],
+      ),
+      addressResolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}address_resolved_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -743,6 +841,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
   final double centerLongitude;
   final double radiusMeters;
   final String? displayName;
+  final String? addressName;
+  final String? roadAddressName;
+  final String? regionName;
+  final DateTime? addressResolvedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int visitCount;
@@ -752,6 +854,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     required this.centerLongitude,
     required this.radiusMeters,
     this.displayName,
+    this.addressName,
+    this.roadAddressName,
+    this.regionName,
+    this.addressResolvedAt,
     required this.createdAt,
     required this.updatedAt,
     required this.visitCount,
@@ -765,6 +871,18 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     map['radius_meters'] = Variable<double>(radiusMeters);
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
+    }
+    if (!nullToAbsent || addressName != null) {
+      map['address_name'] = Variable<String>(addressName);
+    }
+    if (!nullToAbsent || roadAddressName != null) {
+      map['road_address_name'] = Variable<String>(roadAddressName);
+    }
+    if (!nullToAbsent || regionName != null) {
+      map['region_name'] = Variable<String>(regionName);
+    }
+    if (!nullToAbsent || addressResolvedAt != null) {
+      map['address_resolved_at'] = Variable<DateTime>(addressResolvedAt);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -781,6 +899,18 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
           : Value(displayName),
+      addressName: addressName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressName),
+      roadAddressName: roadAddressName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(roadAddressName),
+      regionName: regionName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(regionName),
+      addressResolvedAt: addressResolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addressResolvedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       visitCount: Value(visitCount),
@@ -798,6 +928,12 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       centerLongitude: serializer.fromJson<double>(json['centerLongitude']),
       radiusMeters: serializer.fromJson<double>(json['radiusMeters']),
       displayName: serializer.fromJson<String?>(json['displayName']),
+      addressName: serializer.fromJson<String?>(json['addressName']),
+      roadAddressName: serializer.fromJson<String?>(json['roadAddressName']),
+      regionName: serializer.fromJson<String?>(json['regionName']),
+      addressResolvedAt: serializer.fromJson<DateTime?>(
+        json['addressResolvedAt'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       visitCount: serializer.fromJson<int>(json['visitCount']),
@@ -812,6 +948,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       'centerLongitude': serializer.toJson<double>(centerLongitude),
       'radiusMeters': serializer.toJson<double>(radiusMeters),
       'displayName': serializer.toJson<String?>(displayName),
+      'addressName': serializer.toJson<String?>(addressName),
+      'roadAddressName': serializer.toJson<String?>(roadAddressName),
+      'regionName': serializer.toJson<String?>(regionName),
+      'addressResolvedAt': serializer.toJson<DateTime?>(addressResolvedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'visitCount': serializer.toJson<int>(visitCount),
@@ -824,6 +964,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     double? centerLongitude,
     double? radiusMeters,
     Value<String?> displayName = const Value.absent(),
+    Value<String?> addressName = const Value.absent(),
+    Value<String?> roadAddressName = const Value.absent(),
+    Value<String?> regionName = const Value.absent(),
+    Value<DateTime?> addressResolvedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     int? visitCount,
@@ -833,6 +977,14 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     centerLongitude: centerLongitude ?? this.centerLongitude,
     radiusMeters: radiusMeters ?? this.radiusMeters,
     displayName: displayName.present ? displayName.value : this.displayName,
+    addressName: addressName.present ? addressName.value : this.addressName,
+    roadAddressName: roadAddressName.present
+        ? roadAddressName.value
+        : this.roadAddressName,
+    regionName: regionName.present ? regionName.value : this.regionName,
+    addressResolvedAt: addressResolvedAt.present
+        ? addressResolvedAt.value
+        : this.addressResolvedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     visitCount: visitCount ?? this.visitCount,
@@ -852,6 +1004,18 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       displayName: data.displayName.present
           ? data.displayName.value
           : this.displayName,
+      addressName: data.addressName.present
+          ? data.addressName.value
+          : this.addressName,
+      roadAddressName: data.roadAddressName.present
+          ? data.roadAddressName.value
+          : this.roadAddressName,
+      regionName: data.regionName.present
+          ? data.regionName.value
+          : this.regionName,
+      addressResolvedAt: data.addressResolvedAt.present
+          ? data.addressResolvedAt.value
+          : this.addressResolvedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       visitCount: data.visitCount.present
@@ -868,6 +1032,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
           ..write('centerLongitude: $centerLongitude, ')
           ..write('radiusMeters: $radiusMeters, ')
           ..write('displayName: $displayName, ')
+          ..write('addressName: $addressName, ')
+          ..write('roadAddressName: $roadAddressName, ')
+          ..write('regionName: $regionName, ')
+          ..write('addressResolvedAt: $addressResolvedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('visitCount: $visitCount')
@@ -882,6 +1050,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     centerLongitude,
     radiusMeters,
     displayName,
+    addressName,
+    roadAddressName,
+    regionName,
+    addressResolvedAt,
     createdAt,
     updatedAt,
     visitCount,
@@ -895,6 +1067,10 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
           other.centerLongitude == this.centerLongitude &&
           other.radiusMeters == this.radiusMeters &&
           other.displayName == this.displayName &&
+          other.addressName == this.addressName &&
+          other.roadAddressName == this.roadAddressName &&
+          other.regionName == this.regionName &&
+          other.addressResolvedAt == this.addressResolvedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.visitCount == this.visitCount);
@@ -906,6 +1082,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
   final Value<double> centerLongitude;
   final Value<double> radiusMeters;
   final Value<String?> displayName;
+  final Value<String?> addressName;
+  final Value<String?> roadAddressName;
+  final Value<String?> regionName;
+  final Value<DateTime?> addressResolvedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> visitCount;
@@ -915,6 +1095,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     this.centerLongitude = const Value.absent(),
     this.radiusMeters = const Value.absent(),
     this.displayName = const Value.absent(),
+    this.addressName = const Value.absent(),
+    this.roadAddressName = const Value.absent(),
+    this.regionName = const Value.absent(),
+    this.addressResolvedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.visitCount = const Value.absent(),
@@ -925,6 +1109,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     required double centerLongitude,
     required double radiusMeters,
     this.displayName = const Value.absent(),
+    this.addressName = const Value.absent(),
+    this.roadAddressName = const Value.absent(),
+    this.regionName = const Value.absent(),
+    this.addressResolvedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     required int visitCount,
@@ -940,6 +1128,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     Expression<double>? centerLongitude,
     Expression<double>? radiusMeters,
     Expression<String>? displayName,
+    Expression<String>? addressName,
+    Expression<String>? roadAddressName,
+    Expression<String>? regionName,
+    Expression<DateTime>? addressResolvedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? visitCount,
@@ -950,6 +1142,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
       if (centerLongitude != null) 'center_longitude': centerLongitude,
       if (radiusMeters != null) 'radius_meters': radiusMeters,
       if (displayName != null) 'display_name': displayName,
+      if (addressName != null) 'address_name': addressName,
+      if (roadAddressName != null) 'road_address_name': roadAddressName,
+      if (regionName != null) 'region_name': regionName,
+      if (addressResolvedAt != null) 'address_resolved_at': addressResolvedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (visitCount != null) 'visit_count': visitCount,
@@ -962,6 +1158,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     Value<double>? centerLongitude,
     Value<double>? radiusMeters,
     Value<String?>? displayName,
+    Value<String?>? addressName,
+    Value<String?>? roadAddressName,
+    Value<String?>? regionName,
+    Value<DateTime?>? addressResolvedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? visitCount,
@@ -972,6 +1172,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
       centerLongitude: centerLongitude ?? this.centerLongitude,
       radiusMeters: radiusMeters ?? this.radiusMeters,
       displayName: displayName ?? this.displayName,
+      addressName: addressName ?? this.addressName,
+      roadAddressName: roadAddressName ?? this.roadAddressName,
+      regionName: regionName ?? this.regionName,
+      addressResolvedAt: addressResolvedAt ?? this.addressResolvedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       visitCount: visitCount ?? this.visitCount,
@@ -996,6 +1200,18 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
     }
+    if (addressName.present) {
+      map['address_name'] = Variable<String>(addressName.value);
+    }
+    if (roadAddressName.present) {
+      map['road_address_name'] = Variable<String>(roadAddressName.value);
+    }
+    if (regionName.present) {
+      map['region_name'] = Variable<String>(regionName.value);
+    }
+    if (addressResolvedAt.present) {
+      map['address_resolved_at'] = Variable<DateTime>(addressResolvedAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1016,6 +1232,10 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
           ..write('centerLongitude: $centerLongitude, ')
           ..write('radiusMeters: $radiusMeters, ')
           ..write('displayName: $displayName, ')
+          ..write('addressName: $addressName, ')
+          ..write('roadAddressName: $roadAddressName, ')
+          ..write('regionName: $regionName, ')
+          ..write('addressResolvedAt: $addressResolvedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('visitCount: $visitCount')
@@ -2816,6 +3036,10 @@ typedef $$PlaceClustersTableCreateCompanionBuilder =
       required double centerLongitude,
       required double radiusMeters,
       Value<String?> displayName,
+      Value<String?> addressName,
+      Value<String?> roadAddressName,
+      Value<String?> regionName,
+      Value<DateTime?> addressResolvedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
       required int visitCount,
@@ -2827,6 +3051,10 @@ typedef $$PlaceClustersTableUpdateCompanionBuilder =
       Value<double> centerLongitude,
       Value<double> radiusMeters,
       Value<String?> displayName,
+      Value<String?> addressName,
+      Value<String?> roadAddressName,
+      Value<String?> regionName,
+      Value<DateTime?> addressResolvedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> visitCount,
@@ -2915,6 +3143,26 @@ class $$PlaceClustersTableFilterComposer
 
   ColumnFilters<String> get displayName => $composableBuilder(
     column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressName => $composableBuilder(
+    column: $table.addressName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get roadAddressName => $composableBuilder(
+    column: $table.roadAddressName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get regionName => $composableBuilder(
+    column: $table.regionName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addressResolvedAt => $composableBuilder(
+    column: $table.addressResolvedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3018,6 +3266,26 @@ class $$PlaceClustersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get addressName => $composableBuilder(
+    column: $table.addressName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get roadAddressName => $composableBuilder(
+    column: $table.roadAddressName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get regionName => $composableBuilder(
+    column: $table.regionName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addressResolvedAt => $composableBuilder(
+    column: $table.addressResolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3063,6 +3331,26 @@ class $$PlaceClustersTableAnnotationComposer
 
   GeneratedColumn<String> get displayName => $composableBuilder(
     column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get addressName => $composableBuilder(
+    column: $table.addressName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get roadAddressName => $composableBuilder(
+    column: $table.roadAddressName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get regionName => $composableBuilder(
+    column: $table.regionName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get addressResolvedAt => $composableBuilder(
+    column: $table.addressResolvedAt,
     builder: (column) => column,
   );
 
@@ -3161,6 +3449,10 @@ class $$PlaceClustersTableTableManager
                 Value<double> centerLongitude = const Value.absent(),
                 Value<double> radiusMeters = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
+                Value<String?> addressName = const Value.absent(),
+                Value<String?> roadAddressName = const Value.absent(),
+                Value<String?> regionName = const Value.absent(),
+                Value<DateTime?> addressResolvedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> visitCount = const Value.absent(),
@@ -3170,6 +3462,10 @@ class $$PlaceClustersTableTableManager
                 centerLongitude: centerLongitude,
                 radiusMeters: radiusMeters,
                 displayName: displayName,
+                addressName: addressName,
+                roadAddressName: roadAddressName,
+                regionName: regionName,
+                addressResolvedAt: addressResolvedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 visitCount: visitCount,
@@ -3181,6 +3477,10 @@ class $$PlaceClustersTableTableManager
                 required double centerLongitude,
                 required double radiusMeters,
                 Value<String?> displayName = const Value.absent(),
+                Value<String?> addressName = const Value.absent(),
+                Value<String?> roadAddressName = const Value.absent(),
+                Value<String?> regionName = const Value.absent(),
+                Value<DateTime?> addressResolvedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 required int visitCount,
@@ -3190,6 +3490,10 @@ class $$PlaceClustersTableTableManager
                 centerLongitude: centerLongitude,
                 radiusMeters: radiusMeters,
                 displayName: displayName,
+                addressName: addressName,
+                roadAddressName: roadAddressName,
+                regionName: regionName,
+                addressResolvedAt: addressResolvedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 visitCount: visitCount,
