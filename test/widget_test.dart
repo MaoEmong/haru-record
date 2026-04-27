@@ -56,6 +56,8 @@ void main() {
       materialApp.theme?.textTheme.bodyMedium?.fontFamily,
       'KyoboHandwriting',
     );
+    expect(materialApp.theme?.textTheme.bodyMedium?.fontSize, 15);
+    expect(materialApp.theme?.textTheme.titleLarge?.fontSize, 23);
   });
 
   testWidgets('home summarizes records from today', (tester) async {
