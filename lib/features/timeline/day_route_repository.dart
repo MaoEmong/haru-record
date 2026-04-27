@@ -1,4 +1,5 @@
 import '../storage/app_database.dart';
+import '../places/place_label.dart';
 import 'day_route_models.dart';
 
 class DayRouteRepository {
@@ -50,7 +51,7 @@ class DayRouteRepository {
             final place = _findPlace(places, visit.placeClusterId);
             return DayRouteVisit(
               timeLabel: _timeLabel(visit.startedAt),
-              placeLabel: place?.displayName ?? '이름 없는 장소',
+              placeLabel: placeLabel(place),
               latitude: visit.representativeLatitude,
               longitude: visit.representativeLongitude,
               durationLabel: _durationLabel(visit.durationMinutes),

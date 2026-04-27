@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projectapp_1/features/places/place_cluster_repository.dart';
+import 'package:projectapp_1/features/places/place_address.dart';
 import 'package:projectapp_1/features/storage/app_database.dart';
 
 void main() {
@@ -45,4 +46,45 @@ void main() {
     expect(second.isNew, isFalse);
     expect(places, hasLength(1));
   });
+
+  test('stores resolved address when creating a new cluster', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = PlaceClusterRepository(
+      database,
+      reverseGeocoder: _FakeReverseGeocoder(
+        const PlaceAddress(
+          addressName: '서울 중구 태평로1가 31',
+          roadAddressName: '서울 중구 세종대로 110',
+          regionName: '서울 중구 태평로1가',
+        ),
+      ),
+    );
+
+    final match = await repository.findOrCreateForVisit(
+      latitude: 37.5665,
+      longitude: 126.9780,
+      radiusMeters: 100,
+      visitedAt: DateTime(2026, 4, 26, 9),
+    );
+
+    expect(match.cluster.roadAddressName, '서울 중구 세종대로 110');
+    expect(match.cluster.addressName, '서울 중구 태평로1가 31');
+    expect(match.cluster.regionName, '서울 중구 태평로1가');
+    expect(match.cluster.addressResolvedAt, isNotNull);
+  });
+}
+
+class _FakeReverseGeocoder implements ReverseGeocoder {
+  const _FakeReverseGeocoder(this.address);
+
+  final PlaceAddress? address;
+
+  @override
+  Future<PlaceAddress?> resolve({
+    required double latitude,
+    required double longitude,
+  }) async {
+    return address;
+  }
 }

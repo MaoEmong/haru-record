@@ -60,4 +60,42 @@ void main() {
     expect(route.points.map((point) => point.timeLabel), ['09:00', '09:10']);
     expect(route.visits.single.placeLabel, '카페');
   });
+
+  test('uses resolved address when a place has no custom name', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+    final placeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37.5665,
+            centerLongitude: 126.978,
+            radiusMeters: 100,
+            roadAddressName: const Value('서울 중구 세종대로 110'),
+            addressName: const Value('서울 중구 태평로1가 31'),
+            regionName: const Value('서울 중구 태평로1가'),
+            addressResolvedAt: Value(date),
+            createdAt: date,
+            updatedAt: date,
+            visitCount: 1,
+          ),
+        );
+    await database
+        .into(database.visits)
+        .insert(
+          VisitsCompanion.insert(
+            placeClusterId: Value(placeId),
+            startedAt: DateTime(2026, 4, 26, 10),
+            endedAt: DateTime(2026, 4, 26, 11),
+            durationMinutes: 60,
+            representativeLatitude: 37.5665,
+            representativeLongitude: 126.978,
+          ),
+        );
+
+    final route = await DayRouteRepository(database).loadForDate(date);
+
+    expect(route.visits.single.placeLabel, '서울 중구 세종대로 110');
+  });
 }

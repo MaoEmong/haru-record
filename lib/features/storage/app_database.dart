@@ -20,6 +20,10 @@ class PlaceClusters extends Table {
   RealColumn get centerLongitude => real()();
   RealColumn get radiusMeters => real()();
   TextColumn get displayName => text().nullable()();
+  TextColumn get addressName => text().nullable()();
+  TextColumn get roadAddressName => text().nullable()();
+  TextColumn get regionName => text().nullable()();
+  DateTimeColumn get addressResolvedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   IntColumn get visitCount => integer()();
@@ -76,5 +80,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(placeClusters, placeClusters.addressName);
+        await migrator.addColumn(placeClusters, placeClusters.roadAddressName);
+        await migrator.addColumn(placeClusters, placeClusters.regionName);
+        await migrator.addColumn(
+          placeClusters,
+          placeClusters.addressResolvedAt,
+        );
+      }
+    },
+  );
 }

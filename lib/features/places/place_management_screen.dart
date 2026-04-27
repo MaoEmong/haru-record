@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../app/app_theme.dart';
 import '../maps/cached_map_snapshot.dart';
 import '../storage/app_database.dart';
+import 'place_label.dart';
 
 class PlaceManagementScreen extends StatefulWidget {
   const PlaceManagementScreen({
@@ -142,7 +143,7 @@ class _FeaturedPlaceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        place.displayName ?? '이름을 정하지 않은 곳',
+                        placeLabel(place, fallback: '이름을 정하지 않은 곳'),
                         style: const TextStyle(
                           color: AppColors.ink,
                           fontSize: 24,
@@ -258,7 +259,7 @@ class _PlaceGridCard extends StatelessWidget {
                       const _PlacePinBadge(),
                       const Spacer(),
                       Text(
-                        place.displayName ?? '이름을 정하지 않은 곳',
+                        placeLabel(place, fallback: '이름을 정하지 않은 곳'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
