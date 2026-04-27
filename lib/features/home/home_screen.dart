@@ -5,9 +5,14 @@ import '../settings/settings_models.dart';
 import '../storage/app_database.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.dependencies});
+  const HomeScreen({
+    super.key,
+    required this.dependencies,
+    required this.refreshVersion,
+  });
 
   final AppDependencies dependencies;
+  final int refreshVersion;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,6 +25,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _snapshot = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshVersion != widget.refreshVersion) {
+      setState(() {
+        _snapshot = _load();
+      });
+    }
   }
 
   Future<_HomeSnapshot> _load() async {

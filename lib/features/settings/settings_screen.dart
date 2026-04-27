@@ -4,9 +4,14 @@ import '../../app/app_dependencies.dart';
 import 'settings_models.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.dependencies});
+  const SettingsScreen({
+    super.key,
+    required this.dependencies,
+    this.onDataChanged,
+  });
 
   final AppDependencies dependencies;
+  final VoidCallback? onDataChanged;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -95,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
     try {
       await widget.dependencies.runDailyProcessingNow();
+      widget.onDataChanged?.call();
       setState(() {
         _status = 'Daily processing finished';
       });
