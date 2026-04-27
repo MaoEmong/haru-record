@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../features/background/daily_insight_worker.dart';
 import '../features/notifications/notification_service.dart';
+import '../features/permissions/app_permission_service.dart';
 import '../features/settings/settings_models.dart';
 import '../features/settings/settings_repository.dart';
 import '../features/storage/app_database.dart';
@@ -20,6 +21,7 @@ class AppDependencies {
     required this.settingsRepository,
     required this.trackingService,
     required this.notificationService,
+    required this.permissionService,
     required this.importPendingEvents,
   });
 
@@ -27,6 +29,7 @@ class AppDependencies {
   final SettingsRepository settingsRepository;
   final LocationTrackingService trackingService;
   final NotificationService notificationService;
+  final AppPermissionService permissionService;
   final Future<LocationEventImportResult> Function() importPendingEvents;
 
   static Future<AppDependencies> production() async {
@@ -41,6 +44,7 @@ class AppDependencies {
       settingsRepository: SettingsRepository(),
       trackingService: PlatformLocationTrackingService(),
       notificationService: NotificationService(notificationAdapter),
+      permissionService: const PermissionHandlerAppPermissionService(),
       importPendingEvents: () async {
         final eventDirectory = await getApplicationSupportDirectory();
         final importer = LocationEventImporter.fromFile(

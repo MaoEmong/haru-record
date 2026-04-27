@@ -50,6 +50,10 @@ Completed work:
 - Settings controls made editable:
   - Notification time can be edited from Settings.
   - Movement threshold, minimum stay, and raw point retention can be edited from Settings.
+- Tracking startup is permission-aware:
+  - Settings requests location permission before starting tracking.
+  - Missing location permission is reported in-app instead of relying only on native service failure.
+  - Notification permission is requested before scheduling notifications from Settings.
 
 Latest completed commit:
 
@@ -68,7 +72,7 @@ flutter analyze
 
 Result:
 
-- `flutter test`: passed, 38 tests.
+- `flutter test`: passed, 39 tests.
 - `flutter analyze`: passed, no issues.
 
 Known environment blocker:
@@ -94,7 +98,6 @@ Connect UI state to the implemented services.
 Required behavior:
 
 - Add safe database cleanup/delete controls.
-- Add user-facing permission handling before tracking starts on Android.
 - Refresh Home/History/Places after manual daily processing or place rename without requiring a full app restart.
 - Delete/cleanup controls call retention or database deletion logic safely.
 
