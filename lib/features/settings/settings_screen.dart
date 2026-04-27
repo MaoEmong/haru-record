@@ -218,10 +218,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Run daily processing now'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _confirmDeleteRawPoints,
+              icon: const Icon(Icons.delete_sweep_outlined),
+              label: const Text('Delete raw location points'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _confirmDeleteAllLocalData,
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Delete all local data'),
+            ),
           ],
         );
       },
     );
+  }
+
+  Future<bool> _confirm(String title, String body) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(title),
+              content: Text(body),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _confirmDeleteRawPoints() async {
+    final confirmed = await _confirm(
+      'Delete raw location points',
+      'Summaries and insights will stay available.',
+    );
+    if (!confirmed) return;
+    await widget.dependencies.maintenanceService.deleteRawLocationPoints();
+    widget.onDataChanged?.call();
+    setState(() {
+      _status = 'Raw location points deleted';
+    });
+  }
+
+  Future<void> _confirmDeleteAllLocalData() async {
+    final confirmed = await _confirm(
+      'Delete all local data',
+      'This removes points, places, visits, summaries, and insights from this device.',
+    );
+    if (!confirmed) return;
+    await widget.dependencies.maintenanceService.deleteAllLocalData();
+    widget.onDataChanged?.call();
+    setState(() {
+      _status = 'All local data deleted';
+    });
   }
 
   Future<void> _editNumber({

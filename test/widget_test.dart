@@ -9,6 +9,7 @@ import 'package:projectapp_1/features/notifications/notification_service.dart';
 import 'package:projectapp_1/features/permissions/app_permission_service.dart';
 import 'package:projectapp_1/features/settings/settings_models.dart';
 import 'package:projectapp_1/features/settings/settings_repository.dart';
+import 'package:projectapp_1/features/storage/app_maintenance_service.dart';
 import 'package:projectapp_1/features/storage/app_database.dart';
 import 'package:projectapp_1/features/tracking/location_event_importer.dart';
 import 'package:projectapp_1/features/tracking/location_tracking_service.dart';
@@ -195,6 +196,55 @@ void main() {
     expect(processingRuns, 1);
     expect(find.text('Movement was lower than usual'), findsOneWidget);
   });
+
+  testWidgets('settings cleanup removes raw points but keeps insights', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.into(database.locationPoints).insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 1, 1),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+    await database.into(database.insights).insert(
+          InsightsCompanion.insert(
+            date: DateTime(2026, 4, 27),
+            type: 'movementChange',
+            severity: 'notable',
+            title: 'Existing insight',
+            body: 'Kept after raw cleanup.',
+            evidence: 'seed data',
+            createdAt: DateTime(2026, 4, 27),
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Delete raw location points'),
+      200,
+    );
+    await tester.tap(find.text('Delete raw location points'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    final points = await database.select(database.locationPoints).get();
+    final insights = await database.select(database.insights).get();
+    expect(points, isEmpty);
+    expect(insights, hasLength(1));
+    expect(find.text('Raw location points deleted'), findsOneWidget);
+  });
 }
 
 AppDependencies _testDependencies(
@@ -211,6 +261,7 @@ AppDependencies _testDependencies(
     notificationService: NotificationService(notificationAdapter),
     permissionService:
         permissionService ?? _FakePermissionService(locationGranted: true),
+    maintenanceService: AppMaintenanceService(database),
     importPendingEvents: () async =>
         const LocationEventImportResult(importedCount: 0, skippedCount: 0),
     runDailyProcessingOverride: runDailyProcessingNow,
