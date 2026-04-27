@@ -1,5 +1,6 @@
 // ignore_for_file: depend_on_referenced_packages
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,6 +73,48 @@ void main() {
 
     expect(find.text('오늘 남긴 기록'), findsOneWidget);
     expect(find.text('오늘은 2개의 기록이 조용히 쌓였어요'), findsOneWidget);
+  });
+
+  testWidgets('home shows a compact timeline preview when visits exist', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime.now();
+    final placeId = await database
+        .into(database.placeClusters)
+        .insert(
+          PlaceClustersCompanion.insert(
+            centerLatitude: 37,
+            centerLongitude: 127,
+            radiusMeters: 100,
+            displayName: const Value('집 근처'),
+            createdAt: now,
+            updatedAt: now,
+            visitCount: 1,
+          ),
+        );
+    await database
+        .into(database.visits)
+        .insert(
+          VisitsCompanion.insert(
+            placeClusterId: Value(placeId),
+            startedAt: DateTime(now.year, now.month, now.day, 9),
+            endedAt: DateTime(now.year, now.month, now.day, 10, 10),
+            durationMinutes: 70,
+            representativeLatitude: 37,
+            representativeLongitude: 127,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘의 흐름'), findsOneWidget);
+    expect(find.text('집 근처'), findsOneWidget);
+    expect(find.text('1시간 10분 머문 곳'), findsOneWidget);
   });
 
   testWidgets('empty history shows example reflection cards', (tester) async {

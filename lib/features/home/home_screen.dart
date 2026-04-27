@@ -4,6 +4,8 @@ import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
 import '../settings/settings_models.dart';
 import '../storage/app_database.dart';
+import '../timeline/day_timeline_models.dart';
+import '../timeline/day_timeline_repository.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -45,12 +47,16 @@ class _HomeScreenState extends State<HomeScreen> {
         .select(widget.dependencies.database.insights)
         .get();
     final todayPointCount = await _loadTodayPointCount();
+    final timeline = await DayTimelineRepository(
+      widget.dependencies.database,
+    ).loadForDate(DateTime.now());
     insights.sort((a, b) => b.date.compareTo(a.date));
     return _HomeSnapshot(
       settings: settings,
       isTracking: isTracking,
       latestInsight: insights.firstOrNull,
       todayPointCount: todayPointCount,
+      timeline: timeline,
     );
   }
 
@@ -84,6 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _StatusPanel(snapshot: data),
             const SizedBox(height: 12),
             _TodayRecordPanel(snapshot: data),
+            const SizedBox(height: 12),
+            _TodayTimelinePanel(items: data.timeline),
             const SizedBox(height: 22),
             Text('최근 돌아보기', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 10),
@@ -94,6 +102,95 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _TodayTimelinePanel extends StatelessWidget {
+  const _TodayTimelinePanel({required this.items});
+
+  final List<DayTimelineItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.take(3).toList(growable: false);
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '오늘의 흐름',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (visibleItems.isEmpty)
+              Text(
+                '기록이 쌓이면 오늘 머문 곳이 시간순으로 보여요.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
+              )
+            else
+              ...visibleItems.map((item) => _TimelineRow(item: item)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({required this.item});
+
+  final DayTimelineItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 48,
+            child: Text(
+              item.timeLabel,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.placeLabel,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.durationLabel,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -274,10 +371,12 @@ class _HomeSnapshot {
     required this.isTracking,
     required this.latestInsight,
     required this.todayPointCount,
+    required this.timeline,
   });
 
   final AppSettings settings;
   final bool isTracking;
   final Insight? latestInsight;
   final int todayPointCount;
+  final List<DayTimelineItem> timeline;
 }
