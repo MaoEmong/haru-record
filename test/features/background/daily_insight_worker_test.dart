@@ -75,7 +75,7 @@ void main() {
             ),
           );
 
-      await processor.run(now: now);
+      final result = await processor.run(now: now);
 
       final visits = await database.select(database.visits).get();
       final summaries = await database.select(database.dailySummaries).get();
@@ -87,6 +87,9 @@ void main() {
         hasLength(1),
       );
       expect(insights, isNotEmpty);
+      expect(result.outcome, DailyProcessingOutcome.createdReflection);
+      expect(result.yesterdayPointCount, 2);
+      expect(result.createdReflectionCount, 2);
       expect(notificationAdapter.scheduledHour, 9);
       expect(
         points.every((point) => point.timestamp.isAfter(DateTime(2026, 3, 1))),
@@ -176,6 +179,87 @@ void main() {
       notificationAdapter.cancelledId,
       NotificationService.dailyInsightNotificationId,
     );
+
+    await database.close();
+  });
+
+  test('reports when there are no raw records to summarize', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults(),
+    );
+
+    final result = await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    expect(result.outcome, DailyProcessingOutcome.noRawRecords);
+    expect(result.totalPointCount, 0);
+    expect(result.yesterdayPointCount, 0);
+
+    await database.close();
+  });
+
+  test('reports when raw records exist but not for yesterday', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults(),
+    );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 20, 10),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+
+    final result = await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    expect(result.outcome, DailyProcessingOutcome.noYesterdayRecords);
+    expect(result.totalPointCount, 1);
+    expect(result.yesterdayPointCount, 0);
+
+    await database.close();
+  });
+
+  test('reports when yesterday records produce no reflection', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults(),
+    );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 25, 10),
+            latitude: 37,
+            longitude: 127,
+            accuracy: 20,
+          ),
+        );
+
+    final result = await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    expect(result.outcome, DailyProcessingOutcome.noHighlights);
+    expect(result.totalPointCount, 1);
+    expect(result.yesterdayPointCount, 1);
+    expect(result.createdReflectionCount, 0);
 
     await database.close();
   });

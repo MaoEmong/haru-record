@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
+import '../background/daily_insight_worker.dart';
 import 'settings_models.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -98,13 +99,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _runProcessing() async {
     setState(() {
       _busy = true;
-      _status = null;
+      _status = '하루를 정리하고 있어요...';
     });
     try {
-      await widget.dependencies.runDailyProcessingNow();
+      final result = await widget.dependencies.runDailyProcessingNow();
       widget.onDataChanged?.call();
       setState(() {
-        _status = '하루 정리를 마쳤어요';
+        _status = _processingMessage(result);
       });
     } catch (_) {
       setState(() {
@@ -117,6 +118,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
+  }
+
+  String _processingMessage(DailyProcessingResult result) {
+    return switch (result.outcome) {
+      DailyProcessingOutcome.createdReflection => '하루 정리를 마쳤어요',
+      DailyProcessingOutcome.noRawRecords => '아직 정리할 기록이 없어요',
+      DailyProcessingOutcome.noYesterdayRecords => '어제 기록이 쌓이면 돌아보기를 만들 수 있어요',
+      DailyProcessingOutcome.noHighlights => '기록은 정리했지만 특별한 변화는 없었어요',
+    };
   }
 
   @override

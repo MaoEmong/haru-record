@@ -35,7 +35,7 @@ class AppDependencies {
   final AppPermissionService permissionService;
   final AppMaintenanceService maintenanceService;
   final Future<LocationEventImportResult> Function() importPendingEvents;
-  final Future<void> Function()? runDailyProcessingOverride;
+  final Future<DailyProcessingResult> Function()? runDailyProcessingOverride;
 
   static Future<AppDependencies> production() async {
     final database = AppDatabase(openAppDatabaseConnection());
@@ -62,10 +62,9 @@ class AppDependencies {
     );
   }
 
-  Future<void> runDailyProcessingNow() async {
+  Future<DailyProcessingResult> runDailyProcessingNow() async {
     if (runDailyProcessingOverride != null) {
-      await runDailyProcessingOverride!();
-      return;
+      return await runDailyProcessingOverride!();
     }
     final settings = await settingsRepository.load();
     final processor = DailyInsightProcessor(
@@ -74,7 +73,7 @@ class AppDependencies {
       importPendingEvents: importPendingEvents,
       settings: settings,
     );
-    await processor.run(now: DateTime.now());
+    return await processor.run(now: DateTime.now());
   }
 
   Future<void> saveTrackingEnabled({

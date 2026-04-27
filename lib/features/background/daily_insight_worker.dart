@@ -23,6 +23,27 @@ import '../tracking/location_event_importer.dart';
 
 const dailyInsightWorkerName = 'dailyInsightWorker';
 
+enum DailyProcessingOutcome {
+  createdReflection,
+  noRawRecords,
+  noYesterdayRecords,
+  noHighlights,
+}
+
+class DailyProcessingResult {
+  const DailyProcessingResult({
+    required this.outcome,
+    required this.totalPointCount,
+    required this.yesterdayPointCount,
+    required this.createdReflectionCount,
+  });
+
+  final DailyProcessingOutcome outcome;
+  final int totalPointCount;
+  final int yesterdayPointCount;
+  final int createdReflectionCount;
+}
+
 abstract interface class DailyWorkerScheduler {
   Future<void> initialize(void Function() dispatcher);
 
@@ -92,7 +113,7 @@ class DailyInsightProcessor {
   final InsightGenerationService _insightGenerationService;
   final RetentionService _retentionService;
 
-  Future<void> run({required DateTime now}) async {
+  Future<DailyProcessingResult> run({required DateTime now}) async {
     await _importPendingEvents();
 
     final yesterday = DateTime(
@@ -100,8 +121,29 @@ class DailyInsightProcessor {
       now.month,
       now.day,
     ).subtract(const Duration(days: 1));
+    final totalPointCount = await _countLocationPoints();
     final baseline = await _recentBaseline(before: yesterday);
     final points = await _loadLocationPointsFor(yesterday);
+    if (totalPointCount == 0) {
+      await _finishRetentionAndNotifications(now);
+      return const DailyProcessingResult(
+        outcome: DailyProcessingOutcome.noRawRecords,
+        totalPointCount: 0,
+        yesterdayPointCount: 0,
+        createdReflectionCount: 0,
+      );
+    }
+
+    if (points.isEmpty) {
+      await _finishRetentionAndNotifications(now);
+      return DailyProcessingResult(
+        outcome: DailyProcessingOutcome.noYesterdayRecords,
+        totalPointCount: totalPointCount,
+        yesterdayPointCount: 0,
+        createdReflectionCount: 0,
+      );
+    }
+
     final visits = _placeClusteringService.detectVisits(
       points
           .map(
@@ -147,7 +189,19 @@ class DailyInsightProcessor {
       recentAverage: recentAverage,
     );
     await _replaceDailyOutputs(yesterday, visits, summary, insights);
+    await _finishRetentionAndNotifications(now);
 
+    return DailyProcessingResult(
+      outcome: insights.isEmpty
+          ? DailyProcessingOutcome.noHighlights
+          : DailyProcessingOutcome.createdReflection,
+      totalPointCount: totalPointCount,
+      yesterdayPointCount: points.length,
+      createdReflectionCount: insights.length,
+    );
+  }
+
+  Future<void> _finishRetentionAndNotifications(DateTime now) async {
     await _retentionService.deleteRawPointsOlderThan(
       now,
       retentionDays: _settings.rawPointRetentionDays,
@@ -161,6 +215,11 @@ class DailyInsightProcessor {
     } else {
       await _notificationService.cancelDailyInsight();
     }
+  }
+
+  Future<int> _countLocationPoints() async {
+    final points = await _database.select(_database.locationPoints).get();
+    return points.length;
   }
 
   Future<List<LocationPoint>> _loadLocationPointsFor(DateTime date) async {
