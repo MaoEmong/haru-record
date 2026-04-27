@@ -12,12 +12,16 @@ class DayDetailScreen extends StatefulWidget {
     required this.date,
     this.title,
     this.body,
+    this.appBarTitle = '하루 자세히 보기',
+    this.showRawRecords = false,
   });
 
   final AppDatabase database;
   final DateTime date;
   final String? title;
   final String? body;
+  final String appBarTitle;
+  final bool showRawRecords;
 
   @override
   State<DayDetailScreen> createState() => _DayDetailScreenState();
@@ -47,13 +51,30 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
         break;
       }
     }
-    return _DayDetailSnapshot(timeline: timeline, summary: summary);
+    final allPoints = await widget.database
+        .select(widget.database.locationPoints)
+        .get();
+    final points =
+        allPoints
+            .where(
+              (point) =>
+                  !point.timestamp.isBefore(_dayStart(widget.date)) &&
+                  point.timestamp.isBefore(_dayEnd(widget.date)),
+            )
+            .toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return _DayDetailSnapshot(
+      timeline: timeline,
+      summary: summary,
+      pointCount: points.length,
+      latestPoint: points.firstOrNull,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('하루 자세히 보기')),
+      appBar: AppBar(title: Text(widget.appBarTitle)),
       body: SafeArea(
         child: FutureBuilder<_DayDetailSnapshot>(
           future: _snapshot,
@@ -71,6 +92,13 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
                   body: widget.body,
                 ),
                 const SizedBox(height: 12),
+                if (widget.showRawRecords) ...[
+                  _RawRecordsCard(
+                    pointCount: data.pointCount,
+                    latestPoint: data.latestPoint,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _SummaryCard(summary: data.summary),
                 const SizedBox(height: 12),
                 _RouteSummaryCard(items: data.timeline),
@@ -87,6 +115,12 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
   }
+
+  DateTime _dayStart(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  DateTime _dayEnd(DateTime date) =>
+      _dayStart(date).add(const Duration(days: 1));
 }
 
 class _ReflectionHeader extends StatelessWidget {
@@ -174,6 +208,62 @@ class _SummaryCard extends StatelessWidget {
       return '${(meters / 1000).toStringAsFixed(1)} km';
     }
     return '${meters.round()} m';
+  }
+}
+
+class _RawRecordsCard extends StatelessWidget {
+  const _RawRecordsCard({required this.pointCount, required this.latestPoint});
+
+  final int pointCount;
+  final LocationPoint? latestPoint;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = latestPoint;
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '오늘 기록중인 위치',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            _MetricChip(label: '위치 기록 $pointCount개'),
+            const SizedBox(height: 12),
+            if (latest == null)
+              const Text(
+                '아직 오늘 저장된 위치가 없어요.',
+                style: TextStyle(color: AppColors.muted),
+              )
+            else ...[
+              Text(
+                '최근 기록 ${_timeLabel(latest.timestamp)}',
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${latest.latitude.toStringAsFixed(4)}, '
+                '${latest.longitude.toStringAsFixed(4)}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _timeLabel(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }
 
@@ -273,8 +363,15 @@ class _MetricChip extends StatelessWidget {
 }
 
 class _DayDetailSnapshot {
-  const _DayDetailSnapshot({required this.timeline, required this.summary});
+  const _DayDetailSnapshot({
+    required this.timeline,
+    required this.summary,
+    required this.pointCount,
+    required this.latestPoint,
+  });
 
   final List<DayTimelineItem> timeline;
   final DailySummary? summary;
+  final int pointCount;
+  final LocationPoint? latestPoint;
 }

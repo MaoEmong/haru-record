@@ -117,6 +117,70 @@ void main() {
     expect(find.text('1시간 10분 머문 곳'), findsOneWidget);
   });
 
+  testWidgets('home recent reflection opens the reflection detail', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+    await database
+        .into(database.insights)
+        .insert(
+          InsightsCompanion.insert(
+            date: date,
+            type: 'movementChange',
+            severity: 'notable',
+            title: '어제는 조금 조용한 하루였어요',
+            body: '최근 며칠보다 이동이 적고 차분했어요.',
+            evidence: '1200m',
+            createdAt: date,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -140));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('어제는 조금 조용한 하루였어요'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('하루 자세히 보기'), findsOneWidget);
+    expect(find.text('2026-04-26'), findsOneWidget);
+    expect(find.text('최근 며칠보다 이동이 적고 차분했어요.'), findsOneWidget);
+  });
+
+  testWidgets('home today record opens current day records', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final now = DateTime.now();
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: now,
+            latitude: 37.5665,
+            longitude: 126.978,
+            accuracy: 20,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('오늘 남긴 기록'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘 기록'), findsWidgets);
+    expect(find.text('오늘 기록중인 위치'), findsOneWidget);
+    expect(find.text('위치 기록 1개'), findsOneWidget);
+    expect(find.textContaining('37.5665'), findsOneWidget);
+  });
+
   testWidgets('empty history shows example reflection cards', (tester) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
