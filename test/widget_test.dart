@@ -537,7 +537,7 @@ void main() {
 
     expect(find.text('이동 경로'), findsOneWidget);
     expect(find.text('기록 지점 2개'), findsOneWidget);
-    expect(find.byKey(const ValueKey('day-route-mini-map')), findsOneWidget);
+    expect(find.byKey(const ValueKey('day-route-map')), findsOneWidget);
   });
 
   testWidgets('settings screen saves tracking state', (tester) async {
