@@ -31,6 +31,11 @@ class InsightNarrationContext {
 
 enum InsightDirection { lower, higher, newValue }
 
+/// Converts validated analytic signals into user-facing Korean copy.
+///
+/// This boundary stays separate from insight generation so a future AI-backed
+/// narrator can improve expression without changing analysis rules,
+/// persistence, or notification scheduling.
 abstract interface class InsightNarrator {
   InsightText narrate(InsightNarrationContext context);
 
