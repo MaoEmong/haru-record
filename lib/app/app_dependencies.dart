@@ -79,6 +79,13 @@ class AppDependencies {
     return await processor.run(now: DateTime.now());
   }
 
+  Future<void> reconcileTrackingState() async {
+    final settings = await settingsRepository.load();
+    if (!settings.trackingEnabled) return;
+    if (await trackingService.isTracking()) return;
+    await trackingService.startTracking(settings);
+  }
+
   Future<void> saveTrackingEnabled({
     required AppSettings settings,
     required bool enabled,

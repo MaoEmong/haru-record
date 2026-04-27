@@ -11,6 +11,7 @@ Future<void> main() async {
   await lockAppOrientation();
   await configureLocalTimezone();
   final dependencies = await AppDependencies.production();
+  await dependencies.reconcileTrackingState();
   await initializeDailyInsightWorker();
   runApp(DailyPatternApp(dependencies: dependencies));
 }

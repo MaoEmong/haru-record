@@ -93,6 +93,43 @@ void main() {
     expect(find.text('오늘은 2개의 기록이 조용히 쌓였어요'), findsOneWidget);
   });
 
+  testWidgets('app imports pending native location events on startup', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    var imported = false;
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          importPendingEvents: () async {
+            imported = true;
+            await database
+                .into(database.locationPoints)
+                .insert(
+                  LocationPointsCompanion.insert(
+                    timestamp: DateTime.now(),
+                    latitude: 37,
+                    longitude: 127,
+                    accuracy: 20,
+                  ),
+                );
+            return const LocationEventImportResult(
+              importedCount: 1,
+              skippedCount: 0,
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(imported, isTrue);
+    expect(find.text('오늘은 1개의 기록이 조용히 쌓였어요'), findsOneWidget);
+  });
+
   testWidgets('home shows a compact timeline preview when visits exist', (
     tester,
   ) async {
@@ -918,6 +955,7 @@ AppDependencies _testDependencies(
   SettingsRepository? settingsRepository,
   _FakeTrackingService? trackingService,
   _FakePermissionService? permissionService,
+  Future<LocationEventImportResult> Function()? importPendingEvents,
   Future<DailyProcessingResult> Function()? runDailyProcessingNow,
   bool showDebugValidationTools = false,
 }) {
@@ -930,8 +968,10 @@ AppDependencies _testDependencies(
     permissionService:
         permissionService ?? _FakePermissionService(locationGranted: true),
     maintenanceService: AppMaintenanceService(database),
-    importPendingEvents: () async =>
-        const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+    importPendingEvents:
+        importPendingEvents ??
+        () async =>
+            const LocationEventImportResult(importedCount: 0, skippedCount: 0),
     showDebugValidationTools: showDebugValidationTools,
     runDailyProcessingOverride: runDailyProcessingNow,
   );

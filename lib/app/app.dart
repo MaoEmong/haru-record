@@ -109,9 +109,42 @@ class DailyPatternShell extends StatefulWidget {
   State<DailyPatternShell> createState() => _DailyPatternShellState();
 }
 
-class _DailyPatternShellState extends State<DailyPatternShell> {
+class _DailyPatternShellState extends State<DailyPatternShell>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
   int _refreshVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _importPendingLocationEvents();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _importPendingLocationEvents();
+    }
+  }
+
+  Future<void> _importPendingLocationEvents() async {
+    try {
+      final result = await widget.dependencies.importPendingEvents();
+      if (!mounted || result.importedCount == 0) return;
+      _refreshAll();
+    } catch (_) {
+      // Location import is opportunistic here; daily processing still retries.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +179,7 @@ class _DailyPatternShellState extends State<DailyPatternShell> {
           setState(() {
             _selectedIndex = index;
           });
+          _importPendingLocationEvents();
         },
         destinations: const [
           NavigationDestination(
