@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/geo/coordinate_validation.dart';
 import '../../core/geo/geo_math.dart';
 import '../storage/app_database.dart';
 
@@ -119,16 +120,17 @@ class LocationEventImporter {
 
   Future<bool> _isNearDuplicateInShortWindow(_ParsedLocationEvent event) async {
     final points = await _database.select(_database.locationPoints).get();
-    final candidates = points
-        .where(
-          (point) =>
-              point.source == event.source &&
-              !point.timestamp.isAfter(event.timestamp) &&
-              event.timestamp.difference(point.timestamp) <=
-                  _nearDuplicateWindow,
-        )
-        .toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final candidates =
+        points
+            .where(
+              (point) =>
+                  point.source == event.source &&
+                  !point.timestamp.isAfter(event.timestamp) &&
+                  event.timestamp.difference(point.timestamp) <=
+                      _nearDuplicateWindow,
+            )
+            .toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     if (candidates.isEmpty) return false;
 
     final latest = candidates.first;
@@ -145,16 +147,18 @@ class LocationEventImporter {
     return distance <= threshold;
   }
 
-  double _nearDuplicateDistanceThreshold(double storedAccuracy, double accuracy) {
-    final accuracyRadius = storedAccuracy < accuracy ? storedAccuracy : accuracy;
-    if (accuracyRadius > _minimumNearDuplicateDistanceMeters) {
-      return accuracyRadius;
-    }
+  double _nearDuplicateDistanceThreshold(
+    double storedAccuracy,
+    double accuracy,
+  ) {
+    // Route display needs dense points; accuracy radius is too broad for
+    // duplicate filtering and can erase ordinary walking movement.
+    final _ = (storedAccuracy, accuracy);
     return _minimumNearDuplicateDistanceMeters;
   }
 
   _ParsedLocationEvent _parseEvent(Map<String, Object?> json) {
-    return _ParsedLocationEvent(
+    final event = _ParsedLocationEvent(
       timestamp: DateTime.parse(json['timestamp']! as String),
       latitude: _requiredDouble(json['latitude']),
       longitude: _requiredDouble(json['longitude']),
@@ -163,6 +167,12 @@ class LocationEventImporter {
       isMock: json['isMock'] as bool? ?? false,
       source: json['source'] as String? ?? 'android',
     );
+    if (!isValidCoordinate(event.latitude, event.longitude) ||
+        !isValidAccuracy(event.accuracy) ||
+        (event.speed != null && !event.speed!.isFinite)) {
+      throw const FormatException('Invalid location coordinate');
+    }
+    return event;
   }
 
   LocationPointsCompanion _companionFromEvent(_ParsedLocationEvent event) {
@@ -187,8 +197,8 @@ class LocationEventImporter {
   }
 }
 
-const _nearDuplicateWindow = Duration(minutes: 30);
-const _minimumNearDuplicateDistanceMeters = 30.0;
+const _nearDuplicateWindow = Duration(seconds: 10);
+const _minimumNearDuplicateDistanceMeters = 5.0;
 
 class _ParsedLocationEvent {
   const _ParsedLocationEvent({

@@ -40,6 +40,7 @@ void main() {
             .having((call) => call.arguments, 'arguments', {
               'minimumMovementMeters': 100,
               'minimumStayMinutes': 10,
+              'rawLocationIntervalSeconds': 10,
             }),
       ),
     );
