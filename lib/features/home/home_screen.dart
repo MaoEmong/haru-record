@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .get();
     final todayPreview = await DayActivityPreviewRepository(
       widget.dependencies.database,
-    ).loadForDate(DateTime.now());
+    ).loadForDate(DateTime.now(), settings: settings);
     insights.sort((a, b) => b.date.compareTo(a.date));
     return _HomeSnapshot(
       settings: settings,
@@ -232,7 +232,6 @@ class _StatChips extends StatelessWidget {
         ? null
         : (preview.totalDistanceMeters! / 1000).toStringAsFixed(1);
     final visits = preview.visitCount;
-    final movingMin = preview.movingMinutes;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -249,11 +248,6 @@ class _StatChips extends StatelessWidget {
             icon: Icons.place_outlined,
             value: visits != null ? '$visits곳' : '--',
             label: '방문',
-          ),
-          _Chip(
-            icon: Icons.timer_outlined,
-            value: movingMin != null ? '$movingMin분' : '--',
-            label: '움직임',
           ),
         ],
       ),
@@ -506,10 +500,7 @@ class _DotTimeline extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < visible.length; i++)
-            _DotTimelineRow(
-              item: visible[i],
-              isLast: i == visible.length - 1,
-            ),
+            _DotTimelineRow(item: visible[i], isLast: i == visible.length - 1),
         ],
       ),
     );

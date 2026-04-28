@@ -115,7 +115,7 @@ void main() {
 
     expect(find.text('1.2km'), findsOneWidget);
     expect(find.text('2곳'), findsOneWidget);
-    expect(find.text('18분'), findsOneWidget);
+    expect(find.textContaining('분'), findsNothing);
   });
 
   testWidgets('home estimates today stats from raw points before processing', (
@@ -153,7 +153,7 @@ void main() {
 
     expect(find.text('1.1km'), findsOneWidget);
     expect(find.text('0곳'), findsOneWidget);
-    expect(find.text('12분'), findsOneWidget);
+    expect(find.textContaining('분'), findsNothing);
     expect(find.text('최근 위치 기록'), findsOneWidget);
   });
 
@@ -194,7 +194,7 @@ void main() {
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
-    expect(find.text('기록 지점 1개'), findsOneWidget);
+    expect(find.text('지도 핀 1개'), findsOneWidget);
   });
 
   testWidgets('home shows a compact timeline preview when visits exist', (
@@ -236,7 +236,7 @@ void main() {
 
     expect(find.text('오늘의 흐름'), findsOneWidget);
     expect(find.text('집 근처'), findsOneWidget);
-    expect(find.text('1시간 10분 머문 곳'), findsOneWidget);
+    expect(find.text('머문 기록'), findsOneWidget);
   });
 
   testWidgets('home recent reflection opens the reflection detail', (
@@ -298,7 +298,7 @@ void main() {
 
     expect(find.text('오늘 기록'), findsWidgets);
     expect(find.text('오늘 기록중인 위치'), findsNothing);
-    expect(find.text('기록 지점 1개'), findsOneWidget);
+    expect(find.text('지도 핀 1개'), findsOneWidget);
     expect(find.textContaining('37.5665'), findsNothing);
   });
 
@@ -330,13 +330,82 @@ void main() {
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
-    expect(find.text('기록 지점 2개'), findsOneWidget);
+    expect(find.text('지도 핀 2개'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('하루 요약'), 300);
     expect(find.text('방문 0곳'), findsOneWidget);
-    expect(find.text('움직임 14분'), findsOneWidget);
+    expect(find.textContaining('움직임'), findsNothing);
     await tester.scrollUntilVisible(find.text('최근 위치 기록'), 300);
     expect(find.text('최근 위치 기록'), findsOneWidget);
     expect(find.textContaining('위치 기록 2개 · 머문 곳은 판단 중'), findsOneWidget);
+  });
+
+  testWidgets('today inferred stay can be saved as a visited place', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final settingsRepository = SettingsRepository();
+    addTearDown(database.close);
+    await settingsRepository.save(
+      AppSettings.defaults().copyWith(
+        minimumMovementMeters: 50,
+        minimumStayMinutes: 5,
+      ),
+    );
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day, 9);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: start,
+            latitude: 35.1596,
+            longitude: 129.0602,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: start.add(const Duration(minutes: 8)),
+            latitude: 35.15961,
+            longitude: 129.06021,
+            accuracy: 20,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          settingsRepository: settingsRepository,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('오늘 기록'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('장소 흐름'), 300);
+    await tester.tap(find.text('저장').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('이 머문 곳을 저장할까요?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('save-place-map')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('save-place-name-field')),
+      '학원',
+    );
+    await tester.tap(find.text('저장').last);
+    await tester.pumpAndSettle();
+
+    final places = await database.select(database.placeClusters).get();
+    final visits = await database.select(database.visits).get();
+    expect(places, hasLength(1));
+    expect(places.single.displayName, '학원');
+    expect(places.single.visitCount, 1);
+    expect(visits, hasLength(1));
+    expect(visits.single.placeClusterId, places.single.id);
   });
 
   testWidgets('empty history shows example reflection cards', (tester) async {
@@ -591,6 +660,26 @@ void main() {
         .into(database.locationPoints)
         .insert(
           LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 9, 0, 10),
+            latitude: 37.03,
+            longitude: 127.03,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 9, 0, 20),
+            latitude: 37.06,
+            longitude: 127.06,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
             timestamp: DateTime(2026, 4, 26, 10),
             latitude: 37.1,
             longitude: 127.1,
@@ -647,20 +736,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('이동 경로'), findsOneWidget);
-    expect(find.text('기록 지점 2개'), findsOneWidget);
+    expect(find.text('지도 핀 3개'), findsOneWidget);
     expect(find.byKey(const ValueKey('day-route-map')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('day-route-cluster-layer')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('day-route-point-cluster')),
+      findsOneWidget,
+    );
+    expect(find.text('2'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('day-route-start-marker')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('day-route-end-marker')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('day-route-visit-marker')),
+      findsOneWidget,
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('day-route-map'))).height,
       220,
     );
     final routeMap = tester.widget<FlutterMap>(find.byType(FlutterMap));
-    expect(routeMap.options.interactionOptions.flags, InteractiveFlag.none);
+    expect(routeMap.options.minZoom, 3);
+    expect(routeMap.options.maxZoom, 19);
+    expect(routeMap.options.cameraConstraint, isA<ContainCameraLatitude>());
+    expect(
+      routeMap.options.interactionOptions.flags,
+      isNot(InteractiveFlag.none),
+    );
+    expect(
+      find.byKey(const ValueKey('day-route-position-marker')),
+      findsNothing,
+    );
     final cameraFit = routeMap.options.initialCameraFit as dynamic;
     final bounds = cameraFit.bounds as LatLngBounds;
     expect(bounds.contains(const LatLng(38, 128)), isTrue);
     expect(
       find.byKey(const ValueKey('map-snapshot-day-route-2026-04-26')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
@@ -778,6 +895,44 @@ void main() {
     expect(find.text('08:30'), findsOneWidget);
   });
 
+  testWidgets('settings threshold edits restart active tracking', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final settingsRepository = SettingsRepository();
+    final trackingService = _FakeTrackingService()..started = true;
+    addTearDown(database.close);
+    await settingsRepository.save(
+      AppSettings.defaults().copyWith(trackingEnabled: true),
+    );
+
+    await tester.pumpWidget(
+      DailyPatternApp(
+        dependencies: _testDependencies(
+          database,
+          settingsRepository: settingsRepository,
+          trackingService: trackingService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('movement-threshold-edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('number-setting-field')),
+      '50',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    expect(trackingService.stopCount, 1);
+    expect(trackingService.startCount, 1);
+    expect(trackingService.lastStartedSettings?.minimumMovementMeters, 50);
+  });
+
   testWidgets('tracking toggle explains missing location permission', (
     tester,
   ) async {
@@ -842,6 +997,10 @@ void main() {
 
     expect(before.dy, after.dy);
     expect(find.byKey(const ValueKey('settings-status-area')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-status-breath')),
+      findsOneWidget,
+    );
     expect(find.text('하루를 기록하려면 위치 권한이 필요해요'), findsOneWidget);
   });
 
@@ -873,7 +1032,9 @@ void main() {
       find.byKey(const ValueKey('settings-diagnostics-summary')),
       findsOneWidget,
     );
-    expect(find.textContaining('위치 1개'), findsOneWidget);
+    expect(find.textContaining('위치 1개'), findsNothing);
+    expect(find.textContaining('방문 0개'), findsOneWidget);
+    expect(find.textContaining('돌아보기 0개'), findsOneWidget);
   });
 
   testWidgets('manual daily processing refreshes visible insight state', (
@@ -1148,17 +1309,23 @@ AppDependencies _testDependencies(
 
 class _FakeTrackingService implements LocationTrackingService {
   bool started = false;
+  int startCount = 0;
+  int stopCount = 0;
+  AppSettings? lastStartedSettings;
 
   @override
   Future<bool> isTracking() async => started;
 
   @override
   Future<void> startTracking(AppSettings settings) async {
+    startCount++;
+    lastStartedSettings = settings;
     started = true;
   }
 
   @override
   Future<void> stopTracking() async {
+    stopCount++;
     started = false;
   }
 }

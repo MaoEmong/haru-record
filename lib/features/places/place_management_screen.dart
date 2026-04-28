@@ -1,13 +1,11 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
 import '../../app/responsive_type.dart';
-import '../maps/cached_map_snapshot.dart';
 import '../storage/app_database.dart';
 import 'place_label.dart';
+import 'place_map_preview.dart';
 
 class PlaceManagementScreen extends StatefulWidget {
   const PlaceManagementScreen({
@@ -208,7 +206,7 @@ class _PlaceGridCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Positioned(top: 16, left: 16, child: _PlacePinBadge()),
+                const Positioned(top: 16, left: 16, child: PlacePinBadge()),
                 _PlaceCaptionGradient(
                   borderRadius: 24,
                   compact: true,
@@ -388,68 +386,15 @@ class _PlaceMapPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final center = LatLng(place.centerLatitude, place.centerLongitude);
-    return IgnorePointer(
-      child: CachedMapSnapshot(
-        key: ValueKey('map-snapshot-place-${place.id}'),
-        cacheKey:
-            'place-${place.id}-'
-            '${place.centerLatitude.toStringAsFixed(5)}-'
-            '${place.centerLongitude.toStringAsFixed(5)}-z16',
-        child: FlutterMap(
-          key: ValueKey('place-map-${place.id}'),
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: 16,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.none,
-            ),
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.projectapp_1',
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: center,
-                  width: 34,
-                  height: 34,
-                  child: const _PlacePinBadge(),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlacePinBadge extends StatelessWidget {
-  const _PlacePinBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.surface, width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x3317232E),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: const Icon(
-        Icons.place_rounded,
-        color: AppColors.surface,
-        size: 18,
-      ),
+    return PlaceMapPreview(
+      latitude: place.centerLatitude,
+      longitude: place.centerLongitude,
+      mapKey: ValueKey('place-map-${place.id}'),
+      snapshotKey: ValueKey('map-snapshot-place-${place.id}'),
+      cacheKey:
+          'place-${place.id}-'
+          '${place.centerLatitude.toStringAsFixed(5)}-'
+          '${place.centerLongitude.toStringAsFixed(5)}-z16',
     );
   }
 }

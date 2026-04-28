@@ -1,7 +1,12 @@
 class DayRouteSnapshot {
-  const DayRouteSnapshot({required this.points, required this.visits});
+  const DayRouteSnapshot({
+    required this.points,
+    required this.rawPointCount,
+    required this.visits,
+  });
 
   final List<DayRoutePoint> points;
+  final int rawPointCount;
   final List<DayRouteVisit> visits;
 }
 

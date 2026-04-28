@@ -237,6 +237,56 @@ void main() {
     await database.close();
   });
 
+  test('uses the first next-day point to close an overnight stay', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults(),
+    );
+
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 25, 23, 50),
+            latitude: 37.5665,
+            longitude: 126.9780,
+            accuracy: 20,
+          ),
+        );
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 26, 0, 10),
+            latitude: 37.5666,
+            longitude: 126.9781,
+            accuracy: 20,
+          ),
+        );
+
+    final result = await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    final visits = await database.select(database.visits).get();
+    final summaries = await database.select(database.dailySummaries).get();
+    expect(result.yesterdayPointCount, 1);
+    expect(visits, hasLength(1));
+    expect(visits.single.startedAt, DateTime(2026, 4, 25, 23, 50));
+    expect(visits.single.endedAt, DateTime(2026, 4, 26));
+    expect(visits.single.durationMinutes, 10);
+    expect(
+      summaries.singleWhere((summary) => summary.date == '2026-04-25')
+          .visitCount,
+      1,
+    );
+
+    await database.close();
+  });
+
   test('cancels daily notification when notifications are disabled', () async {
     final database = AppDatabase(NativeDatabase.memory());
     final notificationAdapter = FakeNotificationAdapter();

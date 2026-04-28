@@ -18,6 +18,7 @@ class TrackingMethodChannel(private val context: Context) {
                 "startTracking" -> {
                     val movement = call.argument<Int>("minimumMovementMeters") ?: 100
                     val stay = call.argument<Int>("minimumStayMinutes") ?: 10
+                    val rawInterval = call.argument<Int>("rawLocationIntervalSeconds") ?: 10
                     if (!hasLocationPermission()) {
                         result.error(
                             "location_permission_missing",
@@ -29,6 +30,7 @@ class TrackingMethodChannel(private val context: Context) {
                     val intent = Intent(context, LocationTrackingService::class.java)
                         .putExtra("minimumMovementMeters", movement)
                         .putExtra("minimumStayMinutes", stay)
+                        .putExtra("rawLocationIntervalSeconds", rawInterval)
                     try {
                         ContextCompat.startForegroundService(context, intent)
                         result.success(null)

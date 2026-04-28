@@ -305,6 +305,7 @@ class _DailyPatternShellState extends State<DailyPatternShell>
         builder: (context) => DayDetailScreen(
           database: widget.dependencies.database,
           date: now,
+          settingsRepository: widget.dependencies.settingsRepository,
           appBarTitle: '오늘 기록',
           title: '오늘 기록',
           body: '오늘 기기 안에 쌓이고 있는 위치 기록과 머문 곳을 확인해요.',
@@ -319,6 +320,7 @@ class _DailyPatternShellState extends State<DailyPatternShell>
         builder: (context) => DayDetailScreen(
           database: widget.dependencies.database,
           date: insight.date,
+          settingsRepository: widget.dependencies.settingsRepository,
           title: insight.title,
           body: insight.body,
         ),

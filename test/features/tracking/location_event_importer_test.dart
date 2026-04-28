@@ -73,21 +73,53 @@ void main() {
     expect(await eventFile.readAsString(), isEmpty);
   });
 
-  test('does not store near-duplicate points from the same short window', () async {
+  test('skips non-finite or out-of-range coordinates', () async {
     await eventFile.writeAsString(
-      '{"timestamp":"2026-04-25T10:00:00.000","latitude":37.5665,"longitude":126.978,"accuracy":15,"source":"android"}\n'
-      '{"timestamp":"2026-04-25T10:05:00.000","latitude":37.56651,"longitude":126.97801,"accuracy":18,"source":"android"}\n'
-      '{"timestamp":"2026-04-25T10:40:00.000","latitude":37.56652,"longitude":126.97802,"accuracy":18,"source":"android"}\n',
+      '{"timestamp":"2026-04-25T10:00:00.000","latitude":91,"longitude":126.978,"accuracy":20}\n'
+      '{"timestamp":"2026-04-25T10:01:00.000","latitude":37.5665,"longitude":181,"accuracy":20}\n'
+      '{"timestamp":"2026-04-25T10:02:00.000","latitude":37.5665,"longitude":126.978,"accuracy":-1}\n'
+      '{"timestamp":"2026-04-25T10:03:00.000","latitude":37.5665,"longitude":126.978,"accuracy":20}\n',
     );
     final importer = LocationEventImporter(database, channel: channel);
 
     final result = await importer.importPendingEvents();
 
     final points = await database.select(database.locationPoints).get();
-    expect(result.importedCount, 2);
-    expect(points, hasLength(2));
+    expect(result.importedCount, 1);
+    expect(result.skippedCount, 3);
+    expect(points.single.latitude, 37.5665);
+  });
+
+  test('keeps nearby points far enough apart to prove a stay', () async {
+    await eventFile.writeAsString(
+      '{"timestamp":"2026-04-25T10:00:00.000","latitude":37.5665,"longitude":126.978,"accuracy":15,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:05:00.000","latitude":37.56651,"longitude":126.97801,"accuracy":18,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:05:20.000","latitude":37.56651,"longitude":126.97801,"accuracy":18,"source":"android"}\n',
+    );
+    final importer = LocationEventImporter(database, channel: channel);
+
+    final result = await importer.importPendingEvents();
+
+    final points = await database.select(database.locationPoints).get();
+    expect(result.importedCount, 3);
+    expect(points, hasLength(3));
     expect(points.first.timestamp, DateTime(2026, 4, 25, 10));
-    expect(points.last.timestamp, DateTime(2026, 4, 25, 10, 40));
+    expect(points.last.timestamp, DateTime(2026, 4, 25, 10, 5, 20));
+  });
+
+  test('keeps dense walking points for route display', () async {
+    await eventFile.writeAsString(
+      '{"timestamp":"2026-04-25T10:00:00.000","latitude":37.5665,"longitude":126.978,"accuracy":15,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:00:10.000","latitude":37.5666,"longitude":126.978,"accuracy":15,"source":"android"}\n'
+      '{"timestamp":"2026-04-25T10:00:20.000","latitude":37.5667,"longitude":126.978,"accuracy":15,"source":"android"}\n',
+    );
+    final importer = LocationEventImporter(database, channel: channel);
+
+    final result = await importer.importPendingEvents();
+
+    final points = await database.select(database.locationPoints).get();
+    expect(result.importedCount, 3);
+    expect(points, hasLength(3));
   });
 
   test('preserves events appended after the import snapshot is taken', () async {

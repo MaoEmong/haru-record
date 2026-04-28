@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하루 기록 — 컬러 편집기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── ACTIVE THEME TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:         #EDF3F7;
+  --surface:    #FCFDFE;
+  --surfaceAlt: #F5F9FB;
+  --border:     #D3E0E8;
+  --ink:        #17232E;
+  --muted:      #536676;
+  --softBlue:   #AEC7D8;
+  --blueGrey:   #3F6F8A;
+  --paleBlue:   #E2ECF2;
+  --serif: 'Noto Serif KR', Georgia, serif;
+  --sans:  'Noto Sans KR', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: #0E1B2A; color: white; min-height: 100vh; }
+
+/* ── TWO-COLUMN LAYOUT ───────────────────────────────────────────── */
+.editor { display: grid; grid-template-columns: 420px 1fr; min-height: 100vh; }
+
+/* ── LEFT PHONE PANEL ────────────────────────────────────────────── */
+.phone-panel {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; background: #0A1520;
+  border-right: 1px solid rgba(255,255,255,0.05); overflow: hidden;
+}
+.panel-label {
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px;
+}
+.phone-scaler { transform: scale(0.84); transform-origin: center center; flex-shrink: 0; }
+
+/* ── PHONE SHELL ─────────────────────────────────────────────────── */
+.phone {
+  width: 390px; height: 844px; background: var(--bg);
+  border-radius: 48px; overflow: hidden;
+  box-shadow: 0 28px 70px rgba(0,0,0,0.6), inset 0 0 0 1.5px rgba(255,255,255,0.18);
+  display: flex; flex-direction: column; position: relative;
+}
+.notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 34px; background: #0A1520;
+  border-radius: 0 0 22px 22px; z-index: 100;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.notch-camera { width: 10px; height: 10px; background: #142030; border-radius: 50%; }
+.notch-mic    { width:  4px; height:  4px; background: #142030; border-radius: 50%; }
+
+/* ── SHELL HEADER (right-aligned only) ──────────────────────────── */
+.shell-header {
+  padding: 10px 22px 4px;
+  display: flex; align-items: center; justify-content: flex-end;
+  flex-shrink: 0; min-height: 42px;
+}
+.recording-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 100px; padding: 6px 10px;
+}
+.rec-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--blueGrey);
+  flex-shrink: 0;
+}
+.rec-text {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+}
+
+/* ── SCREEN CONTENT ──────────────────────────────────────────────── */
+.screen-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.screen-content::-webkit-scrollbar { display: none; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── BOTTOM NAV ──────────────────────────────────────────────────── */
+.bottom-nav {
+  flex-shrink: 0; height: 72px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  display: flex; align-items: stretch; justify-content: space-around; padding: 0;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; flex: 1; border: none; background: none; cursor: pointer; position: relative;
+  padding: 8px 4px 4px;
+}
+.nav-icon-wrap {
+  width: 52px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 16px; transition: background 0.2s;
+}
+.nav-item.active .nav-icon-wrap { background: var(--softBlue); }
+.nav-icon-wrap svg {
+  width: 23px; height: 23px; fill: none; stroke: var(--muted); stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.nav-item.active .nav-icon-wrap svg { stroke: var(--ink); }
+.nav-label { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: -0.01em; }
+.nav-item.active .nav-label { color: var(--ink); font-weight: 700; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* TAB 0: 오늘                                                        */
+/* ────────────────────────────────────────────────────────────────── */
+.date-hero { padding: 14px 22px 6px; }
+.date-top-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.date-year-label { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+.rec-pill-inline {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--paleBlue); border: 1px solid var(--border);
+  border-radius: 100px; padding: 3px 8px;
+}
+.rec-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blueGrey); flex-shrink: 0; }
+.rec-pill-text { font-size: 11px; font-weight: 700; color: var(--muted); }
+
+.date-number-row {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.date-day-num {
+  font-family: var(--serif); font-size: 58px; font-weight: 300;
+  color: var(--ink); line-height: 1; letter-spacing: -2px;
+}
+.date-month-col { display: flex; flex-direction: column; }
+.date-month-text { font-family: var(--serif); font-size: 19px; font-weight: 500; color: var(--ink); line-height: 1.2; }
+.date-weekday-sm { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+
+/* STAT CHIPS */
+.stat-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 10px 22px 0;
+}
+.stat-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 100px; padding: 6px 12px;
+}
+.chip-icon { width: 14px; height: 14px; fill: none; stroke: var(--muted); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.chip-value { font-size: 13px; font-weight: 700; color: var(--ink); }
+.chip-label { font-size: 13px; color: var(--muted); }
+
+/* DARK INSIGHT CARD */
+.insight-card {
+  margin: 14px 18px 0;
+  background: var(--ink); border-radius: 24px; padding: 22px;
+  position: relative; overflow: hidden;
+}
+.insight-label {
+  font-size: 10px; font-weight: 700; color: var(--softBlue);
+  letter-spacing: 1.2px; margin-bottom: 10px;
+}
+.insight-title {
+  font-family: var(--serif); font-size: 20px; font-weight: 500;
+  color: var(--surface); line-height: 1.4; margin-bottom: 10px;
+}
+.insight-body { font-size: 13px; color: rgba(252,253,254,0.6); line-height: 1.6; margin-bottom: 16px; }
+.insight-footer { display: flex; justify-content: flex-end; }
+.insight-detail-btn {
+  font-size: 12px; font-weight: 700; color: var(--ink);
+  background: var(--surface); border: none; border-radius: 100px;
+  padding: 7px 14px; cursor: pointer;
+}
+
+/* SECTION HEADER */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 18px 10px 22px;
+}
+.section-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--ink); }
+.section-action { font-size: 12px; font-weight: 600; color: var(--blueGrey); background: none; border: none; cursor: pointer; }
+
+/* DOT TIMELINE */
+.dot-timeline { padding: 0 22px; }
+.tl-row { display: flex; align-items: stretch; gap: 0; }
+.tl-time { width: 52px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--muted); padding-top: 0; }
+.tl-dot-col { display: flex; flex-direction: column; align-items: center; margin-right: 14px; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blueGrey); flex-shrink: 0; margin-top: 1px; }
+.tl-line { width: 1px; flex: 1; background: var(--border); margin: 4px 0; min-height: 20px; }
+.tl-content { flex: 1; padding-bottom: 16px; }
+.tl-content.last { padding-bottom: 0; }
+.tl-place { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
+.tl-duration { font-size: 13px; color: var(--muted); }
+
+/* QUICK ACTION CARD */
+.quick-action-card {
+  margin: 16px 18px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 16px 18px;
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+}
+.qa-icon { width: 24px; height: 24px; fill: none; stroke: var(--blueGrey); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.qa-text { flex: 1; }
+.qa-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 3px; }
+.qa-sub { font-size: 13px; color: var(--muted); }
+.qa-chevron { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* TAB 1: 돌아보기                                                    */
+/* ────────────────────────────────────────────────────────────────── */
+.history-list { padding: 10px 18px 28px; }
+.month-section { margin-bottom: 18px; }
+.month-title { font-family: var(--sans); font-size: 15px; font-weight: 800; color: var(--muted); padding: 4px 4px 10px; }
+.history-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 24px; padding: 18px;
+  display: flex; align-items: flex-start; gap: 0;
+  cursor: pointer; margin-bottom: 10px;
+}
+.hc-date { width: 44px; flex-shrink: 0; text-align: center; }
+.hc-day { font-family: var(--serif); font-size: 24px; font-weight: 300; color: var(--ink); line-height: 1; }
+.hc-dow { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 4px; }
+.hc-divider { width: 1px; height: 56px; background: var(--border); margin: 0 14px; flex-shrink: 0; }
+.hc-body { flex: 1; min-width: 0; }
+.hc-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 6px; line-height: 1.3; }
+.hc-text { font-size: 13px; color: var(--muted); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hc-chevron { flex-shrink: 0; align-self: center; margin-left: 8px; }
+.hc-chevron svg { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* TAB 2: 방문한 곳 (map-based)                                      */
+/* ────────────────────────────────────────────────────────────────── */
+.places-list { padding: 10px 18px 28px; }
+
+/* info notice card */
+.place-notice {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 24px; padding: 14px 16px;
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;
+}
+.notice-icon { width: 20px; height: 20px; fill: none; stroke: var(--blueGrey); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 1px; }
+.notice-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* featured place card with mock map */
+.featured-place-card {
+  height: 220px; border-radius: 28px; overflow: hidden; position: relative;
+  cursor: pointer; margin-bottom: 14px;
+  border: 1px solid var(--ink);
+}
+.map-bg {
+  position: absolute; inset: 0;
+  background-color: #E4E9EC;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.85) 3px, transparent 3px),
+    linear-gradient(to bottom, rgba(255,255,255,0.85) 3px, transparent 3px),
+    linear-gradient(to right, rgba(255,255,255,0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.5) 1px, transparent 1px);
+  background-size: 60px 60px, 60px 60px, 20px 20px, 20px 20px;
+}
+.map-tint { position: absolute; inset: 0; background: rgba(252,253,254,0.12); }
+.map-gradient {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 70%;
+  background: linear-gradient(to bottom, transparent 0%, rgba(252,253,254,0.78) 55%, rgba(252,253,254,0.94) 100%);
+  border-radius: 0 0 28px 28px;
+}
+.map-pin {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -80%);
+  width: 34px; height: 34px;
+  background: var(--ink); border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 3px 8px rgba(23,35,46,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.map-pin svg { width: 18px; height: 18px; fill: var(--surface); }
+.featured-caption {
+  position: absolute; left: 22px; right: 22px; bottom: 22px;
+}
+.featured-cap-label {
+  font-size: 11px; font-weight: 800; color: var(--blueGrey); letter-spacing: 1.1px; margin-bottom: 8px;
+}
+.featured-cap-row { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 8px; }
+.featured-cap-name { font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1.2; flex: 1; }
+.edit-pill {
+  background: rgba(252,253,254,0.72); border: 1px solid var(--border);
+  border-radius: 100px; padding: 8px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.edit-pill svg { width: 17px; height: 17px; fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.edit-pill-sm { padding: 6px; }
+.edit-pill-sm svg { width: 15px; height: 15px; }
+.featured-cap-visits { font-size: 14px; color: var(--muted); }
+
+/* place grid */
+.place-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.grid-card {
+  border-radius: 24px; overflow: hidden; position: relative;
+  cursor: pointer; aspect-ratio: 1.06/1;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.grid-map-bg {
+  position: absolute; inset: 0;
+  background-color: #E4E9EC;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.85) 2px, transparent 2px),
+    linear-gradient(to bottom, rgba(255,255,255,0.85) 2px, transparent 2px),
+    linear-gradient(to right, rgba(255,255,255,0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.4) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px, 14px 14px, 14px 14px;
+}
+.grid-map-tint { position: absolute; inset: 0; background: rgba(252,253,254,0.12); }
+.grid-map-gradient {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 65%;
+  background: linear-gradient(to bottom, transparent 0%, rgba(252,253,254,0.78) 55%, rgba(252,253,254,0.94) 100%);
+  border-radius: 0 0 24px 24px;
+}
+.grid-pin {
+  position: absolute; top: 16px; left: 16px;
+  width: 28px; height: 28px;
+  background: var(--ink); border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 6px rgba(23,35,46,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.grid-pin svg { width: 14px; height: 14px; fill: var(--surface); }
+.grid-caption {
+  position: absolute; left: 14px; right: 14px; bottom: 14px;
+  display: flex; align-items: flex-end; gap: 8px;
+}
+.grid-cap-text { flex: 1; min-width: 0; }
+.grid-cap-name { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.2; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid-cap-visits { font-size: 13px; color: var(--muted); }
+
+/* ────────────────────────────────────────────────────────────────── */
+/* TAB 3: 설정                                                        */
+/* ────────────────────────────────────────────────────────────────── */
+.settings-fixed-header { padding: 14px 22px 10px; flex-shrink: 0; }
+.settings-title { font-family: var(--serif); font-size: 30px; font-weight: 300; color: var(--ink); line-height: 1.1; margin-bottom: 4px; }
+.settings-subtitle { font-size: 13px; color: var(--muted); }
+
+.settings-scroll { overflow-y: auto; padding: 0 18px 28px; }
+.settings-scroll::-webkit-scrollbar { display: none; }
+
+.settings-status {
+  background: var(--paleBlue); border: 1px solid var(--border);
+  border-radius: 22px; padding: 0 16px; height: 58px;
+  display: flex; align-items: center;
+  font-size: 13px; color: var(--muted); margin-bottom: 10px;
+}
+
+.trust-card {
+  background: var(--paleBlue); border: 1px solid var(--border);
+  border-radius: 18px; padding: 18px; margin-bottom: 18px;
+}
+.trust-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+.trust-body { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.settings-section { margin-bottom: 6px; }
+.settings-group-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; padding: 12px 4px 5px; }
+.settings-group { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+.settings-row { display: flex; align-items: center; padding: 14px 16px; gap: 12px; cursor: pointer; }
+.settings-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+.srow-icon { width: 22px; height: 22px; fill: none; stroke: var(--blueGrey); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.srow-text { flex: 1; }
+.srow-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.srow-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.srow-value { font-size: 14px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.srow-edit { width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.switch-track {
+  width: 46px; height: 26px; border-radius: 13px; background: var(--softBlue);
+  position: relative; flex-shrink: 0; cursor: pointer; transition: background 0.2s;
+}
+.switch-track.off { background: var(--paleBlue); }
+.switch-thumb {
+  position: absolute; top: 3px; right: 3px; width: 20px; height: 20px;
+  background: var(--ink); border-radius: 50%; transition: right 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.switch-track.off .switch-thumb { right: auto; left: 3px; background: var(--muted); }
+
+
+/* ── RIGHT: PALETTE PANEL ────────────────────────────────────────── */
+.palette-panel {
+  padding: 36px 36px 64px 28px; overflow-y: auto; max-height: 100vh; background: #12202E;
+}
+.palette-heading {
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.28);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 18px;
+}
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; margin-bottom: 34px; }
+.preset-card {
+  background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 12px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.preset-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
+.preset-card.active { border-color: rgba(255,255,255,0.38); background: rgba(255,255,255,0.09); }
+.preset-swatches { display: flex; gap: 3px; margin-bottom: 9px; }
+.preset-swatch { flex: 1; height: 18px; border-radius: 5px; }
+.preset-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.82); margin-bottom: 2px; }
+.preset-desc { font-size: 10px; color: rgba(255,255,255,0.36); }
+
+.color-group { margin-bottom: 26px; }
+.group-label {
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.28);
+  letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; padding-left: 2px;
+}
+.color-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 10px; border-radius: 10px; transition: background 0.1s;
+}
+.color-row:hover { background: rgba(255,255,255,0.04); }
+.swatch-wrap { position: relative; width: 34px; height: 34px; flex-shrink: 0; display: block; cursor: pointer; }
+.swatch-preview {
+  width: 34px; height: 34px; border-radius: 9px;
+  border: 1.5px solid rgba(255,255,255,0.1); pointer-events: none;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.swatch-wrap:hover .swatch-preview { border-color: rgba(255,255,255,0.32); transform: scale(1.06); }
+.hidden-picker { position: absolute; top: 50%; left: 50%; width: 0; height: 0; opacity: 0; border: none; padding: 0; cursor: pointer; }
+.color-info { flex: 1; min-width: 0; }
+.color-token { font-family: 'Courier New', monospace; font-size: 10px; color: rgba(255,255,255,0.35); margin-bottom: 2px; }
+.color-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.78); }
+.hex-chip {
+  font-family: 'Courier New', monospace; font-size: 11px; color: rgba(255,255,255,0.38);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px; padding: 4px 8px; min-width: 72px; text-align: center;
+  cursor: pointer; user-select: none; transition: background 0.1s, color 0.1s;
+}
+.hex-chip:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.65); }
+
+.export-section { margin-top: 16px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,0.06); }
+.export-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.28); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+.export-btn {
+  width: 100%; padding: 12px 16px;
+  background: rgba(174,199,216,0.1); border: 1.5px solid rgba(174,199,216,0.18);
+  border-radius: 12px; font-size: 13px; font-weight: 700; color: rgba(174,199,216,0.85);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.export-btn:hover { background: rgba(174,199,216,0.18); border-color: rgba(174,199,216,0.32); }
+.copy-toast { margin-top: 10px; text-align: center; font-size: 12px; color: rgba(61,170,114,0.9); opacity: 0; transition: opacity 0.3s; }
+.copy-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="editor">
+
+  <!-- ══ LEFT: PHONE ══════════════════════════════════════════════ -->
+  <div class="phone-panel">
+    <div class="panel-label">미리보기 · 탭 클릭으로 화면 전환</div>
+    <div class="phone-scaler">
+      <div class="phone">
+        <div class="notch"><div class="notch-camera"></div><div class="notch-mic"></div></div>
+
+        <!-- Shell header: right-aligned recording pill only -->
+        <div class="shell-header">
+          <div class="recording-pill">
+            <div class="rec-dot"></div>
+            <span class="rec-text">기록 중</span>
+          </div>
+        </div>
+
+        <!-- Screen content -->
+        <div class="screen-content">
+
+          <!-- ─ 오늘 ─ -->
+          <div class="tab-panel active" id="panel-today">
+            <!-- DateHero -->
+            <div class="date-hero">
+              <div class="date-top-row">
+                <span class="date-year-label">2026년 · 일요일</span>
+                <div class="rec-pill-inline">
+                  <div class="rec-pill-dot"></div>
+                  <span class="rec-pill-text">기록 중</span>
+                </div>
+              </div>
+              <div class="date-number-row">
+                <span class="date-day-num">27</span>
+                <div class="date-month-col">
+                  <span class="date-month-text">4월</span>
+                  <span class="date-weekday-sm">일요일</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- StatChips -->
+            <div class="stat-chips">
+              <div class="stat-chip">
+                <!-- walk icon -->
+                <svg class="chip-icon" viewBox="0 0 24 24">
+                  <path d="M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0"/><path d="m10 9 1.5-2.5L14 8l-1 3h3l-2 5H11l1-4-2-1"/>
+                  <path d="m9.5 13-1 5"/>
+                </svg>
+                <span class="chip-value">2.4km</span>
+                <span class="chip-label">이동</span>
+              </div>
+              <div class="stat-chip">
+                <!-- place icon -->
+                <svg class="chip-icon" viewBox="0 0 24 24">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/>
+                </svg>
+                <span class="chip-value">3곳</span>
+                <span class="chip-label">방문</span>
+              </div>
+              <div class="stat-chip">
+                <!-- timer icon -->
+                <svg class="chip-icon" viewBox="0 0 24 24">
+                  <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M8 3h8"/><path d="M12 3v2"/>
+                </svg>
+                <span class="chip-value">47분</span>
+                <span class="chip-label">움직임</span>
+              </div>
+            </div>
+
+            <!-- DarkInsightCard -->
+            <div class="insight-card">
+              <div class="insight-label">최근 돌아보기</div>
+              <div class="insight-title">평소보다 조용한 하루였어요</div>
+              <div class="insight-body">오늘 이동 거리가 이번 주 평균보다 38% 적었어요. 주로 집 근처에 머물렀고, 오후에 카페를 다녀왔네요.</div>
+              <div class="insight-footer">
+                <button class="insight-detail-btn">자세히</button>
+              </div>
+            </div>
+
+            <!-- SectionHeader -->
+            <div class="section-header">
+              <span class="section-title">오늘의 흐름</span>
+              <button class="section-action">전체 보기</button>
+            </div>
+
+            <!-- DotTimeline -->
+            <div class="dot-timeline">
+              <div class="tl-row">
+                <div class="tl-time" style="padding-top:1px">08:12</div>
+                <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+                <div class="tl-content">
+                  <div class="tl-place">집</div>
+                  <div class="tl-duration">5시간 52분 머묾</div>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-time" style="padding-top:1px">14:04</div>
+                <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+                <div class="tl-content">
+                  <div class="tl-place">카페</div>
+                  <div class="tl-duration">1시간 28분 머묾</div>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-time" style="padding-top:1px">15:32</div>
+                <div class="tl-dot-col"><div class="tl-dot"></div></div>
+                <div class="tl-content last">
+                  <div class="tl-place">집</div>
+                  <div class="tl-duration">지금도 여기</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- QuickActionCard -->
+            <div class="quick-action-card">
+              <!-- article_outlined icon -->
+              <svg class="qa-icon" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+              </svg>
+              <div class="qa-text">
+                <div class="qa-title">오늘 기록</div>
+                <div class="qa-sub">지금 기록된 위치와 머문 곳을 확인해요</div>
+              </div>
+              <svg class="qa-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div style="height:12px"></div>
+          </div>
+
+          <!-- ─ 돌아보기 ─ -->
+          <div class="tab-panel" id="panel-history">
+            <div class="history-list">
+              <div class="month-section">
+                <div class="month-title">2026년 04월</div>
+                <div class="history-card">
+                  <div class="hc-date"><div class="hc-day">26</div><div class="hc-dow">토</div></div>
+                  <div class="hc-divider"></div>
+                  <div class="hc-body">
+                    <div class="hc-title">주말에 더 멀리 나갔어요</div>
+                    <div class="hc-text">오늘 이동 거리가 이번 주 평균보다 65% 많았어요. 주말마다 활동 반경이 넓어지는 패턴이 보여요.</div>
+                  </div>
+                  <div class="hc-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+                </div>
+                <div class="history-card">
+                  <div class="hc-date"><div class="hc-day">25</div><div class="hc-dow">금</div></div>
+                  <div class="hc-divider"></div>
+                  <div class="hc-body">
+                    <div class="hc-title">처음 간 곳이 생겼어요</div>
+                    <div class="hc-text">오늘 새로운 장소를 방문했어요. 익숙한 루틴에서 벗어난 하루였네요.</div>
+                  </div>
+                  <div class="hc-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+                </div>
+                <div class="history-card">
+                  <div class="hc-date"><div class="hc-day">24</div><div class="hc-dow">목</div></div>
+                  <div class="hc-divider"></div>
+                  <div class="hc-body">
+                    <div class="hc-title">이번 주 이동이 가장 많은 날</div>
+                    <div class="hc-text">목요일이 이번 주에서 가장 바쁜 날이었어요. 방문한 곳도 6곳으로 평소보다 많았어요.</div>
+                  </div>
+                  <div class="hc-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+                </div>
+              </div>
+              <div class="month-section">
+                <div class="month-title">2026년 03월</div>
+                <div class="history-card">
+                  <div class="hc-date"><div class="hc-day">31</div><div class="hc-dow">화</div></div>
+                  <div class="hc-divider"></div>
+                  <div class="hc-body">
+                    <div class="hc-title">지난달 마지막 날, 꽤 바빴네요</div>
+                    <div class="hc-text">3월 마지막 날 이동량이 많았어요. 5곳을 방문하며 활발한 하루를 보냈어요.</div>
+                  </div>
+                  <div class="hc-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─ 방문한 곳 ─ -->
+          <div class="tab-panel" id="panel-places">
+            <div class="places-list">
+              <!-- info notice -->
+              <div class="place-notice">
+                <svg class="notice-icon" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span class="notice-text">머문 위치가 생기면 이곳에 방문한 곳으로 모아요. 가까운 위치는 같은 장소로 묶고, 이름은 눌러서 바꿀 수 있어요.</span>
+              </div>
+
+              <!-- featured place card -->
+              <div class="featured-place-card">
+                <div class="map-bg"></div>
+                <div class="map-tint"></div>
+                <div class="map-gradient"></div>
+                <div class="map-pin">
+                  <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
+                </div>
+                <div class="featured-caption">
+                  <div class="featured-cap-label">가장 많이 머문 곳</div>
+                  <div class="featured-cap-row">
+                    <div class="featured-cap-name">집</div>
+                    <div class="edit-pill">
+                      <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                  </div>
+                  <div class="featured-cap-visits">47번 머문 곳</div>
+                </div>
+              </div>
+
+              <!-- 2-col grid -->
+              <div class="place-grid">
+                <div class="grid-card">
+                  <div class="grid-map-bg"></div>
+                  <div class="grid-map-tint"></div>
+                  <div class="grid-map-gradient"></div>
+                  <div class="grid-pin"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg></div>
+                  <div class="grid-caption">
+                    <div class="grid-cap-text">
+                      <div class="grid-cap-name">단골 카페</div>
+                      <div class="grid-cap-visits">12번 머문 곳</div>
+                    </div>
+                    <div class="edit-pill edit-pill-sm"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                  </div>
+                </div>
+                <div class="grid-card">
+                  <div class="grid-map-bg"></div>
+                  <div class="grid-map-tint"></div>
+                  <div class="grid-map-gradient"></div>
+                  <div class="grid-pin"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg></div>
+                  <div class="grid-caption">
+                    <div class="grid-cap-text">
+                      <div class="grid-cap-name">마트</div>
+                      <div class="grid-cap-visits">8번 머문 곳</div>
+                    </div>
+                    <div class="edit-pill edit-pill-sm"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                  </div>
+                </div>
+                <div class="grid-card">
+                  <div class="grid-map-bg"></div>
+                  <div class="grid-map-tint"></div>
+                  <div class="grid-map-gradient"></div>
+                  <div class="grid-pin"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg></div>
+                  <div class="grid-caption">
+                    <div class="grid-cap-text">
+                      <div class="grid-cap-name">헬스장</div>
+                      <div class="grid-cap-visits">6번 머문 곳</div>
+                    </div>
+                    <div class="edit-pill edit-pill-sm"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                  </div>
+                </div>
+                <div class="grid-card">
+                  <div class="grid-map-bg"></div>
+                  <div class="grid-map-tint"></div>
+                  <div class="grid-map-gradient"></div>
+                  <div class="grid-pin"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg></div>
+                  <div class="grid-caption">
+                    <div class="grid-cap-text">
+                      <div class="grid-cap-name">단골 식당</div>
+                      <div class="grid-cap-visits">5번 머문 곳</div>
+                    </div>
+                    <div class="edit-pill edit-pill-sm"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─ 설정 ─ -->
+          <div class="tab-panel" id="panel-settings">
+            <div class="settings-fixed-header">
+              <div class="settings-title">설정</div>
+              <div class="settings-subtitle">기록 방식과 보관 기준을 조정해요.</div>
+            </div>
+            <div class="settings-scroll">
+              <!-- status area -->
+              <div class="settings-status">
+                기록 상태 확인 · 위치 143번 · 방문 47번 · 돌아보기 8번
+              </div>
+
+              <!-- trust card -->
+              <div class="trust-card">
+                <div class="trust-title">기록은 이 기기에만 저장돼요</div>
+                <div class="trust-body">움직임이 있을 때 중심으로 위치를 기록하고, 하루가 끝나면 조용히 정리해드려요.</div>
+              </div>
+
+              <!-- 기록 -->
+              <div class="settings-section">
+                <div class="settings-group-label">기록</div>
+                <div class="settings-group">
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                    <div class="srow-text">
+                      <div class="srow-title">하루 기록</div>
+                      <div class="srow-sub">위치 흐름을 남기고 있어요</div>
+                    </div>
+                    <div class="switch-track" onclick="this.classList.toggle('off')"><div class="switch-thumb"></div></div>
+                  </div>
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><path d="M13 4a1 1 0 1 0 2 0 1 1 0 0 0-2 0"/><path d="m10 9 1.5-2.5L14 8l-1 3h3l-2 5H11l1-4-2-1"/><path d="m9.5 13-1 5"/></svg>
+                    <div class="srow-text">
+                      <div class="srow-title">움직임으로 볼 거리</div>
+                      <div class="srow-sub">이 거리 이상이면 이동으로 봐요</div>
+                    </div>
+                    <span class="srow-value">50m</span>
+                    <svg class="srow-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </div>
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M8 3h8"/><path d="M12 3v2"/></svg>
+                    <div class="srow-text">
+                      <div class="srow-title">머문 곳으로 볼 시간</div>
+                      <div class="srow-sub">이 시간 이상 머물면 방문으로 봐요</div>
+                    </div>
+                    <span class="srow-value">5분</span>
+                    <svg class="srow-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 알림 -->
+              <div class="settings-section">
+                <div class="settings-group-label">알림</div>
+                <div class="settings-group">
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <div class="srow-text">
+                      <div class="srow-title">매일 알림</div>
+                      <div class="srow-sub">하루를 돌아볼 시간을 알려줘요</div>
+                    </div>
+                    <div class="switch-track" onclick="this.classList.toggle('off')"><div class="switch-thumb"></div></div>
+                  </div>
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <div class="srow-text"><div class="srow-title">알림 시간</div></div>
+                    <span class="srow-value">21:00</span>
+                    <svg class="srow-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 데이터 -->
+              <div class="settings-section">
+                <div class="settings-group-label">데이터</div>
+                <div class="settings-group">
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+                    <div class="srow-text">
+                      <div class="srow-title">기록 보관 기간</div>
+                      <div class="srow-sub">오래된 위치 데이터는 자동 삭제돼요</div>
+                    </div>
+                    <span class="srow-value">90일</span>
+                    <svg class="srow-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </div>
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.85"/></svg>
+                    <div class="srow-text"><div class="srow-title">어제 돌아보기 만들기</div></div>
+                  </div>
+                  <div class="settings-row">
+                    <svg class="srow-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    <div class="srow-text"><div class="srow-title" style="color:#C94040">원시 위치 데이터 삭제</div></div>
+                  </div>
+                </div>
+              </div>
+              <div style="height:12px"></div>
+            </div>
+          </div>
+
+        </div><!-- /screen-content -->
+
+        <!-- Bottom nav -->
+        <nav class="bottom-nav">
+          <button class="nav-item active" onclick="switchTab(this,'today')">
+            <div class="nav-icon-wrap">
+              <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <span class="nav-label">오늘</span>
+          </button>
+          <button class="nav-item" onclick="switchTab(this,'history')">
+            <div class="nav-icon-wrap">
+              <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <span class="nav-label">돌아보기</span>
+          </button>
+          <button class="nav-item" onclick="switchTab(this,'places')">
+            <div class="nav-icon-wrap">
+              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            </div>
+            <span class="nav-label">방문한 곳</span>
+          </button>
+          <button class="nav-item" onclick="switchTab(this,'settings')">
+            <div class="nav-icon-wrap">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <span class="nav-label">설정</span>
+          </button>
+        </nav>
+      </div><!-- /phone -->
+    </div><!-- /phone-scaler -->
+  </div><!-- /phone-panel -->
+
+
+  <!-- ══ RIGHT: PALETTE ════════════════════════════════════════════ -->
+  <div class="palette-panel">
+    <div class="palette-heading">컬러 테마 편집</div>
+    <div class="preset-grid" id="presets"></div>
+    <div id="color-groups"></div>
+    <div class="export-section">
+      <div class="export-label">내보내기</div>
+      <button class="export-btn" onclick="exportFlutter()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Flutter AppColors 코드 복사
+      </button>
+      <div class="copy-toast" id="copyToast">✓ 클립보드에 복사됐어요</div>
+    </div>
+  </div>
+
+</div><!-- /editor -->
+
+<script>
+const THEMES = {
+  'blue-ink': {
+    name: '블루 잉크', desc: '차분한 바다 빛 (기본)',
+    colors: { bg:'#EDF3F7', surface:'#FCFDFE', surfaceAlt:'#F5F9FB', border:'#D3E0E8', ink:'#17232E', muted:'#536676', softBlue:'#AEC7D8', blueGrey:'#3F6F8A', paleBlue:'#E2ECF2' }
+  },
+  'mocha': {
+    name: '다크 모카', desc: '따뜻한 커피 빛',
+    colors: { bg:'#F5F0EB', surface:'#FDFCFA', surfaceAlt:'#EFE9E2', border:'#DAC9BE', ink:'#2A1E16', muted:'#6A5047', softBlue:'#C2A08A', blueGrey:'#7A5240', paleBlue:'#EDE3DA' }
+  },
+  'forest': {
+    name: '새벽 숲', desc: '이른 아침의 초록',
+    colors: { bg:'#EDF4EF', surface:'#FAFDFB', surfaceAlt:'#EDF7F0', border:'#C6DDD0', ink:'#182A20', muted:'#45664F', softBlue:'#8CBF9E', blueGrey:'#38785A', paleBlue:'#DCF0E5' }
+  },
+  'glow': {
+    name: '저녁 노을', desc: '황혼의 따뜻한 빛',
+    colors: { bg:'#F5EDE7', surface:'#FDFAF8', surfaceAlt:'#F2E7DF', border:'#DECBBF', ink:'#2A1810', muted:'#6B4A37', softBlue:'#D4A88A', blueGrey:'#974F38', paleBlue:'#F0DDD4' }
+  },
+  'mist': {
+    name: '보라 안개', desc: '몽환적인 라벤더',
+    colors: { bg:'#EEECF4', surface:'#FEFCFF', surfaceAlt:'#F4F1FB', border:'#D0C9E8', ink:'#1D1A2E', muted:'#574D72', softBlue:'#AFA2D0', blueGrey:'#5A4A8A', paleBlue:'#E7E3F5' }
+  },
+  'slate': {
+    name: '순수 슬레이트', desc: '깔끔한 그레이',
+    colors: { bg:'#F3F4F6', surface:'#FFFFFF', surfaceAlt:'#F8F9FA', border:'#D5D8E0', ink:'#191C26', muted:'#5C6070', softBlue:'#A5AAC2', blueGrey:'#47507A', paleBlue:'#E6E8F2' }
+  }
+};
+
+const TOKEN_GROUPS = [
+  { label: '배경색', tokens: [
+    { key: 'bg', name: '앱 배경' },
+    { key: 'surface', name: '카드 배경' },
+    { key: 'surfaceAlt', name: '눌린 배경' },
+  ]},
+  { label: '테두리', tokens: [
+    { key: 'border', name: '테두리 / 구분선' },
+  ]},
+  { label: '텍스트', tokens: [
+    { key: 'ink', name: '주 텍스트  ·  다크 카드 배경' },
+    { key: 'muted', name: '보조 텍스트' },
+  ]},
+  { label: '강조색', tokens: [
+    { key: 'softBlue', name: '강조 — 소프트 (점, 네비 인디케이터)' },
+    { key: 'blueGrey', name: '강조 — 진함 (아이콘, 링크)' },
+    { key: 'paleBlue', name: '강조 — 옅음 (틴트, 상태 배경)' },
+  ]},
+];
+
+let activeTheme = 'blue-ink';
+
+function applyTheme(key) {
+  const theme = THEMES[key];
+  if (!theme) return;
+  activeTheme = key;
+  Object.entries(theme.colors).forEach(([token, hex]) => {
+    document.documentElement.style.setProperty('--' + token, hex);
+    const sw = document.getElementById('swatch-' + token);
+    if (sw) sw.style.background = hex;
+    const hx = document.getElementById('hex-' + token);
+    if (hx) hx.textContent = hex.toUpperCase();
+    const pk = document.getElementById('picker-' + token);
+    if (pk) pk.value = hex;
+  });
+  document.querySelectorAll('.preset-card').forEach(c =>
+    c.classList.toggle('active', c.dataset.theme === key)
+  );
+}
+
+function updateColor(key, hex) {
+  document.documentElement.style.setProperty('--' + key, hex);
+  const sw = document.getElementById('swatch-' + key);
+  if (sw) sw.style.background = hex;
+  const hx = document.getElementById('hex-' + key);
+  if (hx) hx.textContent = hex.toUpperCase();
+  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+}
+
+function switchTab(btn, target) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + target).classList.add('active');
+  document.querySelector('.screen-content').scrollTop = 0;
+}
+
+function exportFlutter() {
+  const style = getComputedStyle(document.documentElement);
+  const get = v => style.getPropertyValue('--' + v).trim();
+  const toColor = hex => {
+    const h = hex.replace('#', '').toUpperCase();
+    return 'Color(0xFF' + h + ')';
+  };
+  const rows = [
+    ['background', 'bg'], ['surface', 'surface'], ['surfaceAlt', 'surfaceAlt'],
+    ['border', 'border'], ['ink', 'ink'], ['muted', 'muted'],
+    ['softBlue', 'softBlue'], ['blueGrey', 'blueGrey'], ['paleBlue', 'paleBlue'],
+  ];
+  const maxLen = Math.max(...rows.map(([n]) => n.length));
+  const lines = rows.map(([name, key]) => {
+    const hex = get(key) || '#000000';
+    const clean = hex.startsWith('#') ? hex : '#' + hex;
+    const pad = ' '.repeat(maxLen - name.length);
+    return '  static const Color ' + name + pad + ' = ' + toColor(clean) + ';';
+  });
+  const dart = '// AppColors — generated ' + new Date().toLocaleDateString('ko-KR') + '\nclass AppColors {\n' + lines.join('\n') + '\n}';
+  navigator.clipboard.writeText(dart).then(() => {
+    const el = document.getElementById('copyToast');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  });
+}
+
+function buildPresets() {
+  const container = document.getElementById('presets');
+  const keys = ['bg', 'ink', 'softBlue', 'blueGrey', 'border'];
+  Object.entries(THEMES).forEach(([key, theme]) => {
+    const card = document.createElement('div');
+    card.className = 'preset-card' + (key === activeTheme ? ' active' : '');
+    card.dataset.theme = key;
+    card.onclick = () => applyTheme(key);
+    const swatches = keys.map(k =>
+      '<div class="preset-swatch" style="background:' + theme.colors[k] + '"></div>'
+    ).join('');
+    card.innerHTML =
+      '<div class="preset-swatches">' + swatches + '</div>' +
+      '<div class="preset-name">' + theme.name + '</div>' +
+      '<div class="preset-desc">' + theme.desc + '</div>';
+    container.appendChild(card);
+  });
+}
+
+function buildColorGroups() {
+  const container = document.getElementById('color-groups');
+  const baseColors = THEMES[activeTheme].colors;
+  TOKEN_GROUPS.forEach(group => {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'color-group';
+    groupEl.innerHTML = '<div class="group-label">' + group.label + '</div>';
+    group.tokens.forEach(token => {
+      const hex = baseColors[token.key] || '#000000';
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      row.innerHTML =
+        '<label class="swatch-wrap">' +
+          '<div class="swatch-preview" id="swatch-' + token.key + '" style="background:' + hex + '"></div>' +
+          '<input type="color" class="hidden-picker" id="picker-' + token.key + '" value="' + hex + '">' +
+        '</label>' +
+        '<div class="color-info">' +
+          '<div class="color-token">--' + token.key + '</div>' +
+          '<div class="color-name">' + token.name + '</div>' +
+        '</div>' +
+        '<div class="hex-chip" id="hex-' + token.key + '">' + hex.toUpperCase() + '</div>';
+      groupEl.appendChild(row);
+    });
+    container.appendChild(groupEl);
+  });
+  TOKEN_GROUPS.forEach(group => {
+    group.tokens.forEach(token => {
+      const picker = document.getElementById('picker-' + token.key);
+      const hexChip = document.getElementById('hex-' + token.key);
+      if (picker) picker.addEventListener('input', e => updateColor(token.key, e.target.value));
+      if (hexChip) hexChip.addEventListener('click', () => {
+        const pk = document.getElementById('picker-' + token.key);
+        if (pk) pk.click();
+      });
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildPresets();
+  buildColorGroups();
+});
+</script>
+</body>
+</html>

@@ -135,6 +135,10 @@ class DailyInsightProcessor {
     final totalPointCount = await _countLocationPoints();
     final baseline = await _recentBaseline(before: yesterday);
     final points = await _loadLocationPointsFor(yesterday);
+    final visitDetectionPoints = await _loadLocationPointsForVisitDetection(
+      yesterday,
+      points,
+    );
     if (totalPointCount == 0) {
       await _finishRetentionAndNotifications(now);
       return const DailyProcessingResult(
@@ -156,7 +160,7 @@ class DailyInsightProcessor {
     }
 
     final visits = _placeClusteringService.detectVisits(
-      points
+      visitDetectionPoints
           .map(
             (point) => TrackedPoint(
               point.timestamp,
@@ -171,11 +175,14 @@ class DailyInsightProcessor {
 
     final persistedVisits = <_PersistableVisit>[];
     for (final visit in visits) {
+      final clippedVisit = _clipVisitToDate(visit, yesterday);
+      if (clippedVisit == null) continue;
+
       final match = await _placeClusterRepository.findOrCreateForVisit(
-        latitude: visit.latitude,
-        longitude: visit.longitude,
+        latitude: clippedVisit.latitude,
+        longitude: clippedVisit.longitude,
         radiusMeters: _settings.minimumMovementMeters.toDouble(),
-        visitedAt: visit.startedAt,
+        visitedAt: clippedVisit.startedAt,
       );
       final hasEarlierVisit = await _hasEarlierVisitForPlace(
         placeClusterId: match.cluster.id,
@@ -183,7 +190,7 @@ class DailyInsightProcessor {
       );
       persistedVisits.add(
         _PersistableVisit(
-          visit: visit,
+          visit: clippedVisit,
           placeClusterId: match.cluster.id,
           isNewPlace: !hasEarlierVisit,
         ),
@@ -279,6 +286,41 @@ class DailyInsightProcessor {
       );
     return await query.get()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  Future<List<LocationPoint>> _loadLocationPointsForVisitDetection(
+    DateTime date,
+    List<LocationPoint> points,
+  ) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final nextPointQuery = _database.select(_database.locationPoints)
+      ..where((point) => point.timestamp.isBiggerOrEqualValue(end))
+      ..orderBy([(point) => OrderingTerm.asc(point.timestamp)])
+      ..limit(1);
+    final nextPoint = await nextPointQuery.getSingleOrNull();
+    if (nextPoint == null) return points;
+
+    return [...points, nextPoint]
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
+  DetectedVisit? _clipVisitToDate(DetectedVisit visit, DateTime date) {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final clippedStart = visit.startedAt.isBefore(start)
+        ? start
+        : visit.startedAt;
+    final clippedEnd = visit.endedAt.isAfter(end) ? end : visit.endedAt;
+    if (!clippedEnd.isAfter(clippedStart)) return null;
+
+    return DetectedVisit(
+      startedAt: clippedStart,
+      endedAt: clippedEnd,
+      durationMinutes: clippedEnd.difference(clippedStart).inMinutes,
+      latitude: visit.latitude,
+      longitude: visit.longitude,
+    );
   }
 
   Future<bool> _hasEarlierVisitForPlace({

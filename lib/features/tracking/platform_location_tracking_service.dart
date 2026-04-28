@@ -15,6 +15,7 @@ class PlatformLocationTrackingService implements LocationTrackingService {
     return _channel.invokeMethod<void>('startTracking', {
       'minimumMovementMeters': settings.minimumMovementMeters,
       'minimumStayMinutes': settings.minimumStayMinutes,
+      'rawLocationIntervalSeconds': 10,
     });
   }
 

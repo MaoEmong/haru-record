@@ -38,7 +38,8 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val minimumMovementMeters = intent?.getIntExtra("minimumMovementMeters", 100) ?: 100
+        val rawLocationIntervalSeconds =
+            intent?.getIntExtra("rawLocationIntervalSeconds", 10) ?: 10
 
         if (!hasLocationPermission()) {
             logTrackingStopped("missing_location_permission")
@@ -55,10 +56,10 @@ class LocationTrackingService : Service() {
         }
 
         val request = LocationRequest.Builder(
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-            LOCATION_INTERVAL_MILLIS
+            Priority.PRIORITY_HIGH_ACCURACY,
+            rawLocationIntervalMillis(rawLocationIntervalSeconds)
         )
-            .setMinUpdateDistanceMeters(minimumMovementMeters.toFloat())
+            .setMinUpdateIntervalMillis(MIN_RAW_LOCATION_INTERVAL_MILLIS)
             .build()
 
         try {
@@ -173,7 +174,9 @@ class LocationTrackingService : Service() {
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "daily_pattern_tracking"
         const val FOREGROUND_NOTIFICATION_ID = 1001
-        private const val LOCATION_INTERVAL_MILLIS = 15 * 60 * 1000L
+        private const val DEFAULT_RAW_LOCATION_INTERVAL_MILLIS = 10 * 1000L
+        private const val MIN_RAW_LOCATION_INTERVAL_MILLIS = 5 * 1000L
+        private const val MAX_RAW_LOCATION_INTERVAL_MILLIS = 10 * 1000L
         private const val LOG_TAG = "DailyPatternTracking"
 
         @Volatile
@@ -181,5 +184,13 @@ class LocationTrackingService : Service() {
             private set
 
         fun eventFile(context: Context): File = File(context.filesDir, "location_events.jsonl")
+
+        private fun rawLocationIntervalMillis(rawLocationIntervalSeconds: Int): Long {
+            val requestedMillis = rawLocationIntervalSeconds.coerceAtLeast(1) * 1000L
+            return requestedMillis.coerceIn(
+                MIN_RAW_LOCATION_INTERVAL_MILLIS,
+                MAX_RAW_LOCATION_INTERVAL_MILLIS
+            ).takeIf { it > 0 } ?: DEFAULT_RAW_LOCATION_INTERVAL_MILLIS
+        }
     }
 }

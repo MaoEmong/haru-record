@@ -1,7 +1,8 @@
+import '../../core/geo/coordinate_validation.dart';
 import '../storage/app_database.dart';
 import '../places/place_label.dart';
 import 'day_route_models.dart';
-import 'location_point_deduplication.dart';
+import 'route_display_point_cleaner.dart';
 
 class DayRouteRepository {
   const DayRouteRepository(this._database);
@@ -19,34 +20,34 @@ class DayRouteRepository {
                   !point.timestamp.isBefore(start) &&
                   point.timestamp.isBefore(end) &&
                   !point.isMock &&
-                  point.accuracy <= 200,
+                  point.accuracy <= 200 &&
+                  isValidCoordinate(point.latitude, point.longitude) &&
+                  isValidAccuracy(point.accuracy),
             )
             .toList()
           ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    final points = compactNearbyLocationPoints(rawPoints);
-
     final allVisits = await _database.select(_database.visits).get();
     final visits =
         allVisits
             .where(
               (visit) =>
                   !visit.startedAt.isBefore(start) &&
-                  visit.startedAt.isBefore(end),
+                  visit.startedAt.isBefore(end) &&
+                  isValidCoordinate(
+                    visit.representativeLatitude,
+                    visit.representativeLongitude,
+                  ),
             )
             .toList()
           ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
     final places = await _database.select(_database.placeClusters).get();
 
+    final displayPoints = const RouteDisplayPointCleaner().clean(rawPoints);
+
     return DayRouteSnapshot(
-      points: points
-          .map(
-            (point) => DayRoutePoint(
-              timeLabel: _timeLabel(point.timestamp),
-              latitude: point.latitude,
-              longitude: point.longitude,
-              accuracyMeters: point.accuracy,
-            ),
-          )
+      rawPointCount: rawPoints.length,
+      points: displayPoints
+          .map((point) => _routePoint(point))
           .toList(growable: false),
       visits: visits
           .map((visit) {
@@ -56,10 +57,19 @@ class DayRouteRepository {
               placeLabel: placeLabel(place),
               latitude: visit.representativeLatitude,
               longitude: visit.representativeLongitude,
-              durationLabel: _durationLabel(visit.durationMinutes),
+              durationLabel: _durationLabel(),
             );
           })
           .toList(growable: false),
+    );
+  }
+
+  DayRoutePoint _routePoint(RouteDisplayPoint point) {
+    return DayRoutePoint(
+      timeLabel: _timeLabel(point.timestamp),
+      latitude: point.latitude,
+      longitude: point.longitude,
+      accuracyMeters: point.accuracy,
     );
   }
 
@@ -77,13 +87,5 @@ class DayRouteRepository {
     return '$hour:$minute';
   }
 
-  String _durationLabel(int minutes) {
-    if (minutes >= 60) {
-      final hours = minutes ~/ 60;
-      final rest = minutes % 60;
-      if (rest == 0) return '$hours시간 머문 곳';
-      return '$hours시간 $rest분 머문 곳';
-    }
-    return '$minutes분 머문 곳';
-  }
+  String _durationLabel() => '머문 기록';
 }

@@ -28,7 +28,12 @@ class DayTimelineRepository {
           return DayTimelineItem(
             timeLabel: _timeLabel(visit.startedAt),
             placeLabel: placeLabel(place),
-            durationLabel: _durationLabel(visit.durationMinutes),
+            durationLabel: _durationLabel(),
+            startedAt: visit.startedAt,
+            endedAt: visit.endedAt,
+            durationMinutes: visit.durationMinutes,
+            latitude: visit.representativeLatitude,
+            longitude: visit.representativeLongitude,
           );
         })
         .toList(growable: false);
@@ -48,13 +53,5 @@ class DayTimelineRepository {
     return '$hour:$minute';
   }
 
-  String _durationLabel(int minutes) {
-    if (minutes >= 60) {
-      final hours = minutes ~/ 60;
-      final rest = minutes % 60;
-      if (rest == 0) return '$hours시간 머문 곳';
-      return '$hours시간 $rest분 머문 곳';
-    }
-    return '$minutes분 머문 곳';
-  }
+  String _durationLabel() => '머문 기록';
 }
