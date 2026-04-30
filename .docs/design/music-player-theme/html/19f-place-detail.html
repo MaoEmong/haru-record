@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>19f — 장소 상세 (Place Detail)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:-apple-system,'Helvetica Neue',sans-serif; }
+
+.phone { width:390px; height:844px; background:#0D0D0D; border-radius:50px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 40px 120px rgba(0,0,0,0.95); }
+
+.status { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; font-size:12px; font-weight:600; color:#888; flex-shrink:0; }
+
+/* Scroll */
+.scroll { flex:1; overflow-y:auto; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* Hero — place "artist" header */
+.hero {
+  height:220px; position:relative;
+  background:linear-gradient(160deg,#0A1A2A 0%,#1A2A4A 50%,#0D1A38 100%);
+  display:flex; align-items:flex-end;
+  overflow:hidden;
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 40%, rgba(74,138,255,0.2) 0%, transparent 60%);
+}
+.hero-icon {
+  position:absolute; top:40px; left:50%; transform:translateX(-50%);
+  font-size:80px; filter:drop-shadow(0 8px 24px rgba(74,138,255,0.4));
+  z-index:1;
+}
+.hero-gradient {
+  position:absolute; bottom:0; left:0; right:0; height:100px;
+  background:linear-gradient(to top, #0D0D0D, transparent);
+}
+.hero-info {
+  position:relative; z-index:2;
+  padding:0 24px 16px; width:100%;
+}
+.hero-name { font-size:28px; font-weight:800; color:#fff; }
+.hero-addr { font-size:13px; color:#888; margin-top:3px; }
+
+/* Back button overlay */
+.navbar {
+  position:absolute; top:52px; left:0; right:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; z-index:10;
+}
+.back-btn {
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; color:#fff; cursor:pointer;
+}
+.more-btn-hero { color:#fff; font-size:22px; }
+
+/* Action row */
+.action-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 24px 0;
+}
+.fav-btn { font-size:28px; color:#4A8AFF; }
+.action-btns { display:flex; gap:16px; align-items:center; }
+.act-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:#1A1A1A; display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.play-big {
+  width:52px; height:52px; border-radius:50%;
+  background:#4A8AFF; display:flex; align-items:center; justify-content:center;
+  font-size:22px; box-shadow:0 4px 16px rgba(74,138,255,0.4);
+}
+
+/* Stats strip */
+.stats-strip {
+  display:flex; margin:16px 24px 0;
+  background:#1A1A1A; border-radius:12px; overflow:hidden;
+}
+.stat-block { flex:1; padding:12px 0; text-align:center; border-right:1px solid #242424; }
+.stat-block:last-child { border-right:none; }
+.sb-val { font-size:16px; font-weight:700; color:#fff; }
+.sb-label { font-size:10px; color:#888; margin-top:2px; }
+
+/* Section */
+.sec-label { padding:20px 24px 10px; font-size:16px; font-weight:700; color:#fff; }
+
+/* Monthly heatmap */
+.heatmap-wrap {
+  margin:0 24px;
+  background:#1A1A1A; border-radius:12px; padding:14px 16px;
+}
+.hm-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.hm-title { font-size:13px; font-weight:600; color:#fff; }
+.hm-nav { font-size:13px; color:#888; }
+.hm-days { display:flex; justify-content:space-between; margin-bottom:5px; }
+.hm-day-label { font-size:9px; color:#555; width:24px; text-align:center; }
+.hm-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.hm-cell {
+  aspect-ratio:1/1; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; color:#888;
+}
+.hm-empty { background:transparent; }
+.hm-0 { background:#1A1A1A; }
+.hm-1 { background:#0D2A1A; }
+.hm-2 { background:#1A4A2A; }
+.hm-3 { background:#1A6A3A; }
+.hm-4 { background:#4A8AFF; }
+.hm-today { background:#4A8AFF; border:1px solid rgba(255,255,255,0.4); }
+
+/* Avg time bar chart (weekly pattern) */
+.bar-chart-wrap {
+  margin:0 24px;
+  background:#1A1A1A; border-radius:12px; padding:14px 16px;
+}
+.bc-title { font-size:13px; font-weight:600; color:#fff; margin-bottom:12px; }
+.bc-rows { display:flex; flex-direction:column; gap:8px; }
+.bc-row { display:flex; align-items:center; gap:10px; }
+.bc-day { font-size:11px; color:#888; width:24px; flex-shrink:0; }
+.bc-bar-wrap { flex:1; height:8px; background:#242424; border-radius:4px; overflow:hidden; }
+.bc-bar { height:100%; border-radius:4px; background:#4A8AFF; opacity:0.8; }
+.bc-val { font-size:11px; color:#888; width:30px; text-align:right; flex-shrink:0; }
+
+/* Recent visits = track list */
+.visit-item {
+  display:flex; align-items:center; gap:14px;
+  padding:10px 24px;
+  border-bottom:1px solid #111;
+}
+.visit-num { font-size:13px; color:#888; width:24px; flex-shrink:0; text-align:center; }
+.visit-info { flex:1; }
+.visit-date { font-size:14px; font-weight:600; color:#fff; }
+.visit-time { font-size:12px; color:#888; margin-top:2px; }
+.visit-right { text-align:right; flex-shrink:0; }
+.visit-dur { font-size:13px; color:#888; }
+.visit-tag {
+  display:inline-block; margin-top:3px;
+  font-size:10px; color:#4A8AFF;
+  background:rgba(74,138,255,0.12);
+  border-radius:8px; padding:2px 7px;
+}
+
+/* Related places */
+.related-row {
+  display:flex; gap:10px; padding:0 24px;
+  overflow-x:auto;
+}
+.related-row::-webkit-scrollbar { display:none; }
+.rel-card {
+  flex-shrink:0; width:110px;
+  background:#1A1A1A; border-radius:10px; overflow:hidden;
+}
+.rel-art { height:70px; display:flex; align-items:center; justify-content:center; font-size:28px; }
+.rel-info { padding:8px 10px 10px; }
+.rel-name { font-size:12px; font-weight:600; color:#fff; }
+.rel-sub { font-size:10px; color:#888; margin-top:1px; }
+
+.pb { height:24px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+
+  <div class="scroll">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="navbar">
+        <div class="back-btn">‹</div>
+        <div class="more-btn-hero">•••</div>
+      </div>
+      <div class="hero-icon">🏢</div>
+      <div class="hero-gradient"></div>
+      <div class="hero-info">
+        <div class="hero-name">회사</div>
+        <div class="hero-addr">강남구 테헤란로 · 저장된 장소</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <div class="fav-btn">♥</div>
+      <div class="action-btns">
+        <div class="act-btn">📤</div>
+        <div class="act-btn">✏️</div>
+        <div class="play-big">▶</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="stat-block"><div class="sb-val">65회</div><div class="sb-label">방문</div></div>
+      <div class="stat-block"><div class="sb-val">8.5h</div><div class="sb-label">평균 체류</div></div>
+      <div class="stat-block"><div class="sb-val">22일</div><div class="sb-label">이번 달</div></div>
+    </div>
+
+    <!-- Monthly heatmap -->
+    <div class="sec-label">이번 달 방문 패턴</div>
+    <div class="heatmap-wrap">
+      <div class="hm-header">
+        <div class="hm-title">4월 2026</div>
+        <div class="hm-nav">‹ ›</div>
+      </div>
+      <div class="hm-days">
+        <div class="hm-day-label">일</div>
+        <div class="hm-day-label">월</div>
+        <div class="hm-day-label">화</div>
+        <div class="hm-day-label">수</div>
+        <div class="hm-day-label">목</div>
+        <div class="hm-day-label">금</div>
+        <div class="hm-day-label">토</div>
+      </div>
+      <div class="hm-grid">
+        <!-- Week 1: Apr starts Wed -->
+        <div class="hm-empty"></div><div class="hm-empty"></div><div class="hm-empty"></div>
+        <div class="hm-1">1</div><div class="hm-3">2</div><div class="hm-3">3</div><div class="hm-0">4</div>
+        <!-- Week 2 -->
+        <div class="hm-0">5</div><div class="hm-4">6</div><div class="hm-3">7</div><div class="hm-4">8</div><div class="hm-3">9</div><div class="hm-3">10</div><div class="hm-0">11</div>
+        <!-- Week 3 -->
+        <div class="hm-0">12</div><div class="hm-4">13</div><div class="hm-2">14</div><div class="hm-4">15</div><div class="hm-3">16</div><div class="hm-4">17</div><div class="hm-0">18</div>
+        <!-- Week 4 -->
+        <div class="hm-0">19</div><div class="hm-3">20</div><div class="hm-4">21</div><div class="hm-3">22</div><div class="hm-4">23</div><div class="hm-3">24</div><div class="hm-0">25</div>
+        <!-- Week 5 -->
+        <div class="hm-0">26</div><div class="hm-3">27</div><div class="hm-today">28</div>
+      </div>
+    </div>
+
+    <!-- Weekly avg bar chart -->
+    <div class="sec-label">요일별 평균 체류 시간</div>
+    <div class="bar-chart-wrap">
+      <div class="bc-title">주간 패턴</div>
+      <div class="bc-rows">
+        <div class="bc-row"><span class="bc-day">월</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:88%"></div></div><span class="bc-val">8.8h</span></div>
+        <div class="bc-row"><span class="bc-day">화</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:82%"></div></div><span class="bc-val">8.2h</span></div>
+        <div class="bc-row"><span class="bc-day">수</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:90%"></div></div><span class="bc-val">9.0h</span></div>
+        <div class="bc-row"><span class="bc-day">목</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:85%"></div></div><span class="bc-val">8.5h</span></div>
+        <div class="bc-row"><span class="bc-day">금</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:78%"></div></div><span class="bc-val">7.8h</span></div>
+        <div class="bc-row"><span class="bc-day">토</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:5%;opacity:0.3;"></div></div><span class="bc-val">—</span></div>
+        <div class="bc-row"><span class="bc-day">일</span><div class="bc-bar-wrap"><div class="bc-bar" style="width:5%;opacity:0.3;"></div></div><span class="bc-val">—</span></div>
+      </div>
+    </div>
+
+    <!-- Recent visits -->
+    <div class="sec-label">최근 방문</div>
+
+    <div class="visit-item">
+      <div class="visit-num">1</div>
+      <div class="visit-info">
+        <div class="visit-date">오늘 · 4월 28일</div>
+        <div class="visit-time">09:30 — 18:30</div>
+      </div>
+      <div class="visit-right">
+        <div class="visit-dur" style="color:#4A8AFF;">8h 10m</div>
+        <div class="visit-tag">진행 중</div>
+      </div>
+    </div>
+    <div class="visit-item">
+      <div class="visit-num">2</div>
+      <div class="visit-info">
+        <div class="visit-date">4월 25일 · 금요일</div>
+        <div class="visit-time">09:15 — 20:30</div>
+      </div>
+      <div class="visit-right">
+        <div class="visit-dur">11h 15m</div>
+        <div class="visit-tag">야근</div>
+      </div>
+    </div>
+    <div class="visit-item">
+      <div class="visit-num">3</div>
+      <div class="visit-info">
+        <div class="visit-date">4월 24일 · 목요일</div>
+        <div class="visit-time">09:30 — 18:15</div>
+      </div>
+      <div class="visit-right">
+        <div class="visit-dur">8h 45m</div>
+      </div>
+    </div>
+    <div class="visit-item">
+      <div class="visit-num">4</div>
+      <div class="visit-info">
+        <div class="visit-date">4월 23일 · 수요일</div>
+        <div class="visit-time">09:40 — 19:00</div>
+      </div>
+      <div class="visit-right">
+        <div class="visit-dur">9h 20m</div>
+      </div>
+    </div>
+    <div class="visit-item">
+      <div class="visit-num">5</div>
+      <div class="visit-info">
+        <div class="visit-date">4월 22일 · 화요일</div>
+        <div class="visit-time">09:20 — 18:00</div>
+      </div>
+      <div class="visit-right">
+        <div class="visit-dur">8h 40m</div>
+      </div>
+    </div>
+
+    <!-- Related places -->
+    <div class="sec-label">같이 방문하는 장소</div>
+    <div class="related-row">
+      <div class="rel-card">
+        <div class="rel-art" style="background:linear-gradient(135deg,#1A0A2A,#2A1A3A);">☕</div>
+        <div class="rel-info"><div class="rel-name">카페</div><div class="rel-sub">퇴근 후 자주</div></div>
+      </div>
+      <div class="rel-card">
+        <div class="rel-art" style="background:linear-gradient(135deg,#2A1A0A,#3A2A1A);">🍜</div>
+        <div class="rel-info"><div class="rel-name">회사 근처 식당</div><div class="rel-sub">점심 자주</div></div>
+      </div>
+      <div class="rel-card">
+        <div class="rel-art" style="background:linear-gradient(135deg,#0A2A1A,#1A3A2A);">🏋️</div>
+        <div class="rel-info"><div class="rel-name">헬스장</div><div class="rel-sub">퇴근 후 가끔</div></div>
+      </div>
+    </div>
+
+    <div class="pb"></div>
+  </div>
+</div>
+</body>
+</html>

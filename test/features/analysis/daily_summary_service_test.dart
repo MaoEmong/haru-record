@@ -50,4 +50,35 @@ void main() {
 
     expect(summary.movingMinutes, greaterThan(0));
   });
+
+  test('counts unique places when visits contain repeated place fragments', () {
+    final service = DailySummaryService();
+
+    final summary = service.buildSummary(
+      date: DateTime(2026, 4, 25),
+      visits: [
+        VisitSnapshot(
+          durationMinutes: 20,
+          distanceFromPreviousMeters: 0,
+          isNewPlace: true,
+          placeClusterId: 1,
+        ),
+        VisitSnapshot(
+          durationMinutes: 15,
+          distanceFromPreviousMeters: 10,
+          isNewPlace: true,
+          placeClusterId: 1,
+        ),
+        VisitSnapshot(
+          durationMinutes: 30,
+          distanceFromPreviousMeters: 1200,
+          isNewPlace: true,
+          placeClusterId: 2,
+        ),
+      ],
+    );
+
+    expect(summary.visitCount, 2);
+    expect(summary.newPlaceCount, 2);
+  });
 }

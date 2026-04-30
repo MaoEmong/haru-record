@@ -49,6 +49,7 @@ dependencies:
   latlong2: ^0.9.1
   flutter_dotenv: ^6.0.1
   flutter_map_marker_cluster: 8.2.2
+  flutter_riverpod: ^3.3.0
 
 dev_dependencies:
   flutter_test:

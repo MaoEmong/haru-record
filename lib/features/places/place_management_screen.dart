@@ -1,13 +1,14 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_theme.dart';
-import '../../app/responsive_type.dart';
+import '../../shared/widgets/music_player_widgets.dart';
 import '../storage/app_database.dart';
 import 'place_label.dart';
+import 'place_management_view_model.dart';
 import 'place_map_preview.dart';
 
-class PlaceManagementScreen extends StatefulWidget {
+class PlaceManagementScreen extends ConsumerStatefulWidget {
   const PlaceManagementScreen({
     super.key,
     required this.database,
@@ -20,77 +21,64 @@ class PlaceManagementScreen extends StatefulWidget {
   final VoidCallback? onPlacesChanged;
 
   @override
-  State<PlaceManagementScreen> createState() => _PlaceManagementScreenState();
+  ConsumerState<PlaceManagementScreen> createState() =>
+      _PlaceManagementScreenState();
 }
 
-class _PlaceManagementScreenState extends State<PlaceManagementScreen> {
-  late Future<List<PlaceCluster>> _places;
-
-  @override
-  void initState() {
-    super.initState();
-    _places = _load();
-  }
-
-  @override
-  void didUpdateWidget(covariant PlaceManagementScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.refreshVersion != widget.refreshVersion) {
-      setState(() {
-        _places = _load();
-      });
-    }
-  }
-
-  Future<List<PlaceCluster>> _load() async {
-    final places = await widget.database
-        .select(widget.database.placeClusters)
-        .get();
-    return places..sort((a, b) => b.visitCount.compareTo(a.visitCount));
-  }
+class _PlaceManagementScreenState extends ConsumerState<PlaceManagementScreen> {
+  PlacesQuery get _query => PlacesQuery(
+    database: widget.database,
+    refreshVersion: widget.refreshVersion,
+  );
 
   Future<void> _rename(PlaceCluster place) async {
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => _RenamePlaceDialog(initialName: place.displayName),
+      builder: (context) => _RenamePlaceDialog(place: place),
     );
     if (name == null) return;
 
-    final normalized = name.trim();
-    await (widget.database.update(
-      widget.database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).write(
-      PlaceClustersCompanion(
-        displayName: Value(normalized.isEmpty ? null : normalized),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-    setState(() {
-      _places = _load();
-    });
+    await renamePlace(widget.database, place, name);
+    ref.invalidate(placesSnapshotProvider(_query));
     widget.onPlacesChanged?.call();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<PlaceCluster>>(
-      future: _places,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final places = snapshot.data!;
-        if (places.isEmpty) {
-          return _PlaceExamples();
+    final places = ref.watch(placesSnapshotProvider(_query));
+    return places.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => const Center(child: Text('방문한 곳을 불러오지 못했어요')),
+      data: (data) {
+        if (data.places.isEmpty) {
+          return const _PlaceExamples();
         }
         return ListView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+          padding: EdgeInsets.only(
+            bottom: 96 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
+            const MpPageHeader(
+              title: '방문한 곳',
+              subtitle: '자주 머문 장소를 라이브러리처럼 모아봐요.',
+              trailing: _SortStatusPill(),
+            ),
             const _PlaceGroupingNotice(),
             const SizedBox(height: 14),
-            _FeaturedPlaceCard(place: places.first, onRename: _rename),
+            const MpSectionHeader(title: '자주 가는 곳'),
+            _FeaturedPlaceCard(place: data.featuredPlace!, onRename: _rename),
             const SizedBox(height: 14),
-            _PlaceGrid(places: places.skip(1).toList(), onRename: _rename),
+            const MpSectionHeader(title: '전체 장소'),
+            _PlaceList(
+              places: data.namedPlaces,
+              topVisitCount: data.topVisitCount,
+              onRename: _rename,
+            ),
+            if (data.unnamedPlaces.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const MpSectionHeader(title: '이름 없는 곳'),
+              _UnnamedPlaceGrid(places: data.unnamedPlaces, onRename: _rename),
+            ],
           ],
         );
       },
@@ -106,37 +94,45 @@ class _FeaturedPlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      key: ValueKey('place-card-${place.id}'),
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: () => onRename(place),
-        child: ClipRRect(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Material(
+        key: ValueKey('place-card-${place.id}'),
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(28),
-          child: SizedBox(
-            height: 220,
-            child: Stack(
-              children: [
-                Positioned.fill(child: _PlaceMapPreview(place: place)),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.12),
+          onTap: () => onRename(place),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: SizedBox(
+              height: 220,
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _PlaceMapPreview(place: place)),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.12),
+                      ),
                     ),
                   ),
-                ),
-                _PlaceCaptionGradient(
-                  borderRadius: 28,
-                  child: _FeaturedPlaceCaption(place: place),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.ink),
+                  _PlaceCaptionGradient(
+                    borderRadius: 28,
+                    child: _FeaturedPlaceCaption(place: place),
                   ),
-                ),
-              ],
+                  const Positioned(
+                    top: 14,
+                    left: 14,
+                    child: _FeaturedRankBadge(),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppColors.ink),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -145,23 +141,188 @@ class _FeaturedPlaceCard extends StatelessWidget {
   }
 }
 
-class _PlaceGrid extends StatelessWidget {
-  const _PlaceGrid({required this.places, required this.onRename});
+class _SortStatusPill extends StatelessWidget {
+  const _SortStatusPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.mpSurface,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: AppColors.mpBorder),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        child: Text(
+          '방문 많은 순 ↓',
+          style: TextStyle(
+            color: AppColors.mpTextSub,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedRankBadge extends StatelessWidget {
+  const _FeaturedRankBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.mpAccent.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Text(
+          '1위',
+          style: TextStyle(
+            color: AppColors.mpBg,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceList extends StatelessWidget {
+  const _PlaceList({
+    required this.places,
+    required this.topVisitCount,
+    required this.onRename,
+  });
+
+  final List<PlaceCluster> places;
+  final int topVisitCount;
+  final ValueChanged<PlaceCluster> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    if (places.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          '이름을 정한 장소가 더 생기면 여기에 이어서 보여요.',
+          style: TextStyle(color: AppColors.mpTextSub, fontSize: 13),
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final place in places)
+          _PlaceListItem(
+            place: place,
+            progress: (place.visitCount / topVisitCount).clamp(0.0, 1.0),
+            onRename: onRename,
+          ),
+      ],
+    );
+  }
+}
+
+class _PlaceListItem extends StatelessWidget {
+  const _PlaceListItem({
+    required this.place,
+    required this.progress,
+    required this.onRename,
+  });
+
+  final PlaceCluster place;
+  final double progress;
+  final ValueChanged<PlaceCluster> onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      key: ValueKey('place-card-${place.id}'),
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onRename(place),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Row(
+            children: [
+              _PlaceMapThumbnail(place: place),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      placeLabel(place),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.mpText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      placeAreaLabel(place),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.mpTextSub,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 54,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: const TextStyle(
+                        color: AppColors.mpAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${place.visitCount}회',
+                      style: const TextStyle(
+                        color: AppColors.mpTextSub,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _MicroProgressBar(value: progress),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnnamedPlaceGrid extends StatelessWidget {
+  const _UnnamedPlaceGrid({required this.places, required this.onRename});
 
   final List<PlaceCluster> places;
   final ValueChanged<PlaceCluster> onRename;
 
   @override
   Widget build(BuildContext context) {
-    if (places.isEmpty) {
-      return Text(
-        '조금 더 기록이 쌓이면 다른 장소도 이어서 보여요.',
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-      );
-    }
     return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: places.length,
@@ -172,14 +333,14 @@ class _PlaceGrid extends StatelessWidget {
         childAspectRatio: 1.06,
       ),
       itemBuilder: (context, index) {
-        return _PlaceGridCard(place: places[index], onRename: onRename);
+        return _UnnamedPlaceGridCard(place: places[index], onRename: onRename);
       },
     );
   }
 }
 
-class _PlaceGridCard extends StatelessWidget {
-  const _PlaceGridCard({required this.place, required this.onRename});
+class _UnnamedPlaceGridCard extends StatelessWidget {
+  const _UnnamedPlaceGridCard({required this.place, required this.onRename});
 
   final PlaceCluster place;
   final ValueChanged<PlaceCluster> onRename;
@@ -210,12 +371,61 @@ class _PlaceGridCard extends StatelessWidget {
                 _PlaceCaptionGradient(
                   borderRadius: 24,
                   compact: true,
-                  child: _PlaceGridCaption(place: place),
+                  child: _UnnamedPlaceGridCaption(place: place),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PlaceMapThumbnail extends StatelessWidget {
+  const _PlaceMapThumbnail({required this.place});
+
+  final PlaceCluster place;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: Stack(
+          children: [
+            Positioned.fill(child: _PlaceMapPreview(place: place, zoom: 15.5)),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.mpBorder),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MicroProgressBar extends StatelessWidget {
+  const _MicroProgressBar({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: LinearProgressIndicator(
+        minHeight: 3,
+        value: value,
+        color: AppColors.mpAccent,
+        backgroundColor: AppColors.mpBorder,
       ),
     );
   }
@@ -293,9 +503,9 @@ class _FeaturedPlaceCaption extends StatelessWidget {
                 placeLabel(place),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.ink,
-                  fontSize: responsiveTitleFontSize(context, 24),
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
                   height: 1.2,
                 ),
@@ -307,7 +517,7 @@ class _FeaturedPlaceCaption extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '${place.visitCount}번 머문 곳',
+          '${placeAreaLabel(place)} · ${place.visitCount}번 머문 곳',
           style: const TextStyle(color: AppColors.muted, fontSize: 14),
         ),
       ],
@@ -315,8 +525,8 @@ class _FeaturedPlaceCaption extends StatelessWidget {
   }
 }
 
-class _PlaceGridCaption extends StatelessWidget {
-  const _PlaceGridCaption({required this.place});
+class _UnnamedPlaceGridCaption extends StatelessWidget {
+  const _UnnamedPlaceGridCaption({required this.place});
 
   final PlaceCluster place;
 
@@ -331,7 +541,7 @@ class _PlaceGridCaption extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                placeLabel(place),
+                placeAreaLabel(place),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -341,8 +551,12 @@ class _PlaceGridCaption extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                '${place.visitCount}번 머문 곳',
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                '${place.visitCount}번 머문 곳 · 이름 정하기',
+                style: const TextStyle(
+                  color: AppColors.mpAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -380,9 +594,10 @@ class _EditPill extends StatelessWidget {
 }
 
 class _PlaceMapPreview extends StatelessWidget {
-  const _PlaceMapPreview({required this.place});
+  const _PlaceMapPreview({required this.place, this.zoom = 16});
 
   final PlaceCluster place;
+  final double zoom;
 
   @override
   Widget build(BuildContext context) {
@@ -394,15 +609,16 @@ class _PlaceMapPreview extends StatelessWidget {
       cacheKey:
           'place-${place.id}-'
           '${place.centerLatitude.toStringAsFixed(5)}-'
-          '${place.centerLongitude.toStringAsFixed(5)}-z16',
+          '${place.centerLongitude.toStringAsFixed(5)}-z${zoom.toStringAsFixed(1)}',
+      zoom: zoom,
     );
   }
 }
 
 class _RenamePlaceDialog extends StatefulWidget {
-  const _RenamePlaceDialog({required this.initialName});
+  const _RenamePlaceDialog({required this.place});
 
-  final String? initialName;
+  final PlaceCluster place;
 
   @override
   State<_RenamePlaceDialog> createState() => _RenamePlaceDialogState();
@@ -414,7 +630,7 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialName ?? '');
+    _controller = TextEditingController(text: widget.place.displayName ?? '');
   }
 
   @override
@@ -425,23 +641,72 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('이곳의 이름 바꾸기'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: const InputDecoration(labelText: '내가 부를 이름'),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '장소 이름 바꾸기',
+                style: TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: 170,
+                  width: double.infinity,
+                  child: _PlaceMapPreview(place: widget.place, zoom: 16),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                placeAreaLabel(widget.place),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: '내가 부를 이름'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('취소'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () =>
+                        Navigator.of(context).pop(_controller.text),
+                    child: const Text('저장'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('저장'),
-        ),
-      ],
     );
   }
 }
@@ -476,73 +741,156 @@ class _PlaceGroupingNotice extends StatelessWidget {
 }
 
 class _PlaceExamples extends StatelessWidget {
-  _PlaceExamples();
-
-  final List<PlaceCluster> _places = _examplePlaces();
+  const _PlaceExamples();
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-      children: [
-        const _PlaceGroupingNotice(),
-        const SizedBox(height: 14),
-        Text(
-          '방문한 곳은 이렇게 보여요',
-          style: TextStyle(
-            fontSize: responsiveTitleFontSize(context, 20),
-            fontWeight: FontWeight.w800,
-          ),
+      padding: EdgeInsets.only(
+        bottom: 96 + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: const [
+        MpPageHeader(title: '방문한 곳', subtitle: '아직 저장한 방문 장소가 없어요.'),
+        SizedBox(height: 18),
+        _EmptyPlacesMessage(),
+        SizedBox(height: 18),
+        MpSectionHeader(title: '이렇게 모여요'),
+        _EmptyPlacePreviewRow(
+          title: '자주 머문 곳',
+          meta: '오늘 기록에서 머문 곳을 저장하면 여기에 쌓여요',
+          value: '--회',
         ),
-        const SizedBox(height: 10),
-        Text(
-          '실제 기록이 쌓이면 아래처럼 지도 위에 장소가 표시돼요.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+        _EmptyPlacePreviewRow(
+          title: '이름 없는 곳',
+          meta: '저장한 뒤 이름을 붙이면 내 장소가 돼요',
+          value: '대기',
         ),
-        const SizedBox(height: 14),
-        _FeaturedPlaceCard(place: _places.first, onRename: (_) {}),
-        const SizedBox(height: 14),
-        _PlaceGrid(places: _places.skip(1).toList(), onRename: (_) {}),
       ],
     );
   }
 }
 
-List<PlaceCluster> _examplePlaces() {
-  final now = DateTime(2026, 4, 27);
-  return [
-    PlaceCluster(
-      id: -101,
-      centerLatitude: 37.5665,
-      centerLongitude: 126.978,
-      radiusMeters: 80,
-      roadAddressName: '서울 중구 세종대로 근처',
-      createdAt: now,
-      updatedAt: now,
-      visitCount: 4,
-    ),
-    PlaceCluster(
-      id: -102,
-      centerLatitude: 37.5559,
-      centerLongitude: 126.9723,
-      radiusMeters: 70,
-      displayName: '카페로 이름 바꾼 곳',
-      addressName: '서울 용산구 근처',
-      createdAt: now,
-      updatedAt: now,
-      visitCount: 2,
-    ),
-    PlaceCluster(
-      id: -103,
-      centerLatitude: 37.5512,
-      centerLongitude: 126.9882,
-      radiusMeters: 70,
-      addressName: '서울 중구 근처',
-      createdAt: now,
-      updatedAt: now,
-      visitCount: 1,
-    ),
-  ];
+class _EmptyPlacesMessage extends StatelessWidget {
+  const _EmptyPlacesMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.mpBorder),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '아직 라이브러리가 비어 있어요',
+                style: TextStyle(
+                  color: AppColors.mpText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '오늘 기록에서 머문 곳을 저장하면 자주 간 장소와 이름 없는 곳이 이곳에 모여요.',
+                style: TextStyle(
+                  color: AppColors.mpTextSub,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPlacePreviewRow extends StatelessWidget {
+  const _EmptyPlacePreviewRow({
+    required this.title,
+    required this.meta,
+    required this.value,
+  });
+
+  final String title;
+  final String meta;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.42,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        child: Row(
+          children: [
+            const _EmptyPlaceAvatar(),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.mpText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.mpTextSub,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.mpTextSub,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPlaceAvatar extends StatelessWidget {
+  const _EmptyPlaceAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.mpSurface,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.mpBorder),
+      ),
+      child: const SizedBox(
+        width: 52,
+        height: 52,
+        child: Icon(Icons.place_outlined, color: AppColors.mpTextSub, size: 24),
+      ),
+    );
+  }
 }

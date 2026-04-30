@@ -287,6 +287,77 @@ void main() {
     await database.close();
   });
 
+  test('merges adjacent visit fragments for the same place', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final notificationAdapter = FakeNotificationAdapter();
+    final processor = DailyInsightProcessor(
+      database: database,
+      notificationService: NotificationService(notificationAdapter),
+      importPendingEvents: () async =>
+          const LocationEventImportResult(importedCount: 0, skippedCount: 0),
+      settings: AppSettings.defaults().copyWith(
+        minimumMovementMeters: 50,
+        minimumStayMinutes: 5,
+      ),
+    );
+
+    final firstStay = [
+      DateTime(2026, 4, 25, 10),
+      DateTime(2026, 4, 25, 10, 6),
+    ];
+    final secondStay = [
+      DateTime(2026, 4, 25, 10, 15),
+      DateTime(2026, 4, 25, 10, 25),
+    ];
+    for (final timestamp in firstStay) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: timestamp,
+              latitude: 37.5665,
+              longitude: 126.9780,
+              accuracy: 20,
+            ),
+          );
+    }
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime(2026, 4, 25, 10, 10),
+            latitude: 37.5700,
+            longitude: 126.9820,
+            accuracy: 40,
+          ),
+        );
+    for (final timestamp in secondStay) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: timestamp,
+              latitude: 37.56655,
+              longitude: 126.97805,
+              accuracy: 20,
+            ),
+          );
+    }
+
+    await processor.run(now: DateTime(2026, 4, 26, 9));
+
+    final visits = await database.select(database.visits).get();
+    final summaries = await database.select(database.dailySummaries).get();
+    final places = await database.select(database.placeClusters).get();
+    expect(visits, hasLength(1));
+    expect(visits.single.durationMinutes, 25);
+    expect(summaries.single.visitCount, 1);
+    expect(summaries.single.newPlaceCount, 1);
+    expect(places.single.visitCount, 1);
+
+    await database.close();
+  });
+
   test('cancels daily notification when notifications are disabled', () async {
     final database = AppDatabase(NativeDatabase.memory());
     final notificationAdapter = FakeNotificationAdapter();

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>19b — 돌아보기 (History)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:-apple-system,'Helvetica Neue',sans-serif; }
+
+.phone { width:390px; height:844px; background:#0D0D0D; border-radius:50px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 40px 120px rgba(0,0,0,0.95); }
+
+.status { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; font-size:12px; font-weight:600; color:#888; flex-shrink:0; }
+
+/* Header */
+.header { padding:12px 24px 0; flex-shrink:0; }
+.header-title { font-size:28px; font-weight:800; color:#fff; }
+.header-sub { font-size:13px; color:#888; margin-top:4px; }
+
+/* Search bar */
+.search-wrap { padding:14px 24px 0; flex-shrink:0; }
+.search-bar {
+  background:#1A1A1A; border-radius:8px;
+  padding:10px 14px; display:flex; align-items:center; gap:10px;
+}
+.search-icon { font-size:14px; color:#888; }
+.search-text { font-size:14px; color:#555; }
+
+/* Filter pills */
+.filters { display:flex; gap:8px; padding:12px 24px 0; overflow-x:auto; flex-shrink:0; }
+.filters::-webkit-scrollbar { display:none; }
+.filter-pill {
+  flex-shrink:0;
+  padding:6px 16px; border-radius:20px;
+  font-size:13px; font-weight:600;
+  background:#1A1A1A; color:#fff;
+  white-space:nowrap; cursor:pointer;
+}
+.filter-pill.active { background:#fff; color:#0D0D0D; }
+
+/* Scroll content */
+.scroll { flex:1; overflow-y:auto; padding-bottom:16px; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* Section header */
+.section-hdr { padding:20px 24px 8px; font-size:16px; font-weight:800; color:#fff; }
+
+/* Featured card (most active day this month) */
+.featured-card {
+  margin:0 24px 4px;
+  background:linear-gradient(135deg,#1A3A1A,#0D2A0D);
+  border-radius:12px; overflow:hidden;
+  border:1px solid rgba(29,185,84,0.2);
+  position:relative;
+}
+.featured-inner { padding:16px 16px 14px; }
+.featured-tag {
+  font-size:10px; font-weight:700; color:#1DB954;
+  letter-spacing:1.5px; text-transform:uppercase;
+  margin-bottom:6px;
+}
+.featured-title { font-size:18px; font-weight:700; color:#fff; }
+.featured-meta { font-size:13px; color:#888; margin-top:4px; }
+.featured-stats { display:flex; gap:16px; margin-top:12px; }
+.fstat { }
+.fstat-val { font-size:16px; font-weight:700; color:#1DB954; }
+.fstat-label { font-size:10px; color:#888; margin-top:1px; }
+.featured-play {
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  width:44px; height:44px; border-radius:50%;
+  background:#1DB954; display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+}
+
+/* Queue item */
+.q-item { display:flex; align-items:center; gap:12px; padding:8px 24px; }
+.q-art {
+  width:50px; height:50px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px;
+}
+.q-info { flex:1; min-width:0; }
+.q-title { font-size:14px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.q-meta { font-size:12px; color:#888; margin-top:2px; }
+.q-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.q-dur { font-size:12px; color:#888; }
+.q-more { font-size:18px; color:#555; }
+
+/* Playing bars */
+.playing { display:flex; gap:2px; align-items:flex-end; height:16px; }
+.pb { width:3px; border-radius:2px; background:#1DB954; }
+
+/* Today item highlight */
+.q-item.today .q-title { color:#1DB954; }
+.q-item.today .q-meta { color:#1DB954; }
+.q-item.today .q-art { border:1px solid rgba(29,185,84,0.4); }
+
+/* Week separator */
+.week-sep { padding:16px 24px 6px; font-size:11px; font-weight:700; color:#555; letter-spacing:1px; text-transform:uppercase; }
+
+/* Mini waveform in item */
+.mini-wf { display:flex; gap:1px; align-items:flex-end; height:20px; margin-left:4px; }
+.mw { width:2px; border-radius:1px; background:#333; }
+
+/* Bottom nav */
+.bottom-nav { height:72px; background:#0D0D0D; border-top:1px solid #1A1A1A; display:flex; flex-shrink:0; }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; }
+.ni { font-size:22px; color:#555; }
+.ni.on { color:#1DB954; }
+.nl { font-size:10px; font-weight:600; color:#555; }
+.nl.on { color:#1DB954; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+
+  <div class="header">
+    <div class="header-title">돌아보기</div>
+    <div class="header-sub">97일의 하루들</div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <div class="search-icon">🔍</div>
+      <div class="search-text">날짜, 장소로 검색</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-pill active">전체</div>
+    <div class="filter-pill">4월</div>
+    <div class="filter-pill">3월</div>
+    <div class="filter-pill">2월</div>
+    <div class="filter-pill">⭐ 즐겨찾기</div>
+    <div class="filter-pill">🏃 활동적</div>
+  </div>
+
+  <div class="scroll">
+    <!-- This week -->
+    <div class="section-hdr">이번 주</div>
+
+    <!-- Today - currently playing -->
+    <div class="q-item today">
+      <div class="q-art" style="background:linear-gradient(135deg,#0A2A0A,#1A4A1A);">🗺️</div>
+      <div class="q-info">
+        <div class="q-title">오늘의 하루</div>
+        <div class="q-meta">4월 28일 · 12.4 km · 4곳</div>
+      </div>
+      <div class="q-right">
+        <div class="playing">
+          <div class="pb" style="height:6px;animation:b1 0.7s ease-in-out infinite alternate;"></div>
+          <div class="pb" style="height:12px;animation:b2 0.8s ease-in-out infinite alternate;"></div>
+          <div class="pb" style="height:8px;animation:b3 0.6s ease-in-out infinite alternate;"></div>
+          <div class="pb" style="height:14px;animation:b2 0.9s ease-in-out infinite alternate;"></div>
+        </div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#1A1A2A,#2A2A1A);">🏠</div>
+      <div class="q-info">
+        <div class="q-title">집에서 여유로운 일요일</div>
+        <div class="q-meta">4월 27일 · 2.1 km · 2곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">2:05</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#0A2A1A,#1A4A2A);">🌿</div>
+      <div class="q-info">
+        <div class="q-title">서울숲 봄 산책</div>
+        <div class="q-meta">4월 26일 · 8.7 km · 3곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">8:42</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#2A1A0A,#3A2A1A);">💼</div>
+      <div class="q-info">
+        <div class="q-title">바쁜 금요일 · 회식까지</div>
+        <div class="q-meta">4월 25일 · 15.2 km · 5곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">15:12</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#0A1A2A,#1A2A3A);">🚶</div>
+      <div class="q-info">
+        <div class="q-title">평범한 출퇴근 목요일</div>
+        <div class="q-meta">4월 24일 · 11.3 km · 3곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">11:18</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#1A0A2A,#2A1A3A);">☕</div>
+      <div class="q-info">
+        <div class="q-title">재택 + 카페 작업</div>
+        <div class="q-meta">4월 23일 · 4.2 km · 2곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">4:12</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+
+    <!-- This month highlight -->
+    <div class="week-sep">이번 달 하이라이트</div>
+    <div class="featured-card">
+      <div class="featured-inner">
+        <div class="featured-tag">⭐ 이달의 최고 하루</div>
+        <div class="featured-title">서울 완전 탐험</div>
+        <div class="featured-meta">4월 19일 · 토요일</div>
+        <div class="featured-stats">
+          <div class="fstat"><div class="fstat-val">23.4km</div><div class="fstat-label">이동 거리</div></div>
+          <div class="fstat"><div class="fstat-val">8곳</div><div class="fstat-label">방문 장소</div></div>
+          <div class="fstat"><div class="fstat-val">34,120</div><div class="fstat-label">걸음</div></div>
+        </div>
+      </div>
+      <div class="featured-play">▶</div>
+    </div>
+
+    <!-- Previous week -->
+    <div class="week-sep" style="margin-top:8px;">지난 주</div>
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#2A0A1A,#3A1A2A);">🎉</div>
+      <div class="q-info">
+        <div class="q-title">친구 생일 파티</div>
+        <div class="q-meta">4월 20일 · 18.9 km · 6곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">18:54</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#1A2A0A,#2A3A1A);">🌧️</div>
+      <div class="q-info">
+        <div class="q-title">비 오는 평일</div>
+        <div class="q-meta">4월 22일 · 9.1 km · 3곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">9:06</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+    <div class="q-item">
+      <div class="q-art" style="background:linear-gradient(135deg,#0A2A2A,#1A3A3A);">🏃</div>
+      <div class="q-info">
+        <div class="q-title">아침 런닝 + 출근</div>
+        <div class="q-meta">4월 21일 · 14.7 km · 4곳</div>
+      </div>
+      <div class="q-right">
+        <div class="q-dur">14:42</div>
+        <div class="q-more">•••</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item"><div class="ni">▶️</div><div class="nl">오늘</div></div>
+    <div class="nav-item"><div class="ni on">📋</div><div class="nl on">기록</div></div>
+    <div class="nav-item"><div class="ni">📍</div><div class="nl">장소</div></div>
+    <div class="nav-item"><div class="ni">⚙️</div><div class="nl">설정</div></div>
+  </div>
+</div>
+
+<style>
+@keyframes b1 { from{height:4px} to{height:14px} }
+@keyframes b2 { from{height:8px} to{height:4px} }
+@keyframes b3 { from{height:10px} to{height:18px} }
+</style>
+</body>
+</html>

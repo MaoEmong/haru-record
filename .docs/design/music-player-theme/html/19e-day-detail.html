@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>19e — 하루 상세 (Day Detail)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:-apple-system,'Helvetica Neue',sans-serif; }
+
+.phone { width:390px; height:844px; background:#0D0D0D; border-radius:50px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 40px 120px rgba(0,0,0,0.95); }
+
+.status { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; font-size:12px; font-weight:600; color:#888; flex-shrink:0; }
+
+/* Nav bar */
+.navbar {
+  padding:0 20px 12px;
+  display:flex; align-items:center; gap:12px;
+  flex-shrink:0;
+}
+.back-btn { font-size:22px; color:#1DB954; cursor:pointer; }
+.navbar-title { font-size:14px; font-weight:600; color:#888; flex:1; text-align:center; }
+.more-btn { font-size:22px; color:#888; }
+
+/* Scroll */
+.scroll { flex:1; overflow-y:auto; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* Hero album art - day cover */
+.hero {
+  margin:0 24px 0;
+  height:200px; border-radius:16px;
+  background:linear-gradient(160deg,#0A2A0A 0%,#1A4A1A 40%,#0D300D 70%,#0A2A14 100%);
+  position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 16px 48px rgba(29,185,84,0.2);
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 25% 30%, rgba(29,185,84,0.18) 0%, transparent 55%),
+             radial-gradient(ellipse at 75% 70%, rgba(29,185,84,0.08) 0%, transparent 50%);
+}
+
+/* Route path SVG */
+.route-svg { position:absolute; inset:0; }
+
+/* Date overlay */
+.hero-overlay {
+  position:absolute; bottom:14px; left:16px; right:16px;
+  display:flex; align-items:flex-end; justify-content:space-between;
+}
+.hero-date { font-size:28px; font-weight:800; color:#fff; line-height:1; }
+.hero-dow { font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px; }
+.hero-badge {
+  background:rgba(29,185,84,0.9); border-radius:12px;
+  padding:5px 10px; font-size:11px; font-weight:700; color:#000;
+}
+
+/* Info section */
+.info-section { padding:16px 24px 0; }
+.day-title { font-size:22px; font-weight:700; color:#fff; }
+.day-sub { font-size:14px; color:#888; margin-top:4px; }
+
+/* Action row */
+.action-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 24px 0;
+}
+.fav-btn { font-size:28px; color:#1DB954; }
+.action-btns { display:flex; gap:16px; }
+.act-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:#1A1A1A; display:flex; align-items:center; justify-content:center;
+  font-size:16px; cursor:pointer;
+}
+.play-big {
+  width:52px; height:52px; border-radius:50%;
+  background:#1DB954; display:flex; align-items:center; justify-content:center;
+  font-size:22px; cursor:pointer;
+  box-shadow:0 4px 16px rgba(29,185,84,0.4);
+}
+
+/* Stats strip */
+.stats-strip {
+  display:flex; gap:0;
+  margin:16px 24px 0;
+  background:#1A1A1A; border-radius:12px;
+  overflow:hidden;
+}
+.stat-block {
+  flex:1; padding:12px 0; text-align:center;
+  border-right:1px solid #242424;
+}
+.stat-block:last-child { border-right:none; }
+.sb-val { font-size:16px; font-weight:700; color:#fff; }
+.sb-label { font-size:10px; color:#888; margin-top:2px; }
+
+/* Section label */
+.sec-label {
+  padding:20px 24px 10px;
+  font-size:16px; font-weight:700; color:#fff;
+}
+
+/* Timeline track list */
+.track-item {
+  display:flex; align-items:center; gap:14px;
+  padding:10px 24px;
+  position:relative;
+}
+/* Connector line between tracks */
+.track-item + .track-item .track-num::before {
+  content:''; position:absolute;
+  left:39px; top:-10px; height:10px; width:1px;
+  background:#1A1A1A;
+}
+
+.track-num {
+  width:32px; text-align:center;
+  font-size:13px; color:#888;
+  flex-shrink:0; position:relative;
+}
+.track-art {
+  width:50px; height:50px; border-radius:10px;
+  background:#1A1A1A; display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0; position:relative;
+}
+.track-art.current { border:1px solid rgba(29,185,84,0.5); }
+.track-art.current::after {
+  content:''; position:absolute;
+  bottom:-4px; right:-4px;
+  width:12px; height:12px; border-radius:50%;
+  background:#1DB954; border:2px solid #0D0D0D;
+}
+.track-info { flex:1; min-width:0; }
+.track-name { font-size:14px; font-weight:600; color:#fff; }
+.track-time { font-size:12px; color:#888; margin-top:2px; }
+.track-right { flex-shrink:0; text-align:right; }
+.track-dur { font-size:13px; color:#888; }
+.track-dur.green { color:#1DB954; font-weight:700; }
+
+/* Mini waveform per track */
+.mini-wf {
+  display:flex; gap:1.5px; align-items:flex-end; height:18px;
+  margin-top:5px;
+}
+.mw { width:2.5px; border-radius:1px; }
+
+/* Day insight card */
+.insight-card {
+  margin:8px 24px 0;
+  background:#1A1A1A; border-radius:14px;
+  padding:16px 18px;
+  border-left:3px solid #1DB954;
+}
+.insight-label {
+  font-size:10px; font-weight:700; color:#1DB954;
+  letter-spacing:1.5px; text-transform:uppercase;
+  margin-bottom:8px;
+}
+.insight-text { font-size:14px; color:#ccc; line-height:1.6; }
+
+/* Activity timeline bar (24h) */
+.timeline-24h {
+  margin:0 24px;
+  background:#1A1A1A; border-radius:12px;
+  padding:14px 16px;
+}
+.tl-label { font-size:12px; color:#888; margin-bottom:10px; }
+.tl-bar-wrap { height:12px; border-radius:6px; background:#242424; position:relative; overflow:hidden; }
+/* Segments */
+.tl-seg { position:absolute; height:100%; border-radius:0; }
+.tl-hours {
+  display:flex; justify-content:space-between;
+  margin-top:6px;
+}
+.tl-hour { font-size:9px; color:#555; }
+/* Legend */
+.tl-legend { display:flex; gap:12px; margin-top:10px; flex-wrap:wrap; }
+.tl-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:#888; }
+.tl-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+
+/* Similar days */
+.sim-row {
+  display:flex; gap:10px; padding:0 24px;
+  overflow-x:auto;
+}
+.sim-row::-webkit-scrollbar { display:none; }
+.sim-card {
+  flex-shrink:0; width:120px;
+  background:#1A1A1A; border-radius:10px;
+  overflow:hidden; cursor:pointer;
+}
+.sim-art {
+  height:80px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px;
+}
+.sim-info { padding:8px 10px 10px; }
+.sim-title { font-size:12px; font-weight:600; color:#fff; }
+.sim-sub { font-size:10px; color:#888; margin-top:2px; }
+
+.pb { height:24px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+
+  <div class="navbar">
+    <span class="back-btn">‹</span>
+    <span class="navbar-title">돌아보기</span>
+    <span class="more-btn">•••</span>
+  </div>
+
+  <div class="scroll">
+    <!-- Hero: day cover art -->
+    <div class="hero">
+      <svg class="route-svg" viewBox="0 0 390 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- Faint grid -->
+        <g stroke="#1DB954" stroke-width="0.3" opacity="0.12">
+          <line x1="0" y1="40" x2="390" y2="40"/>
+          <line x1="0" y1="80" x2="390" y2="80"/>
+          <line x1="0" y1="120" x2="390" y2="120"/>
+          <line x1="0" y1="160" x2="390" y2="160"/>
+          <line x1="78" y1="0" x2="78" y2="200"/>
+          <line x1="156" y1="0" x2="156" y2="200"/>
+          <line x1="234" y1="0" x2="234" y2="200"/>
+          <line x1="312" y1="0" x2="312" y2="200"/>
+        </g>
+        <!-- Route path -->
+        <path d="M 60,160 C 60,160 80,140 100,130 C 130,115 150,110 190,95 C 220,85 250,82 280,88 C 310,94 330,110 330,110"
+          fill="none" stroke="#1DB954" stroke-width="2.5" stroke-dasharray="6 3" opacity="0.5"/>
+        <!-- Place dots -->
+        <circle cx="60" cy="160" r="8" fill="#1DB954" opacity="0.9"/>
+        <circle cx="60" cy="160" r="16" fill="#1DB954" opacity="0.15"/>
+        <text x="60" y="145" text-anchor="middle" fill="#fff" font-size="11" opacity="0.8">🏠</text>
+
+        <circle cx="190" cy="95" r="8" fill="#4A8AFF" opacity="0.9"/>
+        <circle cx="190" cy="95" r="16" fill="#4A8AFF" opacity="0.15"/>
+        <text x="190" y="80" text-anchor="middle" fill="#fff" font-size="11" opacity="0.8">🏢</text>
+
+        <circle cx="330" cy="110" r="8" fill="#FF8A4A" opacity="0.9"/>
+        <circle cx="330" cy="110" r="16" fill="#FF8A4A" opacity="0.15"/>
+        <text x="330" y="95" text-anchor="middle" fill="#fff" font-size="11" opacity="0.8">☕</text>
+      </svg>
+      <div class="hero-overlay">
+        <div>
+          <div class="hero-date">APR 28</div>
+          <div class="hero-dow">월요일</div>
+        </div>
+        <div class="hero-badge">12.4 km</div>
+      </div>
+    </div>
+
+    <!-- Day title -->
+    <div class="info-section">
+      <div class="day-title">바쁜 월요일</div>
+      <div class="day-sub">집 · 회사 · 카페 · 마트 · 4곳 방문</div>
+    </div>
+
+    <!-- Action row -->
+    <div class="action-row">
+      <div class="fav-btn">♥</div>
+      <div class="action-btns">
+        <div class="act-btn">⬇</div>
+        <div class="act-btn">↗</div>
+        <div class="play-big">▶</div>
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="stats-strip">
+      <div class="stat-block"><div class="sb-val">8,240</div><div class="sb-label">걸음</div></div>
+      <div class="stat-block"><div class="sb-val">4</div><div class="sb-label">장소</div></div>
+      <div class="stat-block"><div class="sb-val">16.8h</div><div class="sb-label">기록</div></div>
+      <div class="stat-block"><div class="sb-val">97kcal</div><div class="sb-label">소모</div></div>
+    </div>
+
+    <!-- 24h timeline bar -->
+    <div class="sec-label" style="padding-bottom:8px;">하루 타임라인</div>
+    <div class="timeline-24h">
+      <div class="tl-label">0시 ——————————————————— 24시</div>
+      <div class="tl-bar-wrap">
+        <!-- 집 00:00~09:00 = 0~37.5% -->
+        <div class="tl-seg" style="left:0;width:37.5%;background:#1DB954;opacity:0.7;"></div>
+        <!-- 이동 09:00~09:30 = 37.5~39.5% -->
+        <div class="tl-seg" style="left:37.5%;width:2%;background:#555;"></div>
+        <!-- 회사 09:30~18:30 = 39.5~77% -->
+        <div class="tl-seg" style="left:39.5%;width:37.5%;background:#4A8AFF;opacity:0.8;"></div>
+        <!-- 이동 18:30~19:00 = 77~79% -->
+        <div class="tl-seg" style="left:77%;width:2%;background:#555;"></div>
+        <!-- 카페 19:00~21:00 = 79~87.5% -->
+        <div class="tl-seg" style="left:79%;width:8.5%;background:#FF8A4A;opacity:0.8;"></div>
+        <!-- 마트 21:20~21:50 = 88.9~91% -->
+        <div class="tl-seg" style="left:88.9%;width:2%;background:#FFCA4A;opacity:0.8;"></div>
+        <!-- 집 귀가 22:00~ -->
+        <div class="tl-seg" style="left:91.7%;width:8.3%;background:#1DB954;opacity:0.5;"></div>
+      </div>
+      <div class="tl-hours">
+        <span class="tl-hour">0</span><span class="tl-hour">6</span><span class="tl-hour">12</span><span class="tl-hour">18</span><span class="tl-hour">24</span>
+      </div>
+      <div class="tl-legend">
+        <div class="tl-leg-item"><div class="tl-dot" style="background:#1DB954;"></div>집</div>
+        <div class="tl-leg-item"><div class="tl-dot" style="background:#4A8AFF;"></div>회사</div>
+        <div class="tl-leg-item"><div class="tl-dot" style="background:#FF8A4A;"></div>카페</div>
+        <div class="tl-leg-item"><div class="tl-dot" style="background:#FFCA4A;"></div>마트</div>
+        <div class="tl-leg-item"><div class="tl-dot" style="background:#555;"></div>이동</div>
+      </div>
+    </div>
+
+    <!-- Track list = place visits -->
+    <div class="sec-label">방문 기록</div>
+
+    <div class="track-item">
+      <div class="track-num">1</div>
+      <div class="track-art"><span>🏠</span></div>
+      <div class="track-info">
+        <div class="track-name">집</div>
+        <div class="track-time">07:00 — 09:00</div>
+        <div class="mini-wf" id="wf0"></div>
+      </div>
+      <div class="track-right">
+        <div class="track-dur">2h 0m</div>
+      </div>
+    </div>
+
+    <div class="track-item">
+      <div class="track-num">2</div>
+      <div class="track-art current"><span>🏢</span></div>
+      <div class="track-info">
+        <div class="track-name" style="color:#1DB954;">회사</div>
+        <div class="track-time" style="color:#1DB954;">09:30 — 18:30</div>
+        <div class="mini-wf" id="wf1"></div>
+      </div>
+      <div class="track-right">
+        <div class="track-dur green">8h 10m</div>
+      </div>
+    </div>
+
+    <div class="track-item">
+      <div class="track-num">3</div>
+      <div class="track-art"><span>☕</span></div>
+      <div class="track-info">
+        <div class="track-name">카페</div>
+        <div class="track-time">19:00 — 21:00</div>
+        <div class="mini-wf" id="wf2"></div>
+      </div>
+      <div class="track-right">
+        <div class="track-dur">2h 5m</div>
+      </div>
+    </div>
+
+    <div class="track-item">
+      <div class="track-num">4</div>
+      <div class="track-art"><span>🛒</span></div>
+      <div class="track-info">
+        <div class="track-name">마트</div>
+        <div class="track-time">21:20 — 21:50</div>
+        <div class="mini-wf" id="wf3"></div>
+      </div>
+      <div class="track-right">
+        <div class="track-dur">30m</div>
+      </div>
+    </div>
+
+    <!-- Insight card -->
+    <div class="insight-card" style="margin-top:16px;">
+      <div class="insight-label">💡 오늘의 인사이트</div>
+      <div class="insight-text">회사에서 하루의 34%를 보냈어요. 퇴근 후 카페에서의 2시간이 오늘의 숨통을 틔워줬네요. 평소보다 1.2시간 더 외출한 하루였어요.</div>
+    </div>
+
+    <!-- Similar days -->
+    <div class="sec-label">비슷한 하루</div>
+    <div class="sim-row">
+      <div class="sim-card">
+        <div class="sim-art" style="background:linear-gradient(135deg,#0A2A0A,#1A4A1A);">🗺️</div>
+        <div class="sim-info"><div class="sim-title">바쁜 목요일</div><div class="sim-sub">4월 24일 · 11.3km</div></div>
+      </div>
+      <div class="sim-card">
+        <div class="sim-art" style="background:linear-gradient(135deg,#0A1A2A,#1A2A4A);">💼</div>
+        <div class="sim-info"><div class="sim-title">야근한 화요일</div><div class="sim-sub">4월 22일 · 9.1km</div></div>
+      </div>
+      <div class="sim-card">
+        <div class="sim-art" style="background:linear-gradient(135deg,#2A1A0A,#4A2A1A);">☕</div>
+        <div class="sim-info"><div class="sim-title">카페 마감</div><div class="sim-sub">4월 18일 · 10.2km</div></div>
+      </div>
+    </div>
+
+    <div class="pb"></div>
+  </div>
+</div>
+
+<script>
+const colors = ['#1DB954','#4A8AFF','#FF8A4A','#FFCA4A'];
+const heights = [
+  [4,8,6,12,10,8,14,6,10,8,12,6,8,10],
+  [8,14,20,16,24,18,14,22,18,12,20,16,22,18,14,20,18,14,24,16,12,18],
+  [6,10,8,14,12,10,16,8,12,10,14,8,10,12,6],
+  [4,8,6,10,8,6,10]
+];
+heights.forEach((hs, wi) => {
+  const wrap = document.getElementById('wf'+wi);
+  if (!wrap) return;
+  hs.forEach(h => {
+    const b = document.createElement('div');
+    b.className = 'mw';
+    const played = Math.random() > 0.4;
+    b.style.cssText = `height:${h}px;background:${played ? colors[wi] : '#333'};`;
+    wrap.appendChild(b);
+  });
+});
+</script>
+</body>
+</html>
