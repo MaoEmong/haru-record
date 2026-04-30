@@ -8,6 +8,7 @@ import '../../core/geo/coordinate_validation.dart';
 import '../../core/geo/geo_math.dart';
 import '../../core/logging/app_logger.dart';
 import '../storage/app_database.dart';
+import 'tracking_channel_exception.dart';
 
 class LocationEventImportResult {
   const LocationEventImportResult({
@@ -23,8 +24,10 @@ class LocationEventImporter {
   LocationEventImporter(
     this._database, {
     MethodChannel channel = const MethodChannel('daily_pattern/tracking'),
+    Duration channelTimeout = defaultTrackingChannelTimeout,
     Future<void> Function()? afterSnapshot,
   }) : _channel = channel,
+       _channelTimeout = channelTimeout,
        _eventFile = null,
        _afterSnapshot = afterSnapshot;
 
@@ -33,11 +36,13 @@ class LocationEventImporter {
     File eventFile, {
     Future<void> Function()? afterSnapshot,
   }) : _channel = null,
+       _channelTimeout = defaultTrackingChannelTimeout,
        _eventFile = eventFile,
        _afterSnapshot = afterSnapshot;
 
   final AppDatabase _database;
   final MethodChannel? _channel;
+  final Duration _channelTimeout;
   final File? _eventFile;
   final Future<void> Function()? _afterSnapshot;
 
@@ -111,7 +116,21 @@ class LocationEventImporter {
 
   Future<File?> _resolveEventFile() async {
     if (_eventFile != null) return _eventFile;
-    final path = await _channel?.invokeMethod<String>('getEventFilePath');
+    final channel = _channel;
+    if (channel == null) return null;
+    late final String? path;
+    try {
+      path = await channel
+          .invokeMethod<String>('getEventFilePath')
+          .timeout(_channelTimeout);
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Location event file channel call failed.',
+        error: trackingChannelException('getEventFilePath', error),
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
     if (path == null || path.isEmpty) return null;
     return File(path);
   }

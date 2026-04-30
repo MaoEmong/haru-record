@@ -22,7 +22,7 @@ class TrackingMethodChannel(private val context: Context) {
                     if (!hasLocationPermission()) {
                         result.error(
                             "location_permission_missing",
-                            "하루를 기록하려면 위치 권한이 필요해요.",
+                            "하루 기록을 시작하려면 위치 권한이 필요해요.",
                             null
                         )
                         return@setMethodCallHandler

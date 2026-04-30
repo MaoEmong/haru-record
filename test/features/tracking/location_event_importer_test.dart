@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -188,4 +189,40 @@ END;
     expect(points, hasLength(1));
     expect(await snapshot.exists(), isFalse);
   });
+
+  test('skips import safely when the native event path call fails', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          throw PlatformException(code: 'event_path_failed');
+        });
+    final importer = LocationEventImporter(database, channel: channel);
+
+    final result = await importer.importPendingEvents();
+
+    expect(result.importedCount, 0);
+    expect(result.skippedCount, 0);
+    expect(await eventFile.exists(), isFalse);
+  });
+
+  test(
+    'skips import safely when the native event path call times out',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            channel,
+            (call) => Completer<String>().future,
+          );
+      final importer = LocationEventImporter(
+        database,
+        channel: channel,
+        channelTimeout: const Duration(milliseconds: 1),
+      );
+
+      final result = await importer.importPendingEvents();
+
+      expect(result.importedCount, 0);
+      expect(result.skippedCount, 0);
+      expect(await eventFile.exists(), isFalse);
+    },
+  );
 }
