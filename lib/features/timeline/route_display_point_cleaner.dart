@@ -120,8 +120,8 @@ class RouteDisplayPointCleaner {
     LocationPoint anchor,
   ) {
     final excursionStart = points[excursionStartIndex];
-    if (!_isLowSpeed(excursionStart.speed)) return null;
 
+    var farthestDetourDistance = _distance(anchor, excursionStart);
     for (
       var index = excursionStartIndex + 1;
       index < points.length &&
@@ -133,12 +133,47 @@ class RouteDisplayPointCleaner {
           .difference(excursionStart.timestamp)
           .abs();
       if (elapsed > _maxExcursionDuration) return null;
-      if (!_isLowSpeed(point.speed)) return null;
+      farthestDetourDistance = _max(
+        farthestDetourDistance,
+        _distance(anchor, point),
+      );
       if (_distance(anchor, point) <= _stableRadiusMeters) {
-        return index;
+        final allLowSpeed = points
+            .sublist(excursionStartIndex, index)
+            .every((point) => _isLowSpeed(point.speed));
+        if (allLowSpeed ||
+            _isShortOutAndBackExcursion(
+              anchor: anchor,
+              excursionStart: excursionStart,
+              returnPoint: point,
+              farthestDetourDistance: farthestDetourDistance,
+            )) {
+          return index;
+        }
+        return null;
       }
     }
     return null;
+  }
+
+  bool _isShortOutAndBackExcursion({
+    required LocationPoint anchor,
+    required LocationPoint excursionStart,
+    required LocationPoint returnPoint,
+    required double farthestDetourDistance,
+  }) {
+    final excursionSeconds =
+        returnPoint.timestamp
+            .difference(excursionStart.timestamp)
+            .inMilliseconds
+            .abs() /
+        1000;
+    if (excursionSeconds <= 0) return false;
+    final impliedSpeed = farthestDetourDistance / excursionSeconds;
+    final anchorToReturn = _distance(anchor, returnPoint);
+    return farthestDetourDistance >= _minimumExcursionDistanceMeters &&
+        anchorToReturn <= _stableRadiusMeters &&
+        impliedSpeed >= _minimumOutAndBackSpeedMetersPerSecond;
   }
 
   bool _isImplausibleSpike(
@@ -194,6 +229,10 @@ class RouteDisplayPointCleaner {
     return distanceMeters(a.latitude, a.longitude, b.latitude, b.longitude);
   }
 
+  double _max(double a, double b) {
+    return a > b ? a : b;
+  }
+
   bool _isLowSpeed(double? speed) {
     return speed == null || speed <= _lowSpeedExcursionMetersPerSecond;
   }
@@ -204,6 +243,8 @@ class RouteDisplayPointCleaner {
   static const _maximumReturnDistanceMeters = 220.0;
   static const _minimumSpikeDetourRatio = 4.0;
   static const _stableRadiusMeters = 50.0;
+  static const _minimumExcursionDistanceMeters = 120.0;
+  static const _minimumOutAndBackSpeedMetersPerSecond = 4.0;
   static const _maxExcursionDuration = Duration(minutes: 3);
   static const _maxExcursionPoints = 18;
   static const _lowSpeedExcursionMetersPerSecond = 3.0;
