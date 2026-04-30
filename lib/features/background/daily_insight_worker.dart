@@ -17,6 +17,7 @@ import '../insights/pattern_analysis_service.dart';
 import '../notifications/notification_service.dart';
 import '../places/place_clustering_service.dart';
 import '../places/place_cluster_repository.dart';
+import '../processing/location_post_processor.dart';
 import '../settings/settings_models.dart';
 import '../settings/settings_repository.dart';
 import '../storage/app_database.dart';
@@ -159,18 +160,10 @@ class DailyInsightProcessor {
       );
     }
 
-    final visits = _placeClusteringService.detectVisits(
-      visitDetectionPoints
-          .map(
-            (point) => TrackedPoint(
-              point.timestamp,
-              point.latitude,
-              point.longitude,
-              point.accuracy,
-              point.isMock,
-            ),
-          )
-          .toList(),
+    final visits = const LocationPostProcessor().detectVisits(
+      points: visitDetectionPoints,
+      settings: _settings,
+      clusteringService: _placeClusteringService,
     );
 
     final persistedVisits = <_PersistableVisit>[];
@@ -197,9 +190,10 @@ class DailyInsightProcessor {
       );
     }
 
+    final mergedVisits = _mergeAdjacentVisitsForSamePlace(persistedVisits);
     final visitSnapshots = <VisitSnapshot>[];
     DetectedVisit? previousVisit;
-    for (final item in persistedVisits) {
+    for (final item in mergedVisits) {
       final visit = item.visit;
       visitSnapshots.add(
         VisitSnapshot(
@@ -234,7 +228,7 @@ class DailyInsightProcessor {
       recentAverage: recentAverage,
       patternSignals: patternSignals,
     );
-    await _replaceDailyOutputs(yesterday, persistedVisits, summary, insights);
+    await _replaceDailyOutputs(yesterday, mergedVisits, summary, insights);
     await _placeClusterRepository.recalculateVisitCounts();
     await _finishRetentionAndNotifications(now, insights: insights);
 
@@ -320,6 +314,60 @@ class DailyInsightProcessor {
       durationMinutes: clippedEnd.difference(clippedStart).inMinutes,
       latitude: visit.latitude,
       longitude: visit.longitude,
+    );
+  }
+
+  List<_PersistableVisit> _mergeAdjacentVisitsForSamePlace(
+    List<_PersistableVisit> visits,
+  ) {
+    if (visits.length < 2) return visits;
+
+    final merged = <_PersistableVisit>[];
+    for (final item in visits) {
+      final previous = merged.isEmpty ? null : merged.last;
+      if (previous != null && _canMergeVisit(previous, item)) {
+        merged[merged.length - 1] = _mergeVisits(previous, item);
+      } else {
+        merged.add(item);
+      }
+    }
+    return merged;
+  }
+
+  bool _canMergeVisit(_PersistableVisit previous, _PersistableVisit current) {
+    if (previous.placeClusterId != current.placeClusterId) return false;
+    final gap = current.visit.startedAt.difference(previous.visit.endedAt);
+    return !gap.isNegative && gap <= _maximumSamePlaceFragmentGap;
+  }
+
+  _PersistableVisit _mergeVisits(
+    _PersistableVisit previous,
+    _PersistableVisit current,
+  ) {
+    final first = previous.visit;
+    final second = current.visit;
+    final totalDuration = first.durationMinutes + second.durationMinutes;
+    final latitude = totalDuration == 0
+        ? first.latitude
+        : ((first.latitude * first.durationMinutes) +
+                  (second.latitude * second.durationMinutes)) /
+              totalDuration;
+    final longitude = totalDuration == 0
+        ? first.longitude
+        : ((first.longitude * first.durationMinutes) +
+                  (second.longitude * second.durationMinutes)) /
+              totalDuration;
+
+    return _PersistableVisit(
+      visit: DetectedVisit(
+        startedAt: first.startedAt,
+        endedAt: second.endedAt,
+        durationMinutes: second.endedAt.difference(first.startedAt).inMinutes,
+        latitude: latitude,
+        longitude: longitude,
+      ),
+      placeClusterId: previous.placeClusterId,
+      isNewPlace: previous.isNewPlace || current.isNewPlace,
     );
   }
 
@@ -513,6 +561,8 @@ class _PersistableVisit {
   final int placeClusterId;
   final bool isNewPlace;
 }
+
+const Duration _maximumSamePlaceFragmentGap = Duration(minutes: 30);
 
 Future<void> initializeDailyInsightWorker({
   DailyWorkerScheduler? scheduler,

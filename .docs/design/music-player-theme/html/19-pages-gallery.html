@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>19 뮤직플레이어 — 페이지별 디자인</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#050505;
+  font-family:-apple-system,'Helvetica Neue',sans-serif;
+  min-height:100vh;
+  color:#fff;
+}
+
+/* Header */
+.top {
+  padding:32px 48px 24px;
+  border-bottom:1px solid #1A1A1A;
+  display:flex; align-items:center; gap:20px;
+}
+.top-icon {
+  width:52px; height:52px; border-radius:14px;
+  background:linear-gradient(135deg,#0A2A0A,#1A4A1A);
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px;
+  box-shadow:0 4px 16px rgba(29,185,84,0.3);
+}
+.top-info {}
+.top-title { font-size:24px; font-weight:800; }
+.top-sub { font-size:14px; color:#888; margin-top:4px; }
+.top-badge {
+  margin-left:auto;
+  background:rgba(29,185,84,0.12);
+  border:1px solid rgba(29,185,84,0.3);
+  border-radius:20px; padding:8px 18px;
+  font-size:13px; font-weight:700; color:#1DB954;
+}
+
+/* Frames container */
+.frames {
+  display:flex;
+  gap:0;
+  padding:48px 0 48px;
+  overflow-x:auto;
+  justify-content:center;
+  align-items:flex-start;
+}
+.frames::-webkit-scrollbar { height:6px; }
+.frames::-webkit-scrollbar-track { background:#111; }
+.frames::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
+
+/* Phone frame wrapper */
+.frame-wrap {
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+  padding:0 32px;
+  position:relative;
+}
+
+/* Divider between frames */
+.frame-wrap + .frame-wrap::before {
+  content:'';
+  position:absolute;
+  left:0; top:20px; bottom:20px;
+  width:1px;
+  background:linear-gradient(to bottom, transparent, #1A1A1A 30%, #1A1A1A 70%, transparent);
+}
+
+/* Page label */
+.page-label {
+  text-align:center;
+}
+.page-num {
+  font-size:11px; font-weight:700; letter-spacing:2px;
+  color:#1DB954; text-transform:uppercase; margin-bottom:6px;
+}
+.page-name {
+  font-size:18px; font-weight:700; color:#fff;
+}
+.page-desc {
+  font-size:12px; color:#555; margin-top:4px;
+  max-width:200px; text-align:center; line-height:1.5;
+}
+
+/* Phone viewport clip */
+.phone-clip {
+  width:200px;
+  height:433px;  /* 844 * 0.513 */
+  border-radius:26px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:
+    0 0 0 1px #2A2A2A,
+    0 24px 60px rgba(0,0,0,0.8),
+    0 0 40px rgba(29,185,84,0.06);
+  cursor:pointer;
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+.phone-clip:hover {
+  transform:translateY(-4px);
+  box-shadow:
+    0 0 0 1px #333,
+    0 32px 80px rgba(0,0,0,0.8),
+    0 0 60px rgba(29,185,84,0.12);
+}
+.phone-clip iframe {
+  width:390px;
+  height:844px;
+  border:none;
+  transform:scale(0.513);
+  transform-origin:top left;
+  pointer-events:none;
+}
+
+/* Open button */
+.open-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 20px; border-radius:20px;
+  background:#1A1A1A; border:1px solid #2A2A2A;
+  font-size:13px; font-weight:600; color:#888;
+  cursor:pointer; text-decoration:none;
+  transition:all 0.2s;
+}
+.open-btn:hover { background:#242424; border-color:#1DB954; color:#1DB954; }
+
+/* Modal overlay */
+.modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.92);
+  z-index:1000;
+  display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(8px);
+}
+.modal-overlay.open { display:flex; }
+
+.modal-inner {
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; gap:20px;
+}
+
+.modal-wrapper {
+  border-radius:44px;
+  overflow:hidden;
+  box-shadow:0 40px 120px rgba(0,0,0,0.95), 0 0 60px rgba(29,185,84,0.1);
+}
+.modal-wrapper iframe {
+  width:390px;
+  height:844px;
+  border:none;
+  display:block;
+}
+
+.modal-close {
+  position:fixed; top:24px; right:28px;
+  width:40px; height:40px; border-radius:50%;
+  background:#1A1A1A; border:1px solid #333;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; color:#888; cursor:pointer;
+  z-index:1001;
+  transition:all 0.2s;
+}
+.modal-close:hover { background:#242424; color:#fff; }
+
+.modal-label {
+  font-size:13px; font-weight:600; color:#888;
+  letter-spacing:1px;
+}
+
+/* Nav arrows */
+.modal-nav {
+  position:fixed;
+  top:50%; transform:translateY(-50%);
+  width:48px; height:48px; border-radius:50%;
+  background:#1A1A1A; border:1px solid #2A2A2A;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:#888; cursor:pointer;
+  z-index:1001; transition:all 0.2s;
+}
+.modal-nav:hover { background:#242424; color:#fff; border-color:#1DB954; }
+.modal-prev { left:20px; }
+.modal-next { right:20px; }
+
+/* Key hint */
+.key-hint {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  font-size:11px; color:#444; z-index:1001;
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-icon">🗺️</div>
+  <div class="top-info">
+    <div class="top-title">뮤직 플레이어 디자인</div>
+    <div class="top-sub">페이지별 상세 디자인 · Spotify Dark 테마</div>
+  </div>
+  <div class="top-badge">6 페이지</div>
+</div>
+
+<div class="frames">
+
+  <!-- 오늘 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">Tab 1</div>
+      <div class="page-name">오늘</div>
+      <div class="page-desc">Now Playing — 오늘 하루를 앨범처럼</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(0)">
+      <iframe src="19a-today.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19a-today.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+  <!-- 돌아보기 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">Tab 2</div>
+      <div class="page-name">돌아보기</div>
+      <div class="page-desc">History — 지난 하루들을 플레이리스트처럼</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(1)">
+      <iframe src="19b-history.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19b-history.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+  <!-- 방문한 곳 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">Tab 3</div>
+      <div class="page-name">방문한 곳</div>
+      <div class="page-desc">Places Library — 장소를 앨범 라이브러리처럼</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(2)">
+      <iframe src="19c-places.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19c-places.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+  <!-- 설정 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">Tab 4</div>
+      <div class="page-name">설정</div>
+      <div class="page-desc">Settings — Spotify 계정 설정 스타일</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(3)">
+      <iframe src="19d-settings.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19d-settings.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+  <!-- 하루 상세 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">상세 1</div>
+      <div class="page-name">하루 상세</div>
+      <div class="page-desc">Day Detail — 특정 날의 상세 기록</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(4)">
+      <iframe src="19e-day-detail.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19e-day-detail.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+  <!-- 장소 상세 -->
+  <div class="frame-wrap">
+    <div class="page-label">
+      <div class="page-num">상세 2</div>
+      <div class="page-name">장소 상세</div>
+      <div class="page-desc">Place Detail — 장소별 통계·히트맵·방문 기록</div>
+    </div>
+    <div class="phone-clip" onclick="openModal(5)">
+      <iframe src="19f-place-detail.html" scrolling="no"></iframe>
+    </div>
+    <a class="open-btn" href="19f-place-detail.html" target="_blank">↗ 크게 보기</a>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="closeIfBg(event)">
+  <div class="modal-inner">
+    <div class="modal-wrapper">
+      <iframe id="modalFrame" src="" scrolling="no"></iframe>
+    </div>
+    <div class="modal-label" id="modalLabel"></div>
+  </div>
+</div>
+
+<div class="modal-close" onclick="closeModal()">✕</div>
+<div class="modal-nav modal-prev" onclick="navModal(-1)">‹</div>
+<div class="modal-nav modal-next" onclick="navModal(1)">›</div>
+<div class="key-hint">← → 화살표로 이동 · ESC로 닫기</div>
+
+<script>
+const pages = [
+  { src:'19a-today.html',   label:'오늘 — Now Playing' },
+  { src:'19b-history.html', label:'돌아보기 — History Queue' },
+  { src:'19c-places.html',  label:'방문한 곳 — Places Library' },
+  { src:'19d-settings.html',  label:'설정 — Settings' },
+  { src:'19e-day-detail.html', label:'하루 상세 — Day Detail' },
+  { src:'19f-place-detail.html',label:'장소 상세 — Place Detail' },
+];
+
+let cur = 0;
+
+function openModal(i) {
+  cur = i;
+  renderModal();
+  document.getElementById('modal').classList.add('open');
+  resizeModal();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modalFrame').src = '';
+}
+
+function closeIfBg(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+function navModal(dir) {
+  cur = (cur + dir + pages.length) % pages.length;
+  renderModal();
+}
+
+function renderModal() {
+  document.getElementById('modalFrame').src = pages[cur].src;
+  document.getElementById('modalLabel').textContent = pages[cur].label;
+}
+
+function resizeModal() {
+  const availH = window.innerHeight - 100;
+  const availW = window.innerWidth - 180;
+  const scale  = Math.min(availH / 844, availW / 390, 1);
+  const frame  = document.querySelector('.modal-wrapper');
+  const iframe = document.getElementById('modalFrame');
+  frame.style.width  = Math.round(390 * scale) + 'px';
+  frame.style.height = Math.round(844 * scale) + 'px';
+  frame.style.borderRadius = Math.round(44 * scale) + 'px';
+  iframe.style.transform       = `scale(${scale})`;
+  iframe.style.transformOrigin = 'top left';
+  iframe.style.width  = '390px';
+  iframe.style.height = '844px';
+}
+
+window.addEventListener('resize', resizeModal);
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('modal').classList.contains('open')) return;
+  if (e.key === 'Escape')      closeModal();
+  if (e.key === 'ArrowRight')  navModal(1);
+  if (e.key === 'ArrowLeft')   navModal(-1);
+});
+</script>
+</body>
+</html>

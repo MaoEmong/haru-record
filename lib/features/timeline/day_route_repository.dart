@@ -1,4 +1,9 @@
+import 'dart:isolate';
+
+import 'package:drift/drift.dart';
+
 import '../../core/geo/coordinate_validation.dart';
+import '../processing/location_post_processor.dart';
 import '../storage/app_database.dart';
 import '../places/place_label.dart';
 import 'day_route_models.dart';
@@ -12,21 +17,27 @@ class DayRouteRepository {
   Future<DayRouteSnapshot> loadForDate(DateTime date) async {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    final allPoints = await _database.select(_database.locationPoints).get();
-    final rawPoints =
-        allPoints
-            .where(
+    final allPoints =
+        await (_database.select(_database.locationPoints)..where(
               (point) =>
-                  !point.timestamp.isBefore(start) &&
-                  point.timestamp.isBefore(end) &&
-                  !point.isMock &&
-                  point.accuracy <= 200 &&
-                  isValidCoordinate(point.latitude, point.longitude) &&
-                  isValidAccuracy(point.accuracy),
-            )
-            .toList()
-          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    final allVisits = await _database.select(_database.visits).get();
+                  point.timestamp.isBiggerOrEqualValue(start) &
+                  point.timestamp.isSmallerThanValue(end) &
+                  point.isMock.equals(false) &
+                  point.accuracy.isSmallerOrEqualValue(
+                    maximumUsableAccuracyMeters,
+                  ),
+            ))
+            .get();
+    final rawPoints = const LocationPostProcessor().cleanTrackablePoints(
+      allPoints,
+    );
+    final allVisits =
+        await (_database.select(_database.visits)..where(
+              (visit) =>
+                  visit.startedAt.isBiggerOrEqualValue(start) &
+                  visit.startedAt.isSmallerThanValue(end),
+            ))
+            .get();
     final visits =
         allVisits
             .where(
@@ -42,7 +53,7 @@ class DayRouteRepository {
           ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
     final places = await _database.select(_database.placeClusters).get();
 
-    final displayPoints = const RouteDisplayPointCleaner().clean(rawPoints);
+    final displayPoints = await _cleanRoutePoints(rawPoints);
 
     return DayRouteSnapshot(
       rawPointCount: rawPoints.length,
@@ -66,6 +77,7 @@ class DayRouteRepository {
 
   DayRoutePoint _routePoint(RouteDisplayPoint point) {
     return DayRoutePoint(
+      timestamp: point.timestamp,
       timeLabel: _timeLabel(point.timestamp),
       latitude: point.latitude,
       longitude: point.longitude,
@@ -89,3 +101,20 @@ class DayRouteRepository {
 
   String _durationLabel() => '머문 기록';
 }
+
+Future<List<RouteDisplayPoint>> _cleanRoutePoints(
+  List<LocationPoint> rawPoints,
+) async {
+  if (rawPoints.length < _isolatePointThreshold) {
+    return const LocationPostProcessor().cleanRouteDisplayPoints(rawPoints);
+  }
+  try {
+    return await Isolate.run(
+      () => const LocationPostProcessor().cleanRouteDisplayPoints(rawPoints),
+    );
+  } on Object {
+    return const LocationPostProcessor().cleanRouteDisplayPoints(rawPoints);
+  }
+}
+
+const _isolatePointThreshold = 80;

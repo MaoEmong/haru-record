@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
-import '../../app/responsive_type.dart';
+import '../../shared/widgets/music_player_widgets.dart';
 import '../background/daily_insight_worker.dart';
-import '../diagnostics/diagnostics_repository.dart';
 import '../diagnostics/diagnostics_snapshot.dart';
 import 'settings_models.dart';
+import 'settings_view_model.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({
     super.key,
     required this.dependencies,
@@ -19,29 +20,18 @@ class SettingsScreen extends StatefulWidget {
   final VoidCallback? onDataChanged;
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  late Future<AppSettings> _settings;
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _busy = false;
   String? _status;
-
-  @override
-  void initState() {
-    super.initState();
-    _settings = widget.dependencies.settingsRepository.load();
-  }
+  var _diagnosticsRefreshVersion = 0;
 
   Future<void> _save(AppSettings settings) async {
-    await widget.dependencies.settingsRepository.save(settings);
-    if (settings.trackingEnabled) {
-      await widget.dependencies.trackingService.stopTracking();
-      await widget.dependencies.trackingService.startTracking(settings);
-    }
-    setState(() {
-      _settings = Future.value(settings);
-    });
+    await saveSettings(widget.dependencies, settings);
+    ref.invalidate(settingsProvider(widget.dependencies));
+    _refreshDiagnostics();
   }
 
   Future<void> _toggleTracking(AppSettings settings, bool enabled) async {
@@ -50,24 +40,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _status = null;
     });
     try {
-      if (enabled) {
-        final granted = await widget.dependencies.permissionService
-            .ensureLocationTrackingPermission();
-        if (!granted) {
-          setState(() {
-            _status = '하루를 기록하려면 위치 권한이 필요해요';
-          });
-          return;
-        }
-      }
-      await widget.dependencies.saveTrackingEnabled(
+      final result = await toggleTracking(
+        widget.dependencies,
         settings: settings,
         enabled: enabled,
       );
-      final updated = settings.copyWith(trackingEnabled: enabled);
-      setState(() {
-        _settings = Future.value(updated);
-      });
+      switch (result) {
+        case ToggleTrackingPermissionDenied():
+          setState(() {
+            _status = '하루를 기록하려면 위치 권한이 필요해요';
+          });
+        case ToggleTrackingUpdated():
+          ref.invalidate(settingsProvider(widget.dependencies));
+          _refreshDiagnostics();
+      }
     } catch (error) {
       setState(() {
         _status = '하루 기록을 바꾸지 못했어요';
@@ -82,24 +68,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleNotifications(AppSettings settings, bool enabled) async {
-    final updated = settings.copyWith(notificationEnabled: enabled);
-    if (enabled) {
-      final granted = await widget.dependencies.permissionService
-          .ensureNotificationPermission();
-      if (!granted) {
+    final result = await toggleNotifications(
+      widget.dependencies,
+      settings: settings,
+      enabled: enabled,
+    );
+    switch (result) {
+      case ToggleNotificationPermissionDenied():
         setState(() {
           _status = '돌아보기 알림을 받으려면 알림 권한이 필요해요';
         });
-        return;
-      }
-      await _save(updated);
-      await widget.dependencies.notificationService.scheduleDailyInsight(
-        hour: updated.notificationHour,
-        minute: updated.notificationMinute,
-      );
-    } else {
-      await _save(updated);
-      await widget.dependencies.notificationService.cancelDailyInsight();
+      case ToggleNotificationUpdated():
+        ref.invalidate(settingsProvider(widget.dependencies));
+        _refreshDiagnostics();
     }
   }
 
@@ -109,8 +90,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _status = '어제 기록으로 돌아보기를 만들고 있어요...';
     });
     try {
-      final result = await widget.dependencies.runDailyProcessingNow();
+      final result = await runDailyProcessing(widget.dependencies);
       widget.onDataChanged?.call();
+      _refreshDiagnostics();
       setState(() {
         _status = _processingMessage(result);
       });
@@ -137,35 +119,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     };
   }
 
+  void _refreshDiagnostics() {
+    setState(() {
+      _diagnosticsRefreshVersion++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<AppSettings>(
-      future: _settings,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final settings = snapshot.data!;
+    final settingsAsync = ref.watch(settingsProvider(widget.dependencies));
+    final diagnostics = ref.watch(
+      settingsDiagnosticsProvider(
+        SettingsDiagnosticsQuery(
+          dependencies: widget.dependencies,
+          refreshVersion: _diagnosticsRefreshVersion,
+        ),
+      ),
+    );
+    return settingsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => const Center(child: Text('설정을 불러오지 못했어요')),
+      data: (settings) {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
               child: Column(
                 children: [
                   const _SettingsPageHeader(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 2),
                   _SettingsStatusArea(
                     message: _status,
-                    repository: DiagnosticsRepository(
-                      widget.dependencies.database,
-                    ),
+                    diagnostics: diagnostics,
                   ),
                 ],
               ),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
+                padding: EdgeInsets.only(
+                  bottom: 96 + MediaQuery.paddingOf(context).bottom,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -177,6 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('tracking-switch'),
                           icon: Icons.route_outlined,
+                          iconBackground: const Color(0xFF0D2A0D),
                           title: '하루 기록',
                           subtitle: settings.trackingEnabled
                               ? '오늘의 흐름을 기록하고 있어요'
@@ -198,6 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('movement-threshold-edit'),
                           icon: Icons.directions_walk,
+                          iconBackground: const Color(0xFF10233A),
                           title: '움직임으로 볼 거리',
                           trailing: _SettingValue(
                             '${settings.minimumMovementMeters} m',
@@ -214,6 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('stay-threshold-edit'),
                           icon: Icons.timer_outlined,
+                          iconBackground: const Color(0xFF2B2410),
                           title: '머문 곳으로 볼 시간',
                           trailing: _SettingValue(
                             '${settings.minimumStayMinutes}분',
@@ -236,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('notification-switch'),
                           icon: Icons.notifications_none_outlined,
+                          iconBackground: const Color(0xFF18233A),
                           title: '돌아보기 알림',
                           subtitle: settings.notificationEnabled
                               ? '어제 하루가 정리되면 알려드릴게요'
@@ -257,6 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('notification-time-edit'),
                           icon: Icons.schedule_outlined,
+                          iconBackground: const Color(0xFF1B1B2F),
                           title: '돌아보기 알림 시간',
                           trailing: _SettingValue(
                             '${settings.notificationHour.toString().padLeft(2, '0')}:'
@@ -273,6 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('retention-days-edit'),
                           icon: Icons.storage_outlined,
+                          iconBackground: const Color(0xFF202020),
                           title: '자세한 위치 보관 기간',
                           trailing: _SettingValue(
                             '${settings.rawPointRetentionDays}일',
@@ -288,6 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _SettingsRow(
                           icon: Icons.auto_awesome_outlined,
+                          iconBackground: const Color(0xFF0D2A0D),
                           title: '어제 돌아보기 만들기',
                           subtitle: '어제 기록으로 돌아보기를 다시 만들어요',
                           onTap: _busy ? null : _runProcessing,
@@ -295,14 +296,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsRow(
                           key: const ValueKey('delete-raw-points-button'),
                           icon: Icons.delete_sweep_outlined,
+                          iconBackground: const Color(0xFF331D12),
                           title: '자세한 위치 기록 비우기',
                           subtitle: '돌아보기와 하루 요약은 남겨둘게요',
+                          danger: true,
                           onTap: _busy ? null : _confirmDeleteRawPoints,
                         ),
                         _SettingsRow(
                           icon: Icons.delete_forever_outlined,
+                          iconBackground: const Color(0xFF3A1111),
                           title: '이 기기의 기록 모두 지우기',
                           subtitle: '위치, 장소, 요약, 돌아보기를 모두 지워요',
+                          danger: true,
                           onTap: _busy ? null : _confirmDeleteAllLocalData,
                         ),
                       ],
@@ -346,8 +351,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       '돌아보기와 하루 요약은 그대로 남겨둘게요.',
     );
     if (!confirmed) return;
-    await widget.dependencies.maintenanceService.deleteRawLocationPoints();
+    await deleteRawLocationPoints(widget.dependencies);
     widget.onDataChanged?.call();
+    _refreshDiagnostics();
     setState(() {
       _status = '자세한 위치 기록을 비웠어요';
     });
@@ -359,8 +365,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       '자세한 위치, 방문한 곳, 하루 요약, 돌아보기를 모두 지워요.',
     );
     if (!confirmed) return;
-    await widget.dependencies.maintenanceService.deleteAllLocalData();
+    await deleteAllLocalData(widget.dependencies);
     widget.onDataChanged?.call();
+    ref.invalidate(settingsProvider(widget.dependencies));
+    _refreshDiagnostics();
     setState(() {
       _status = '이 기기의 기록을 모두 지웠어요';
     });
@@ -478,33 +486,7 @@ class _SettingsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '설정',
-            style: TextStyle(
-              color: AppColors.ink,
-              fontSize: responsiveTitleFontSize(
-                context,
-                30,
-                minScale: 0.92,
-                maxScale: 1.14,
-              ),
-              fontWeight: FontWeight.w300,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '기록 방식과 보관 기준을 조정해요.',
-            style: TextStyle(color: AppColors.muted),
-          ),
-        ],
-      ),
-    );
+    return const MpPageHeader(title: '설정', subtitle: '기록 방식과 보관 기준을 조정해요.');
   }
 }
 
@@ -513,23 +495,33 @@ class _TrustCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: AppThemeDecorations.quietPanel(),
-      child: const Padding(
-        padding: EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '기록은 이 기기에만 저장돼요',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            SizedBox(height: 6),
-            Text(
-              '움직임이 있을 때 중심으로 살펴 배터리 사용을 줄여요',
-              style: TextStyle(color: AppColors.muted),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.mpAccent.withValues(alpha: 0.24)),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '기록은 이 기기에만 저장돼요',
+                style: TextStyle(
+                  color: AppColors.mpText,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                '움직임이 있을 때 중심으로 살펴 배터리 사용을 줄여요',
+                style: TextStyle(color: AppColors.mpTextSub),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -537,50 +529,62 @@ class _TrustCard extends StatelessWidget {
 }
 
 class _SettingsStatusArea extends StatelessWidget {
-  const _SettingsStatusArea({required this.message, required this.repository});
+  const _SettingsStatusArea({required this.message, required this.diagnostics});
 
   final String? message;
-  final DiagnosticsRepository repository;
+  final AsyncValue<DiagnosticsSnapshot> diagnostics;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      key: const ValueKey('settings-status-area'),
-      decoration: BoxDecoration(
-        color: message == null ? AppColors.paleBlue : AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: SizedBox(
-        height: 58,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: message == null
-                ? FutureBuilder<DiagnosticsSnapshot>(
-                    key: const ValueKey('settings-diagnostics-summary'),
-                    future: repository.load(),
-                    builder: (context, snapshot) {
-                      final data = snapshot.data;
-                      final text = data == null
-                          ? '기록 상태 확인 중'
-                          : '기록 상태 확인 · 방문 ${data.visitCount}개 · '
-                                '돌아보기 ${data.reflectionCount}개';
-                      return _BreathingStatusText(
-                        key: ValueKey('settings-status-$text'),
-                        text: text,
-                      );
-                    },
-                  )
-                : _BreathingStatusText(
-                    key: ValueKey('settings-status-$message'),
-                    text: message!,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        key: const ValueKey('settings-status-area'),
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: message == null
+                ? AppColors.mpBorder
+                : AppColors.mpAccent.withValues(alpha: 0.28),
+          ),
+        ),
+        child: SizedBox(
+          height: 58,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _SettingsStatusText(
+              message: message,
+              diagnostics: diagnostics,
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _SettingsStatusText extends StatelessWidget {
+  const _SettingsStatusText({required this.message, required this.diagnostics});
+
+  final String? message;
+  final AsyncValue<DiagnosticsSnapshot> diagnostics;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = message ?? _diagnosticsText(diagnostics.value);
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: _BreathingStatusText(
+        key: ValueKey('settings-status-$text'),
+        text: text,
+      ),
+    );
+  }
+
+  String _diagnosticsText(DiagnosticsSnapshot? data) {
+    if (data == null) return '기록 상태 확인 중';
+    return '기록 상태 확인 · 방문 ${data.visitCount}개 · 돌아보기 ${data.reflectionCount}개';
   }
 }
 
@@ -607,7 +611,7 @@ class _BreathingStatusText extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          color: AppColors.muted,
+          color: AppColors.mpTextSub,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -623,13 +627,13 @@ class _SettingsSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.muted,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
+          color: AppColors.mpText,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -643,16 +647,23 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: AppThemeDecorations.softCard(),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i != children.length - 1)
-              const Divider(height: 1, indent: 56, color: AppColors.border),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.mpBorder),
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              children[i],
+              if (i != children.length - 1)
+                const Divider(height: 1, indent: 66, color: AppColors.mpBorder),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -662,20 +673,27 @@ class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     super.key,
     required this.icon,
+    required this.iconBackground,
     required this.title,
     this.subtitle,
     this.trailing,
+    this.danger = false,
     required this.onTap,
   });
 
   final IconData icon;
+  final Color iconBackground;
   final String title;
   final String? subtitle;
   final Widget? trailing;
+  final bool danger;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = danger ? const Color(0xFFFF6B6B) : AppColors.mpText;
+    final secondary = danger ? const Color(0xFFFF9A9A) : AppColors.mpTextSub;
+    final iconColor = danger ? const Color(0xFFFF6B6B) : AppColors.mpAccent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -684,7 +702,17 @@ class _SettingsRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, color: AppColors.blueGrey, size: 22),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Icon(icon, color: iconColor, size: 19),
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -692,8 +720,8 @@ class _SettingsRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: AppColors.ink,
+                      style: TextStyle(
+                        color: foreground,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -701,10 +729,7 @@ class _SettingsRow extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         subtitle!,
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: secondary, fontSize: 13),
                       ),
                     ],
                   ],
@@ -714,7 +739,7 @@ class _SettingsRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 trailing!,
               ] else
-                const Icon(Icons.chevron_right, color: AppColors.muted),
+                Icon(Icons.chevron_right, color: secondary),
             ],
           ),
         ),
@@ -736,12 +761,12 @@ class _SettingValue extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            color: AppColors.muted,
+            color: AppColors.mpTextSub,
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(width: 6),
-        const Icon(Icons.edit_outlined, color: AppColors.muted, size: 18),
+        const Icon(Icons.edit_outlined, color: AppColors.mpTextSub, size: 18),
       ],
     );
   }

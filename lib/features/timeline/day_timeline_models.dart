@@ -8,6 +8,7 @@ class DayTimelineItem {
     this.durationMinutes,
     this.latitude,
     this.longitude,
+    this.placeClusterId,
     this.isInferred = false,
   });
 
@@ -19,10 +20,12 @@ class DayTimelineItem {
   final int? durationMinutes;
   final double? latitude;
   final double? longitude;
+  final int? placeClusterId;
   final bool isInferred;
 
   bool get canSaveAsPlace =>
       isInferred &&
+      placeClusterId == null &&
       startedAt != null &&
       endedAt != null &&
       durationMinutes != null &&

@@ -12,12 +12,14 @@ class DayRouteSnapshot {
 
 class DayRoutePoint {
   const DayRoutePoint({
+    required this.timestamp,
     required this.timeLabel,
     required this.latitude,
     required this.longitude,
     required this.accuracyMeters,
   });
 
+  final DateTime timestamp;
   final String timeLabel;
   final double latitude;
   final double longitude;
