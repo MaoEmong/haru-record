@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>19d — 설정 (Settings)</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:-apple-system,'Helvetica Neue',sans-serif; }
+
+.phone { width:390px; height:844px; background:#0D0D0D; border-radius:50px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 40px 120px rgba(0,0,0,0.95); }
+
+.status { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; font-size:12px; font-weight:600; color:#888; flex-shrink:0; }
+
+/* Scroll */
+.scroll { flex:1; overflow-y:auto; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* Profile / App header */
+.profile-section {
+  padding:20px 24px 0;
+  display:flex; align-items:center; gap:16px;
+}
+.app-icon {
+  width:72px; height:72px; border-radius:18px;
+  background:linear-gradient(135deg,#0A2A0A,#1A4A1A,#0D380D);
+  display:flex; align-items:center; justify-content:center;
+  font-size:36px;
+  box-shadow:0 8px 24px rgba(29,185,84,0.25);
+  flex-shrink:0;
+}
+.profile-info { flex:1; }
+.profile-name { font-size:20px; font-weight:700; color:#fff; }
+.profile-email { font-size:13px; color:#888; margin-top:3px; }
+.profile-edit { font-size:13px; color:#1DB954; font-weight:600; margin-top:4px; }
+
+/* Pro card */
+.pro-card {
+  margin:16px 24px 0;
+  background:linear-gradient(135deg,#1A3A1A,#0A2A14);
+  border-radius:16px; padding:16px 20px;
+  display:flex; align-items:center; gap:14px;
+  border:1px solid rgba(29,185,84,0.3);
+}
+.pro-icon { font-size:28px; }
+.pro-info { flex:1; }
+.pro-title { font-size:15px; font-weight:700; color:#fff; }
+.pro-sub { font-size:12px; color:#1DB954; margin-top:2px; }
+.pro-btn {
+  background:#1DB954; border-radius:20px;
+  padding:8px 18px; font-size:13px; font-weight:700; color:#000;
+  cursor:pointer; white-space:nowrap;
+}
+
+/* Stats card */
+.stats-card {
+  margin:12px 24px 0;
+  background:#1A1A1A; border-radius:16px;
+  padding:16px 20px;
+}
+.stats-row { display:flex; justify-content:space-around; }
+.stat-item { text-align:center; }
+.stat-val { font-size:22px; font-weight:800; color:#fff; }
+.stat-val span { font-size:14px; color:#1DB954; }
+.stat-label { font-size:11px; color:#888; margin-top:3px; }
+.stats-divider { width:1px; background:#333; }
+
+/* Section */
+.section-title { padding:24px 24px 8px; font-size:12px; font-weight:700; letter-spacing:1.5px; color:#888; text-transform:uppercase; }
+
+/* Setting row */
+.s-row {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 24px;
+  border-bottom:1px solid #1A1A1A;
+}
+.s-row:last-child { border-bottom:none; }
+.s-icon-wrap {
+  width:36px; height:36px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.s-text { flex:1; }
+.s-label { font-size:15px; font-weight:500; color:#fff; }
+.s-sub { font-size:12px; color:#888; margin-top:2px; }
+.s-right { flex-shrink:0; display:flex; align-items:center; gap:8px; }
+.s-value { font-size:13px; color:#888; }
+.s-chevron { font-size:16px; color:#555; }
+
+/* Toggle on/off */
+.tog-on { width:44px; height:26px; background:#1DB954; border-radius:13px; position:relative; cursor:pointer; }
+.tog-on::after { content:''; position:absolute; right:2px; top:2px; width:22px; height:22px; background:#fff; border-radius:50%; }
+.tog-off { width:44px; height:26px; background:#333; border-radius:13px; position:relative; cursor:pointer; }
+.tog-off::after { content:''; position:absolute; left:2px; top:2px; width:22px; height:22px; background:#888; border-radius:50%; }
+
+/* Danger zone */
+.danger-row {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 24px;
+  border-bottom:1px solid #1A1A1A;
+}
+.danger-label { font-size:15px; color:#FF4444; font-weight:500; flex:1; }
+
+/* Version footer */
+.footer { padding:20px 24px 24px; text-align:center; }
+.footer-text { font-size:12px; color:#555; }
+.footer-version { font-size:11px; color:#333; margin-top:4px; }
+
+/* Bottom nav */
+.bottom-nav { height:72px; background:#0D0D0D; border-top:1px solid #1A1A1A; display:flex; flex-shrink:0; }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; }
+.ni { font-size:22px; color:#555; }
+.ni.on { color:#1DB954; }
+.nl { font-size:10px; font-weight:600; color:#555; }
+.nl.on { color:#1DB954; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+
+  <div class="scroll">
+    <!-- Profile -->
+    <div class="profile-section">
+      <div class="app-icon">🗺️</div>
+      <div class="profile-info">
+        <div class="profile-name">하루 기록</div>
+        <div class="profile-email">a34451357@gmail.com</div>
+        <div class="profile-edit">프로필 편집</div>
+      </div>
+    </div>
+
+    <!-- Pro card -->
+    <div class="pro-card">
+      <div class="pro-icon">⭐</div>
+      <div class="pro-info">
+        <div class="pro-title">Pro 플랜 사용 중</div>
+        <div class="pro-sub">무제한 기록 · 고급 인사이트</div>
+      </div>
+      <div class="pro-btn">관리</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-card">
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-val">97<span>일</span></div>
+          <div class="stat-label">연속 기록</div>
+        </div>
+        <div class="stats-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val">1,240<span>km</span></div>
+          <div class="stat-label">총 이동 거리</div>
+        </div>
+        <div class="stats-divider"></div>
+        <div class="stat-item">
+          <div class="stat-val">342<span>곳</span></div>
+          <div class="stat-label">방문한 장소</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기록 설정 -->
+    <div class="section-title">기록</div>
+    <div style="background:#1A1A1A;border-radius:12px;margin:0 24px;overflow:hidden;">
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#0D2A0D;"><span>📍</span></div>
+        <div class="s-text">
+          <div class="s-label">위치 자동 기록</div>
+          <div class="s-sub">백그라운드에서 계속 추적</div>
+        </div>
+        <div class="tog-on"></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#1A1A0D;"><span>🎯</span></div>
+        <div class="s-text">
+          <div class="s-label">위치 정확도</div>
+          <div class="s-sub">배터리 사용에 영향</div>
+        </div>
+        <div class="s-right"><div class="s-value">높음</div><div class="s-chevron">›</div></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#0D1A2A;"><span>⚡</span></div>
+        <div class="s-text">
+          <div class="s-label">배터리 절약 모드</div>
+          <div class="s-sub">정확도 낮추고 배터리 절약</div>
+        </div>
+        <div class="tog-off"></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#2A0D0D;"><span>🏠</span></div>
+        <div class="s-text">
+          <div class="s-label">장소 자동 감지 반경</div>
+          <div class="s-sub">장소 도착/출발 감지 거리</div>
+        </div>
+        <div class="s-right"><div class="s-value">50m</div><div class="s-chevron">›</div></div>
+      </div>
+    </div>
+
+    <!-- 알림 -->
+    <div class="section-title">알림</div>
+    <div style="background:#1A1A1A;border-radius:12px;margin:0 24px;overflow:hidden;">
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#2A1A0A;"><span>💡</span></div>
+        <div class="s-text">
+          <div class="s-label">일일 인사이트</div>
+          <div class="s-sub">하루 요약 푸시 알림</div>
+        </div>
+        <div class="s-right"><div class="s-value">오후 9시</div><div class="tog-on" style="width:36px;height:22px;margin-left:8px;border-radius:11px;"><div></div></div></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#1A0A2A;"><span>📊</span></div>
+        <div class="s-text">
+          <div class="s-label">주간 리포트</div>
+          <div class="s-sub">매주 월요일 아침</div>
+        </div>
+        <div class="tog-on"></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#0A2A1A;"><span>🔥</span></div>
+        <div class="s-text">
+          <div class="s-label">스트릭 위험 알림</div>
+          <div class="s-sub">기록 누락 임박 시 알림</div>
+        </div>
+        <div class="tog-on"></div>
+      </div>
+    </div>
+
+    <!-- 테마 -->
+    <div class="section-title">테마</div>
+    <div style="background:#1A1A1A;border-radius:12px;margin:0 24px;overflow:hidden;">
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#1A1A1A;border:1px solid #333;"><span>🎨</span></div>
+        <div class="s-text"><div class="s-label">앱 테마</div></div>
+        <div class="s-right"><div class="s-value">다크</div><div class="s-chevron">›</div></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#0D2A0D;"><span style="color:#1DB954;font-size:16px;">●</span></div>
+        <div class="s-text"><div class="s-label">액센트 색상</div></div>
+        <div class="s-right"><div class="s-value" style="color:#1DB954;">Spotify Green</div><div class="s-chevron">›</div></div>
+      </div>
+    </div>
+
+    <!-- 데이터 -->
+    <div class="section-title">데이터</div>
+    <div style="background:#1A1A1A;border-radius:12px;margin:0 24px;overflow:hidden;">
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#0A1A2A;"><span>☁️</span></div>
+        <div class="s-text">
+          <div class="s-label">iCloud 백업</div>
+          <div class="s-sub">마지막 백업 1시간 전</div>
+        </div>
+        <div class="tog-on"></div>
+      </div>
+      <div class="s-row">
+        <div class="s-icon-wrap" style="background:#1A2A0A;"><span>📤</span></div>
+        <div class="s-text"><div class="s-label">데이터 내보내기</div></div>
+        <div class="s-right"><div class="s-value">CSV · JSON</div><div class="s-chevron">›</div></div>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="section-title">계정</div>
+    <div style="background:#1A1A1A;border-radius:12px;margin:0 24px;overflow:hidden;">
+      <div class="danger-row"><div class="danger-label">모든 데이터 초기화</div><div class="s-chevron">›</div></div>
+      <div class="danger-row"><div class="danger-label">계정 삭제</div><div class="s-chevron">›</div></div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-text">하루 기록 · Made with ♥</div>
+      <div class="footer-version">버전 1.2.0 (빌드 241)</div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item"><div class="ni">▶️</div><div class="nl">오늘</div></div>
+    <div class="nav-item"><div class="ni">📋</div><div class="nl">기록</div></div>
+    <div class="nav-item"><div class="ni">📍</div><div class="nl">장소</div></div>
+    <div class="nav-item"><div class="ni on">⚙️</div><div class="nl on">설정</div></div>
+  </div>
+</div>
+</body>
+</html>

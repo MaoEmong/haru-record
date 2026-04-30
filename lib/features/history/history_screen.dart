@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_theme.dart';
-import '../../app/responsive_type.dart';
+import '../../shared/widgets/music_player_widgets.dart';
 import '../storage/app_database.dart';
+import '../timeline/day_activity_preview_repository.dart';
 import '../timeline/day_detail_screen.dart';
+import 'history_view_model.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({
     super.key,
     required this.database,
@@ -16,213 +19,271 @@ class HistoryScreen extends StatefulWidget {
   final int refreshVersion;
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
-  late Future<List<Insight>> _insights;
-
-  @override
-  void initState() {
-    super.initState();
-    _insights = _load();
-  }
-
-  @override
-  void didUpdateWidget(covariant HistoryScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.refreshVersion != widget.refreshVersion) {
-      setState(() {
-        _insights = _load();
-      });
-    }
-  }
-
-  Future<List<Insight>> _load() async {
-    final insights = await widget.database
-        .select(widget.database.insights)
-        .get();
-    return insights..sort((a, b) => b.date.compareTo(a.date));
-  }
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  HistoryQuery get _query => HistoryQuery(
+    database: widget.database,
+    refreshVersion: widget.refreshVersion,
+  );
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Insight>>(
-      future: _insights,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final insights = snapshot.data!;
-        if (insights.isEmpty) {
+    final days = ref.watch(historyDaysProvider(_query));
+    return days.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => const Center(child: Text('돌아보기를 불러오지 못했어요')),
+      data: (days) {
+        if (days.isEmpty) {
           return const _HistoryExamples();
         }
-        final grouped = _groupByMonth(insights);
         return ListView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+          padding: EdgeInsets.only(
+            bottom: 96 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: [
-            for (final entry in grouped.entries)
-              _MonthSection(
-                title: entry.key,
-                insights: entry.value,
-                onOpen: _openDayDetail,
-              ),
+            MpPageHeader(title: '돌아보기', subtitle: '${days.length}일의 하루'),
+            const SizedBox(height: 6),
+            for (final day in days)
+              _HistoryTrackItem(day: day, onOpen: _openDayDetail),
           ],
         );
       },
     );
   }
 
-  Map<String, List<Insight>> _groupByMonth(List<Insight> insights) {
-    final grouped = <String, List<Insight>>{};
-    for (final insight in insights) {
-      final key =
-          '${insight.date.year}년 ${insight.date.month.toString().padLeft(2, '0')}월';
-      grouped.putIfAbsent(key, () => []).add(insight);
-    }
-    return grouped;
-  }
-
-  void _openDayDetail(Insight insight) {
+  void _openDayDetail(HistoryDay day) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => DayDetailScreen(
           database: widget.database,
-          date: insight.date,
-          title: insight.title,
-          body: insight.body,
+          date: day.date,
+          title: day.title,
+          body: day.body,
+          appBarTitle: day.insight == null ? '오늘 기록' : '하루 자세히 보기',
         ),
       ),
     );
   }
 }
 
-class _MonthSection extends StatelessWidget {
-  const _MonthSection({
-    required this.title,
-    required this.insights,
-    required this.onOpen,
-  });
+class _HistoryTrackItem extends ConsumerWidget {
+  const _HistoryTrackItem({required this.day, required this.onOpen});
 
-  final String title;
-  final List<Insight> insights;
-  final ValueChanged<Insight> onOpen;
+  final HistoryDay day;
+  final ValueChanged<HistoryDay> onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.muted,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          for (final insight in insights) ...[
-            _HistoryCard(insight: insight, onOpen: onOpen),
-            const SizedBox(height: 10),
-          ],
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isToday = _isToday(day.date);
+    final accent = isToday
+        ? const Color(0xFF4A8AFF)
+        : _accentForPastDay(day.date.day);
+    final preview = ref.watch(
+      historyDayPreviewProvider(
+        HistoryPreviewQuery(
+          database: day.database,
+          date: day.date,
+          refreshVersion: day.refreshVersion,
+        ),
       ),
     );
-  }
-}
-
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.insight, required this.onOpen});
-
-  final Insight insight;
-  final ValueChanged<Insight> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => onOpen(insight),
-        child: DecoratedBox(
-          decoration: AppThemeDecorations.softCard(),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Column(
-                    children: [
-                      Text(
-                        insight.date.day.toString().padLeft(2, '0'),
-                        style: TextStyle(
-                          color: AppColors.ink,
-                          fontSize: responsiveTitleFontSize(context, 24),
-                          fontWeight: FontWeight.w300,
-                          height: 1,
-                        ),
+        onTap: () => onOpen(day),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AlbumArtCard(
+                height: 52,
+                borderRadius: 10,
+                accent: accent,
+                child: SizedBox(
+                  width: 50,
+                  child: Center(
+                    child: Text(
+                      day.date.day.toString().padLeft(2, '0'),
+                      style: const TextStyle(
+                        color: AppColors.mpText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _weekdayLabel(insight.date.weekday),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                Container(
-                  width: 1,
-                  height: 56,
-                  margin: const EdgeInsets.symmetric(horizontal: 14),
-                  color: AppColors.border,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      day.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isToday ? AppColors.mpAccent : AppColors.mpText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _metaLabel(day, preview.value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isToday
+                            ? AppColors.mpAccent
+                            : AppColors.mpTextSub,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        insight.title,
-                        style: const TextStyle(
-                          color: AppColors.ink,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isToday)
+                    const _LiveBars()
+                  else
+                    Text(
+                      _recordedLabel(preview.value),
+                      style: const TextStyle(
+                        color: AppColors.mpTextSub,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        insight.body,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.muted,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
+                    ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    Icons.more_horiz_rounded,
+                    color: isToday ? const Color(0xFF4A8AFF) : accent,
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: AppColors.muted),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  String _weekdayLabel(int weekday) {
-    return const ['월', '화', '수', '목', '금', '토', '일'][weekday - 1];
+  bool _isToday(DateTime date) => isSameDate(date, DateTime.now());
+
+  String _metaLabel(HistoryDay day, DayActivityPreview? preview) {
+    final date = day.date;
+    if (preview == null) {
+      return '${date.month}월 ${date.day}일 · 기록 확인 중';
+    }
+    final distance = _distanceLabel(preview.totalDistanceMeters);
+    final visits = preview.visitCount;
+    final visitLabel = visits == null ? '방문 기록 없음' : '$visits곳';
+    return '${date.month}월 ${date.day}일 · $distance · $visitLabel';
+  }
+
+  String _distanceLabel(double? meters) {
+    if (meters == null) return '이동 기록 없음';
+    if (meters >= 1000) return '${(meters / 1000).toStringAsFixed(1)} km';
+    return '${meters.round()} m';
+  }
+
+  String _recordedLabel(DayActivityPreview? preview) {
+    if (preview == null) return '--:--';
+    final minutes = preview.timeline.fold<int>(
+      0,
+      (total, item) => total + (item.durationMinutes ?? 0),
+    );
+    if (minutes <= 0) return '--:--';
+    final hours = minutes ~/ 60;
+    final remain = minutes % 60;
+    return '$hours:${remain.toString().padLeft(2, '0')}';
+  }
+
+  Color _accentForPastDay(int day) {
+    const colors = [
+      Color(0xFFFF8A4A),
+      Color(0xFFFFCA4A),
+      AppColors.mpAccent,
+      Color(0xFFE05F3C),
+    ];
+    return colors[day % colors.length];
+  }
+}
+
+class _LiveBars extends StatefulWidget {
+  const _LiveBars();
+
+  @override
+  State<_LiveBars> createState() => _LiveBarsState();
+}
+
+class _LiveBarsState extends State<_LiveBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final value = _controller.value;
+        return SizedBox(
+          width: 20,
+          height: 16,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _LiveBar(height: 5 + value * 8),
+              const SizedBox(width: 2),
+              _LiveBar(height: 12 - value * 5),
+              const SizedBox(width: 2),
+              _LiveBar(height: 7 + value * 7),
+              const SizedBox(width: 2),
+              _LiveBar(height: 14 - value * 6),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LiveBar extends StatelessWidget {
+  const _LiveBar({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.mpAccent,
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: SizedBox(width: 3, height: height),
+    );
   }
 }
 
@@ -232,62 +293,149 @@ class _HistoryExamples extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-      children: [
-        Text(
-          '이런 식으로 하루가 정리돼요',
-          style: TextStyle(
-            fontSize: responsiveTitleFontSize(context, 20),
-            fontWeight: FontWeight.w800,
-          ),
+      padding: EdgeInsets.only(
+        bottom: 96 + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: const [
+        MpPageHeader(title: '돌아보기', subtitle: '0일의 하루들'),
+        SizedBox(height: 18),
+        _EmptyQueueMessage(),
+        SizedBox(height: 18),
+        _EmptyHistoryTrackRow(
+          dayLabel: '01',
+          title: '하루가 끝나면 여기에 쌓여요',
+          meta: '방문한 곳 · 이동 경로 · 머문 흐름',
         ),
-        const SizedBox(height: 10),
-        const _ExampleReflectionCard(
-          title: '어제는 조금 조용한 하루였어요',
-          body: '최근 며칠보다 이동이 적고 차분했어요.',
-        ),
-        const SizedBox(height: 10),
-        const _ExampleReflectionCard(
-          title: '어제는 평소보다 많이 움직였어요',
-          body: '방문한 곳과 움직임이 하루 단위로 정리돼요.',
+        _EmptyHistoryTrackRow(
+          dayLabel: '02',
+          title: '기록이 모이면 조용히 정리돼요',
+          meta: '내일 아침, 어제의 하루를 돌아볼 수 있어요',
         ),
       ],
     );
   }
 }
 
-class _ExampleReflectionCard extends StatelessWidget {
-  const _ExampleReflectionCard({required this.title, required this.body});
-
-  final String title;
-  final String body;
+class _EmptyQueueMessage extends StatelessWidget {
+  const _EmptyQueueMessage();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: AppThemeDecorations.softCard(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.mpBorder),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '아직 재생할 하루가 없어요',
+                style: TextStyle(
+                  color: AppColors.mpText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '오늘 위치 기록이 쌓이면 내일 아침에 하루가 정리돼요.',
+                style: TextStyle(
+                  color: AppColors.mpTextSub,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyHistoryTrackRow extends StatelessWidget {
+  const _EmptyHistoryTrackRow({
+    required this.dayLabel,
+    required this.title,
+    required this.meta,
+  });
+
+  final String dayLabel;
+  final String title;
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: 0.42,
       child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            AlbumArtCard(
+              height: 52,
+              borderRadius: 10,
+              accent: AppColors.mpTextMuted,
+              child: SizedBox(
+                width: 50,
+                child: Center(
+                  child: Text(
+                    dayLabel,
+                    style: const TextStyle(
+                      color: AppColors.mpText,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.mpText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.mpTextSub,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
             const Text(
-              '예시',
+              '--:--',
               style: TextStyle(
-                color: AppColors.muted,
+                color: AppColors.mpTextSub,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: responsiveTitleFontSize(context, 18),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(body, style: const TextStyle(color: AppColors.muted)),
+            const SizedBox(width: 10),
+            const Icon(Icons.more_horiz_rounded, color: AppColors.mpTextMuted),
           ],
         ),
       ),

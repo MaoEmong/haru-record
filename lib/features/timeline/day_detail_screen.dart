@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
@@ -12,12 +13,12 @@ import '../places/place_map_preview.dart';
 import '../settings/settings_repository.dart';
 import '../storage/app_database.dart';
 import 'day_activity_preview_repository.dart';
+import 'day_detail_view_model.dart';
+import 'day_flow_playback_screen.dart';
 import 'day_route_models.dart';
-import 'day_route_repository.dart';
 import 'day_timeline_models.dart';
-import 'day_timeline_repository.dart';
 
-class DayDetailScreen extends StatefulWidget {
+class DayDetailScreen extends ConsumerStatefulWidget {
   const DayDetailScreen({
     super.key,
     required this.database,
@@ -25,6 +26,8 @@ class DayDetailScreen extends StatefulWidget {
     this.settingsRepository,
     this.title,
     this.body,
+    this.initialPreview,
+    this.initialRoute,
     this.appBarTitle = '하루 자세히 보기',
   });
 
@@ -33,76 +36,62 @@ class DayDetailScreen extends StatefulWidget {
   final SettingsRepository? settingsRepository;
   final String? title;
   final String? body;
+  final DayActivityPreview? initialPreview;
+  final Future<DayRouteSnapshot>? initialRoute;
   final String appBarTitle;
 
   @override
-  State<DayDetailScreen> createState() => _DayDetailScreenState();
+  ConsumerState<DayDetailScreen> createState() => _DayDetailScreenState();
 }
 
-class _DayDetailScreenState extends State<DayDetailScreen> {
-  late Future<_DayDetailSnapshot> _snapshot;
+class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
+  var _refreshVersion = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _snapshot = _load();
-  }
-
-  Future<_DayDetailSnapshot> _load() async {
-    final timeline = await DayTimelineRepository(
-      widget.database,
-    ).loadForDate(widget.date);
-    final route = await DayRouteRepository(
-      widget.database,
-    ).loadForDate(widget.date);
-    final settings = await (widget.settingsRepository ?? SettingsRepository())
-        .load();
-    final preview = await DayActivityPreviewRepository(
-      widget.database,
-    ).loadForDate(widget.date, settings: settings);
-    return _DayDetailSnapshot(
-      timeline: timeline,
-      route: route,
-      preview: preview,
-    );
-  }
+  DayDetailQuery get _query => DayDetailQuery(
+    database: widget.database,
+    settingsRepository: widget.settingsRepository,
+    date: widget.date,
+    refreshVersion: _refreshVersion,
+    initialPreview: widget.initialPreview,
+    initialRoute: widget.initialRoute,
+  );
 
   @override
   Widget build(BuildContext context) {
+    final query = _query;
+    final preview = ref.watch(dayDetailPreviewProvider(query));
+    final route = ref.watch(dayDetailRouteProvider(query));
     return Scaffold(
       appBar: AppBar(title: Text(widget.appBarTitle)),
       body: SafeArea(
-        child: FutureBuilder<_DayDetailSnapshot>(
-          future: _snapshot,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final data = snapshot.data!;
-            return ListView(
-              cacheExtent: 1200,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              children: [
-                _ReflectionHeader(
-                  dateLabel: _dateKey(widget.date),
-                  title: widget.title,
-                  body: widget.body,
-                ),
-                const SizedBox(height: 12),
-                _SummaryCard(preview: data.preview),
-                const SizedBox(height: 12),
-                _RoutePreviewCard(
-                  route: data.route,
-                  dateKey: _dateKey(widget.date),
-                ),
-                const SizedBox(height: 12),
-                _RouteSummaryCard(
-                  items: data.preview.timeline,
-                  onSavePlace: _saveTimelinePlace,
-                ),
-              ],
-            );
-          },
+        child: ListView(
+          cacheExtent: 1200,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            _ReflectionHeader(
+              dateLabel: _dateKey(widget.date),
+              title: widget.title,
+              body: widget.body,
+            ),
+            const SizedBox(height: 12),
+            _SummarySection(preview: preview),
+            const SizedBox(height: 12),
+            _RoutePreviewSection(
+              route: route,
+              preview: preview,
+              dateKey: _dateKey(widget.date),
+              date: widget.date,
+              database: widget.database,
+              settingsRepository: widget.settingsRepository,
+              initialPreview: widget.initialPreview,
+              initialRoute: widget.initialRoute,
+            ),
+            const SizedBox(height: 12),
+            _RouteSummarySection(
+              preview: preview,
+              onSavePlace: _saveTimelinePlace,
+            ),
+          ],
         ),
       ),
     );
@@ -159,11 +148,244 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
 
     if (!mounted) return;
     setState(() {
-      _snapshot = _load();
+      _refreshVersion++;
     });
+    ref.invalidate(dayDetailPreviewProvider(_query));
+    ref.invalidate(dayDetailRouteProvider(_query));
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('방문한 곳에 저장했어요')));
+  }
+}
+
+class _SummarySection extends StatelessWidget {
+  const _SummarySection({required this.preview});
+
+  final AsyncValue<DayActivityPreview> preview;
+
+  @override
+  Widget build(BuildContext context) {
+    return preview.when(
+      loading: () => const _SummaryLoadingCard(),
+      error: (_, _) => const _SectionErrorCard(),
+      data: (preview) => _SummaryCard(preview: preview),
+    );
+  }
+}
+
+class _RoutePreviewSection extends StatelessWidget {
+  const _RoutePreviewSection({
+    required this.route,
+    required this.preview,
+    required this.dateKey,
+    required this.date,
+    required this.database,
+    required this.settingsRepository,
+    required this.initialPreview,
+    required this.initialRoute,
+  });
+
+  final AsyncValue<DayRouteSnapshot> route;
+  final AsyncValue<DayActivityPreview> preview;
+  final String dateKey;
+  final DateTime date;
+  final AppDatabase database;
+  final SettingsRepository? settingsRepository;
+  final DayActivityPreview? initialPreview;
+  final Future<DayRouteSnapshot>? initialRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    return route.when(
+      loading: () => const _RouteLoadingCard(),
+      error: (_, _) => const _SectionErrorCard(),
+      data: (route) => _RoutePreviewCard(
+        route: route,
+        dateKey: dateKey,
+        date: date,
+        database: database,
+        settingsRepository: settingsRepository,
+        initialPreview: initialPreview ?? preview.value,
+        initialRoute: initialRoute ?? Future.value(route),
+      ),
+    );
+  }
+}
+
+class _RouteSummarySection extends StatelessWidget {
+  const _RouteSummarySection({
+    required this.preview,
+    required this.onSavePlace,
+  });
+
+  final AsyncValue<DayActivityPreview> preview;
+  final ValueChanged<DayTimelineItem> onSavePlace;
+
+  @override
+  Widget build(BuildContext context) {
+    return preview.when(
+      loading: () => const _RouteSummaryLoadingCard(),
+      error: (_, _) => const _SectionErrorCard(),
+      data: (preview) =>
+          _RouteSummaryCard(items: preview.timeline, onSavePlace: onSavePlace),
+    );
+  }
+}
+
+class _SummaryLoadingCard extends StatelessWidget {
+  const _SummaryLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _LoadingLine(width: 96, height: 18),
+            SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              children: [_LoadingPill(width: 78), _LoadingPill(width: 96)],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteLoadingCard extends StatelessWidget {
+  const _RouteLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(color: AppColors.surfaceAlt),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _LoadingLine(width: 96, height: 18),
+            SizedBox(height: 8),
+            _LoadingLine(width: 120, height: 14),
+            SizedBox(height: 12),
+            _MapPlaceholderCard(),
+            SizedBox(height: 12),
+            _LoadingLine(width: 110, height: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteSummaryLoadingCard extends StatelessWidget {
+  const _RouteSummaryLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            _LoadingLine(width: 96, height: 18),
+            SizedBox(height: 12),
+            _LoadingLine(width: 180, height: 16),
+            SizedBox(height: 14),
+            _LoadingLine(width: double.infinity, height: 14),
+            SizedBox(height: 10),
+            _LoadingLine(width: 220, height: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapPlaceholderCard extends StatelessWidget {
+  const _MapPlaceholderCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: const SizedBox(
+        height: 220,
+        width: double.infinity,
+        child: Center(
+          child: Text(
+            '이동 경로를 불러오는 중',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingLine extends StatelessWidget {
+  const _LoadingLine({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.border.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
+}
+
+class _LoadingPill extends StatelessWidget {
+  const _LoadingPill({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 34,
+      decoration: BoxDecoration(
+        color: AppColors.softBlue.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
+}
+
+class _SectionErrorCard extends StatelessWidget {
+  const _SectionErrorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppThemeDecorations.softCard(),
+      child: const Padding(
+        padding: EdgeInsets.all(18),
+        child: Text('데이터를 불러오지 못했어요', style: TextStyle(color: AppColors.muted)),
+      ),
+    );
   }
 }
 
@@ -260,10 +482,23 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _RoutePreviewCard extends StatelessWidget {
-  const _RoutePreviewCard({required this.route, required this.dateKey});
+  const _RoutePreviewCard({
+    required this.route,
+    required this.dateKey,
+    required this.date,
+    required this.database,
+    required this.settingsRepository,
+    required this.initialPreview,
+    required this.initialRoute,
+  });
 
   final DayRouteSnapshot route;
   final String dateKey;
+  final DateTime date;
+  final AppDatabase database;
+  final SettingsRepository? settingsRepository;
+  final DayActivityPreview? initialPreview;
+  final Future<DayRouteSnapshot> initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +533,27 @@ class _RoutePreviewCard extends StatelessWidget {
               Text(
                 '${route.points.first.timeLabel} -> ${route.points.last.timeLabel}',
                 style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const ValueKey('day-detail-open-flow'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => DayFlowPlaybackScreen(
+                          database: database,
+                          date: date,
+                          settingsRepository: settingsRepository,
+                          initialPreview: initialPreview,
+                          initialRoute: initialRoute,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('그날의 흐름 보기'),
+                ),
               ),
             ],
           ],
@@ -825,16 +1081,4 @@ class _MetricChip extends StatelessWidget {
       ),
     );
   }
-}
-
-class _DayDetailSnapshot {
-  const _DayDetailSnapshot({
-    required this.timeline,
-    required this.route,
-    required this.preview,
-  });
-
-  final List<DayTimelineItem> timeline;
-  final DayRouteSnapshot route;
-  final DayActivityPreview preview;
 }

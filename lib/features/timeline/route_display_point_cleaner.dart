@@ -48,12 +48,13 @@ class RouteDisplayPointCleaner {
             )
             .toList(growable: false)
           ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    if (accuratePoints.length <= 2) {
-      return [for (final point in accuratePoints) _RoutePointGroup(point)];
+    final routePoints = _withoutGpsNoise(accuratePoints);
+    if (routePoints.length <= 2) {
+      return [for (final point in routePoints) _RoutePointGroup(point)];
     }
 
     final groups = <_RoutePointGroup>[];
-    for (final point in accuratePoints) {
+    for (final point in routePoints) {
       final currentGroup = groups.isEmpty ? null : groups.last;
       if (currentGroup != null && currentGroup.canAbsorb(point)) {
         currentGroup.add(point);
@@ -65,7 +66,147 @@ class RouteDisplayPointCleaner {
     return groups;
   }
 
+  List<LocationPoint> _withoutGpsNoise(List<LocationPoint> points) {
+    return _withoutShortLowSpeedExcursions(_withoutImplausibleSpikes(points));
+  }
+
+  List<LocationPoint> _withoutImplausibleSpikes(List<LocationPoint> points) {
+    if (points.length < 3) return points;
+
+    final filtered = <LocationPoint>[points.first];
+    for (var index = 1; index < points.length - 1; index++) {
+      final previous = points[index - 1];
+      final current = points[index];
+      final next = points[index + 1];
+      if (!_isImplausibleSpike(previous, current, next)) {
+        filtered.add(current);
+      }
+    }
+    filtered.add(points.last);
+    return filtered;
+  }
+
+  List<LocationPoint> _withoutShortLowSpeedExcursions(
+    List<LocationPoint> points,
+  ) {
+    if (points.length < 4) return points;
+
+    final kept = <LocationPoint>[];
+    var index = 0;
+    while (index < points.length) {
+      final anchor = kept.isEmpty ? points[index] : kept.last;
+      final point = points[index];
+      if (_distance(anchor, point) <= _stableRadiusMeters) {
+        kept.add(point);
+        index++;
+        continue;
+      }
+
+      final returnIndex = _findShortExcursionReturn(points, index, anchor);
+      if (returnIndex == null) {
+        kept.add(point);
+        index++;
+        continue;
+      }
+
+      index = returnIndex;
+    }
+    return kept;
+  }
+
+  int? _findShortExcursionReturn(
+    List<LocationPoint> points,
+    int excursionStartIndex,
+    LocationPoint anchor,
+  ) {
+    final excursionStart = points[excursionStartIndex];
+    if (!_isLowSpeed(excursionStart.speed)) return null;
+
+    for (
+      var index = excursionStartIndex + 1;
+      index < points.length &&
+          index <= excursionStartIndex + _maxExcursionPoints;
+      index++
+    ) {
+      final point = points[index];
+      final elapsed = point.timestamp
+          .difference(excursionStart.timestamp)
+          .abs();
+      if (elapsed > _maxExcursionDuration) return null;
+      if (!_isLowSpeed(point.speed)) return null;
+      if (_distance(anchor, point) <= _stableRadiusMeters) {
+        return index;
+      }
+    }
+    return null;
+  }
+
+  bool _isImplausibleSpike(
+    LocationPoint previous,
+    LocationPoint current,
+    LocationPoint next,
+  ) {
+    final previousToCurrent = distanceMeters(
+      previous.latitude,
+      previous.longitude,
+      current.latitude,
+      current.longitude,
+    );
+    final currentToNext = distanceMeters(
+      current.latitude,
+      current.longitude,
+      next.latitude,
+      next.longitude,
+    );
+    final previousToNext = distanceMeters(
+      previous.latitude,
+      previous.longitude,
+      next.latitude,
+      next.longitude,
+    );
+
+    final inboundSeconds =
+        current.timestamp.difference(previous.timestamp).inMilliseconds.abs() /
+        1000;
+    final outboundSeconds =
+        next.timestamp.difference(current.timestamp).inMilliseconds.abs() /
+        1000;
+    if (inboundSeconds <= 0 || outboundSeconds <= 0) return false;
+
+    final inboundSpeed = previousToCurrent / inboundSeconds;
+    final outboundSpeed = currentToNext / outboundSeconds;
+    final isFastOutAndBack =
+        inboundSpeed >= _maximumPlausibleSpikeSpeedMetersPerSecond &&
+        outboundSpeed >= _maximumPlausibleSpikeSpeedMetersPerSecond;
+    if (!isFastOutAndBack) return false;
+
+    final detourDistance = previousToCurrent + currentToNext;
+    final isSinglePointDetour =
+        previousToNext <= _maximumReturnDistanceMeters ||
+        detourDistance >= previousToNext * _minimumSpikeDetourRatio;
+    final isMeaningfulJump =
+        previousToCurrent >= _minimumSpikeDistanceMeters &&
+        currentToNext >= _minimumSpikeDistanceMeters;
+    return isSinglePointDetour && isMeaningfulJump;
+  }
+
+  double _distance(LocationPoint a, LocationPoint b) {
+    return distanceMeters(a.latitude, a.longitude, b.latitude, b.longitude);
+  }
+
+  bool _isLowSpeed(double? speed) {
+    return speed == null || speed <= _lowSpeedExcursionMetersPerSecond;
+  }
+
   static const _maximumRouteAccuracyMeters = 80.0;
+  static const _maximumPlausibleSpikeSpeedMetersPerSecond = 45.0;
+  static const _minimumSpikeDistanceMeters = 120.0;
+  static const _maximumReturnDistanceMeters = 220.0;
+  static const _minimumSpikeDetourRatio = 4.0;
+  static const _stableRadiusMeters = 50.0;
+  static const _maxExcursionDuration = Duration(minutes: 3);
+  static const _maxExcursionPoints = 18;
+  static const _lowSpeedExcursionMetersPerSecond = 3.0;
 }
 
 class _RoutePointGroup {

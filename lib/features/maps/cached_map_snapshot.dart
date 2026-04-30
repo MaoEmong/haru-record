@@ -13,11 +13,15 @@ class CachedMapSnapshot extends StatefulWidget {
     required this.cacheKey,
     required this.child,
     this.captureDelay = const Duration(seconds: 2),
+    this.placeholder,
+    this.initialChildDelay = Duration.zero,
   });
 
   final String cacheKey;
   final Widget child;
   final Duration captureDelay;
+  final Widget? placeholder;
+  final Duration initialChildDelay;
 
   @override
   State<CachedMapSnapshot> createState() => _CachedMapSnapshotState();
@@ -28,10 +32,21 @@ class _CachedMapSnapshotState extends State<CachedMapSnapshot> {
   File? _snapshotFile;
   bool _cacheUnavailable = false;
   bool _captureScheduled = false;
+  bool _showChild = true;
+  Timer? _initialChildTimer;
 
   @override
   void initState() {
     super.initState();
+    _showChild = widget.initialChildDelay == Duration.zero;
+    if (!_showChild) {
+      _initialChildTimer = Timer(widget.initialChildDelay, () {
+        if (!mounted) return;
+        setState(() {
+          _showChild = true;
+        });
+      });
+    }
     unawaited(_loadSnapshot());
   }
 
@@ -42,8 +57,24 @@ class _CachedMapSnapshotState extends State<CachedMapSnapshot> {
       _snapshotFile = null;
       _cacheUnavailable = false;
       _captureScheduled = false;
+      _initialChildTimer?.cancel();
+      _showChild = widget.initialChildDelay == Duration.zero;
+      if (!_showChild) {
+        _initialChildTimer = Timer(widget.initialChildDelay, () {
+          if (!mounted) return;
+          setState(() {
+            _showChild = true;
+          });
+        });
+      }
       unawaited(_loadSnapshot());
     }
+  }
+
+  @override
+  void dispose() {
+    _initialChildTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadSnapshot() async {
@@ -90,6 +121,11 @@ class _CachedMapSnapshotState extends State<CachedMapSnapshot> {
     _captureScheduled = true;
     Future<void>.delayed(widget.captureDelay, () async {
       if (!mounted || _snapshotFile != null) return;
+      if (!_showChild) {
+        _captureScheduled = false;
+        _scheduleCapture(file);
+        return;
+      }
       await _capture(file);
     });
   }
@@ -120,16 +156,19 @@ class _CachedMapSnapshotState extends State<CachedMapSnapshot> {
   @override
   Widget build(BuildContext context) {
     final snapshotFile = _snapshotFile;
+    final placeholder = widget.placeholder;
     return RepaintBoundary(
       key: _boundaryKey,
-      child: snapshotFile == null
-          ? widget.child
-          : Image.file(
+      child: snapshotFile != null
+          ? Image.file(
               snapshotFile,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-            ),
+            )
+          : !_showChild && placeholder != null
+          ? placeholder
+          : widget.child,
     );
   }
 }

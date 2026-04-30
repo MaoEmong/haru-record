@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -42,7 +43,6 @@ class AppDependencies {
     final notificationAdapter = FlutterLocalNotificationAdapter(
       location: tz.local,
     );
-    await notificationAdapter.initialize();
 
     return AppDependencies(
       database: database,
@@ -62,7 +62,20 @@ class AppDependencies {
     );
   }
 
-  Future<DailyProcessingResult> runDailyProcessingNow() async {
+  Future<StartupRecordSyncResult> syncStartupRecords({DateTime? now}) async {
+    final importResult = await importPendingEvents();
+    final effectiveNow = now ?? DateTime.now();
+    DailyProcessingResult? dailyProcessingResult;
+    if (await _hasUnprocessedYesterdayRecords(effectiveNow)) {
+      dailyProcessingResult = await runDailyProcessingNow(now: effectiveNow);
+    }
+    return StartupRecordSyncResult(
+      importResult: importResult,
+      dailyProcessingResult: dailyProcessingResult,
+    );
+  }
+
+  Future<DailyProcessingResult> runDailyProcessingNow({DateTime? now}) async {
     if (runDailyProcessingOverride != null) {
       return await runDailyProcessingOverride!();
     }
@@ -73,7 +86,37 @@ class AppDependencies {
       importPendingEvents: importPendingEvents,
       settings: settings,
     );
-    return await processor.run(now: DateTime.now());
+    return await processor.run(now: now ?? DateTime.now());
+  }
+
+  Future<bool> _hasUnprocessedYesterdayRecords(DateTime now) async {
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+    final dateKey = _dateKey(yesterdayStart);
+
+    final existingSummary =
+        await (database.select(database.dailySummaries)
+              ..where((summary) => summary.date.equals(dateKey))
+              ..limit(1))
+            .getSingleOrNull();
+    if (existingSummary != null) return false;
+
+    final yesterdayPoint =
+        await (database.select(database.locationPoints)
+              ..where(
+                (point) =>
+                    point.timestamp.isBiggerOrEqualValue(yesterdayStart) &
+                    point.timestamp.isSmallerThanValue(todayStart),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return yesterdayPoint != null;
+  }
+
+  String _dateKey(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
   }
 
   Future<void> reconcileTrackingState() async {
@@ -94,5 +137,24 @@ class AppDependencies {
       await trackingService.stopTracking();
     }
     await settingsRepository.save(updated);
+  }
+}
+
+class StartupRecordSyncResult {
+  const StartupRecordSyncResult({
+    required this.importResult,
+    required this.dailyProcessingResult,
+  });
+
+  final LocationEventImportResult importResult;
+  final DailyProcessingResult? dailyProcessingResult;
+
+  bool get hasChanges {
+    if (importResult.importedCount > 0) return true;
+    return switch (dailyProcessingResult?.outcome) {
+      DailyProcessingOutcome.createdReflection ||
+      DailyProcessingOutcome.noHighlights => true,
+      _ => false,
+    };
   }
 }
