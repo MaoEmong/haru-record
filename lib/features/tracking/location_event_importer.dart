@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/geo/coordinate_validation.dart';
 import '../../core/geo/geo_math.dart';
+import '../../core/logging/app_logger.dart';
 import '../storage/app_database.dart';
 
 class LocationEventImportResult {
@@ -61,6 +62,7 @@ class LocationEventImporter {
     final lines = await snapshot.readAsLines();
     var imported = 0;
     var skipped = 0;
+    var parseErrorSamples = 0;
     final latestImportedBySource = <String, _ParsedLocationEvent>{};
 
     for (final line in lines) {
@@ -69,8 +71,16 @@ class LocationEventImporter {
       late final _ParsedLocationEvent event;
       try {
         event = _parseEvent(jsonDecode(line) as Map<String, Object?>);
-      } catch (_) {
+      } catch (error, stackTrace) {
         skipped++;
+        if (parseErrorSamples < 3) {
+          parseErrorSamples++;
+          AppLogger.warn(
+            'Skipped malformed location event.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
         continue;
       }
 

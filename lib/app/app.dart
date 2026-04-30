@@ -11,6 +11,7 @@ import '../features/timeline/day_activity_preview_repository.dart';
 import '../features/timeline/day_detail_screen.dart';
 import '../features/timeline/day_flow_playback_screen.dart';
 import '../features/timeline/day_route_models.dart';
+import '../core/logging/app_logger.dart';
 import 'app_dependencies.dart';
 import 'app_providers.dart';
 import 'app_theme.dart';
@@ -202,7 +203,12 @@ class _DailyPatternShellState extends State<DailyPatternShell>
       final result = await widget.dependencies.syncStartupRecords();
       if (!mounted || !result.hasChanges) return;
       _refreshAll();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Startup record sync failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       // Startup sync is opportunistic; the background worker/manual action retries.
     } finally {
       _isSyncingRecords = false;

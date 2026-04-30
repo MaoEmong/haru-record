@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_theme.dart';
+import '../../core/time/date_key.dart';
 import '../../shared/widgets/music_player_widgets.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_activity_preview_repository.dart';
@@ -175,7 +176,7 @@ class _HistoryTrackItem extends ConsumerWidget {
     );
   }
 
-  bool _isToday(DateTime date) => isSameDate(date, DateTime.now());
+  bool _isToday(DateTime date) => isSameLocalDate(date, DateTime.now());
 
   String _metaLabel(HistoryDay day, DayActivityPreview? preview) {
     final date = day.date;

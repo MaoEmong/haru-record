@@ -1,3 +1,4 @@
+import '../../core/time/date_key.dart';
 import 'day_route_models.dart';
 import 'day_timeline_models.dart';
 
@@ -104,7 +105,7 @@ RoutePlaybackWindow? playbackWindowForDate({
     ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   final start = sorted.first.timestamp;
   final last = sorted.last.timestamp;
-  final end = _isSameDate(date, now) && now.isAfter(last) ? now : last;
+  final end = isSameLocalDate(date, now) && now.isAfter(last) ? now : last;
   return RoutePlaybackWindow(
     start: start,
     end: end.isBefore(start) ? start : end,
@@ -138,10 +139,6 @@ DayTimelineItem? timelineItemAt(List<DayTimelineItem> items, DateTime time) {
     if (endedAt == null || !endedAt.isBefore(time)) return item;
   }
   return null;
-}
-
-bool _isSameDate(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 int _secondsOfDay(DateTime time) {
