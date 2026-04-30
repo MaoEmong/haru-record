@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
+import '../../core/logging/app_logger.dart';
 import '../../shared/widgets/music_player_widgets.dart';
 import '../background/daily_insight_worker.dart';
 import '../diagnostics/diagnostics_snapshot.dart';
@@ -54,7 +55,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ref.invalidate(settingsProvider(widget.dependencies));
           _refreshDiagnostics();
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Tracking setting update failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       setState(() {
         _status = '하루 기록을 바꾸지 못했어요';
       });
@@ -96,7 +102,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() {
         _status = _processingMessage(result);
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Manual daily processing failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       setState(() {
         _status = '돌아보기를 만들지 못했어요';
       });

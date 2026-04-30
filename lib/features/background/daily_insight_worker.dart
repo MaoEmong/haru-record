@@ -9,6 +9,8 @@ import 'package:workmanager/workmanager.dart';
 
 import '../../core/config/env_config.dart';
 import '../../core/geo/geo_math.dart';
+import '../../core/logging/app_logger.dart';
+import '../../core/time/date_key.dart';
 import '../../core/time/local_timezone.dart';
 import '../analysis/daily_summary_service.dart';
 import '../insights/insight_generation_service.dart';
@@ -394,7 +396,7 @@ class DailyInsightProcessor {
   ) async {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    final dateKey = _dateKey(date);
+    final summaryDateKey = dateKey(date);
     await _database.transaction(() async {
       await (_database.delete(_database.visits)..where(
             (visit) =>
@@ -410,7 +412,7 @@ class DailyInsightProcessor {
           .go();
       await (_database.delete(
         _database.dailySummaries,
-      )..where((summary) => summary.date.equals(dateKey))).go();
+      )..where((summary) => summary.date.equals(summaryDateKey))).go();
       for (final item in visits) {
         final visit = item.visit;
         await _database
@@ -503,7 +505,7 @@ class DailyInsightProcessor {
   }
 
   Future<void> _insertDailySummary(DailySummarySnapshot summary) async {
-    final date = _dateKey(summary.date);
+    final date = dateKey(summary.date);
     await _database
         .into(_database.dailySummaries)
         .insert(
@@ -542,12 +544,6 @@ class DailyInsightProcessor {
   }
 
   String _enumName(Object value) => value.toString().split('.').last;
-
-  String _dateKey(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
-  }
 }
 
 class _PersistableVisit {
@@ -603,7 +599,12 @@ void dailyInsightWorkerDispatcher() {
       );
       await processor.run(now: DateTime.now());
       return true;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Daily insight worker failed.',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return false;
     } finally {
       await database.close();

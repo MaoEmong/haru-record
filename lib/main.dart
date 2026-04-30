@@ -7,6 +7,7 @@ import 'app/app.dart';
 import 'app/app_dependencies.dart';
 import 'app/app_theme.dart';
 import 'core/config/env_config.dart';
+import 'core/logging/app_logger.dart';
 import 'core/time/local_timezone.dart';
 import 'features/background/daily_insight_worker.dart';
 
@@ -163,7 +164,12 @@ Future<void> _finishStartupWork(AppDependencies dependencies) async {
   try {
     await dependencies.reconcileTrackingState();
     await initializeDailyInsightWorker();
-  } catch (_) {
+  } catch (error, stackTrace) {
+    AppLogger.warn(
+      'Startup background work failed.',
+      error: error,
+      stackTrace: stackTrace,
+    );
     // Startup background work is retried by user actions or the next launch.
   }
 }

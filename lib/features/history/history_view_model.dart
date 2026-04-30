@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/time/date_key.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_activity_preview_repository.dart';
 
@@ -104,7 +105,7 @@ Future<List<HistoryDay>> loadHistoryDays(
   ];
 
   final today = DateTime.now();
-  if (!days.any((day) => isSameDate(day.date, today)) &&
+  if (!days.any((day) => isSameLocalDate(day.date, today)) &&
       await hasHistoryDataForDate(database, today)) {
     days.insert(
       0,
@@ -126,7 +127,7 @@ Future<bool> hasHistoryDataForDate(AppDatabase database, DateTime date) async {
   final end = start.add(const Duration(days: 1));
   final summaryRows =
       await (database.select(database.dailySummaries)
-            ..where((row) => row.date.equals(historyDateKey(date)))
+            ..where((row) => row.date.equals(dateKey(date)))
             ..limit(1))
           .get();
   if (summaryRows.isNotEmpty) return true;
@@ -152,14 +153,4 @@ Future<bool> hasHistoryDataForDate(AppDatabase database, DateTime date) async {
             ..limit(1))
           .get();
   return pointRows.isNotEmpty;
-}
-
-bool isSameDate(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
-}
-
-String historyDateKey(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
 }

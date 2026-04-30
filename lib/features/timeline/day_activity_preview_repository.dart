@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'package:drift/drift.dart';
 
 import '../../core/geo/geo_math.dart';
+import '../../core/time/date_key.dart';
 import '../places/place_clustering_service.dart';
 import '../places/place_label.dart';
 import '../processing/location_post_processor.dart';
@@ -88,7 +89,7 @@ class DayActivityPreviewRepository {
   Future<DailySummary?> _loadDailySummary(DateTime date) async {
     final rows = await (_database.select(
       _database.dailySummaries,
-    )..where((summary) => summary.date.equals(_dateKey(date)))).get();
+    )..where((summary) => summary.date.equals(dateKey(date)))).get();
     return rows.firstOrNull;
   }
 
@@ -220,12 +221,6 @@ class DayActivityPreviewRepository {
     final bTime = b.startedAt;
     if (aTime != null && bTime != null) return aTime.compareTo(bTime);
     return a.timeLabel.compareTo(b.timeLabel);
-  }
-
-  String _dateKey(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
   }
 
   String _timeLabel(DateTime time) => _previewTimeLabel(time);
