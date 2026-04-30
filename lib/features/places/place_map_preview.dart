@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -30,31 +32,89 @@ class PlaceMapPreview extends StatelessWidget {
       child: CachedMapSnapshot(
         key: snapshotKey ?? ValueKey('map-snapshot-$cacheKey'),
         cacheKey: cacheKey,
-        child: FlutterMap(
-          key: mapKey,
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: zoom,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.none,
+        child: _DeferredPlaceMap(
+          placeholder: const _PlaceMapPlaceholder(),
+          builder: (context) => FlutterMap(
+            key: mapKey,
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: zoom,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none,
+              ),
             ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.projectapp_1',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: center,
+                    width: 34,
+                    height: 34,
+                    child: const PlacePinBadge(),
+                  ),
+                ],
+              ),
+            ],
           ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.projectapp_1',
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: center,
-                  width: 34,
-                  height: 34,
-                  child: const PlacePinBadge(),
-                ),
-              ],
-            ),
-          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeferredPlaceMap extends StatefulWidget {
+  const _DeferredPlaceMap({required this.builder, required this.placeholder});
+
+  final WidgetBuilder builder;
+  final Widget placeholder;
+
+  @override
+  State<_DeferredPlaceMap> createState() => _DeferredPlaceMapState();
+}
+
+class _DeferredPlaceMapState extends State<_DeferredPlaceMap> {
+  Timer? _timer;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _ready ? widget.builder(context) : widget.placeholder;
+  }
+}
+
+class _PlaceMapPlaceholder extends StatelessWidget {
+  const _PlaceMapPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.surfaceAlt,
+      child: Center(
+        child: Icon(
+          Icons.map_rounded,
+          color: AppColors.ink.withValues(alpha: 0.32),
+          size: 34,
         ),
       ),
     );

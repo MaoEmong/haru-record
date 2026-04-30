@@ -58,6 +58,10 @@ void main() {
     final route = await DayRouteRepository(database).loadForDate(date);
 
     expect(route.points.map((point) => point.timeLabel), ['09:00', '09:10']);
+    expect(route.points.map((point) => point.timestamp), [
+      DateTime(2026, 4, 26, 9),
+      DateTime(2026, 4, 26, 9, 10),
+    ]);
     expect(route.visits.single.placeLabel, '카페');
   });
 
@@ -341,6 +345,77 @@ void main() {
     expect(route.points, hasLength(3));
   });
 
+  test('removes a single implausible gps spike from route display', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+
+    for (final (seconds, latitude, longitude) in [
+      (0, 35.15960, 129.06020),
+      (10, 35.19960, 129.11020),
+      (20, 35.15970, 129.06030),
+      (30, 35.15982, 129.06045),
+    ]) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: DateTime(
+                2026,
+                4,
+                26,
+                9,
+              ).add(Duration(seconds: seconds)),
+              latitude: latitude,
+              longitude: longitude,
+              accuracy: 8,
+              speed: const Value(0.2),
+            ),
+          );
+    }
+
+    final route = await DayRouteRepository(database).loadForDate(date);
+
+    expect(route.rawPointCount, 4);
+    expect(route.points, hasLength(1));
+    expect(route.points.any((point) => point.latitude > 35.19), isFalse);
+  });
+
+  test('keeps a fast but consistent moving route', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 26);
+
+    for (final (seconds, latitude, longitude) in [
+      (0, 35.15960, 129.06020),
+      (10, 35.16220, 129.06280),
+      (20, 35.16480, 129.06540),
+      (30, 35.16740, 129.06800),
+    ]) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: DateTime(
+                2026,
+                4,
+                26,
+                9,
+              ).add(Duration(seconds: seconds)),
+              latitude: latitude,
+              longitude: longitude,
+              accuracy: 8,
+              speed: const Value(20),
+            ),
+          );
+    }
+
+    final route = await DayRouteRepository(database).loadForDate(date);
+
+    expect(route.rawPointCount, 4);
+    expect(route.points, hasLength(4));
+  });
+
   test(
     'collapses ambiguous walking-speed gps spikes around one place',
     () async {
@@ -373,6 +448,42 @@ void main() {
       expect(route.points, hasLength(1));
     },
   );
+
+  test('removes short low-speed gps excursions from route display', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2026, 4, 29);
+    final start = DateTime(2026, 4, 29, 13, 29, 9);
+
+    for (final (seconds, latitude, longitude, accuracy, speed) in [
+      (0, 35.1596704, 129.0602497, 26.8, 0.73),
+      (58, 35.1594776, 129.0604480, 23.9, 1.02),
+      (68, 35.1600735, 129.0606744, 20.0, 2.52),
+      (79, 35.1608132, 129.0611008, 15.6, 2.70),
+      (100, 35.1608702, 129.0612149, 27.0, 0.30),
+      (111, 35.1598465, 129.0607891, 24.0, 0.13),
+      (140, 35.1596449, 129.0607010, 28.6, 0.11),
+      (240, 35.1596508, 129.0602648, 13.3, 0.16),
+    ]) {
+      await database
+          .into(database.locationPoints)
+          .insert(
+            LocationPointsCompanion.insert(
+              timestamp: start.add(Duration(seconds: seconds)),
+              latitude: latitude,
+              longitude: longitude,
+              accuracy: accuracy,
+              speed: Value(speed),
+            ),
+          );
+    }
+
+    final route = await DayRouteRepository(database).loadForDate(date);
+
+    expect(route.rawPointCount, 8);
+    expect(route.points.every((point) => point.latitude < 35.1600), isTrue);
+    expect(route.points, hasLength(1));
+  });
 
   test('uses resolved address when a place has no custom name', () async {
     final database = AppDatabase(NativeDatabase.memory());

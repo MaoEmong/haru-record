@@ -61,6 +61,7 @@ class LocationEventImporter {
     final lines = await snapshot.readAsLines();
     var imported = 0;
     var skipped = 0;
+    final latestImportedBySource = <String, _ParsedLocationEvent>{};
 
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
@@ -77,13 +78,14 @@ class LocationEventImporter {
         continue;
       }
 
-      if (await _isNearDuplicateInShortWindow(event)) {
+      if (await _isNearDuplicateInShortWindow(event, latestImportedBySource)) {
         continue;
       }
 
       await _database
           .into(_database.locationPoints)
           .insert(_companionFromEvent(event));
+      latestImportedBySource[event.source] = event;
       imported++;
     }
 
@@ -118,32 +120,57 @@ class LocationEventImporter {
     return await query.getSingleOrNull() != null;
   }
 
-  Future<bool> _isNearDuplicateInShortWindow(_ParsedLocationEvent event) async {
-    final points = await _database.select(_database.locationPoints).get();
-    final candidates =
-        points
-            .where(
-              (point) =>
-                  point.source == event.source &&
-                  !point.timestamp.isAfter(event.timestamp) &&
-                  event.timestamp.difference(point.timestamp) <=
-                      _nearDuplicateWindow,
-            )
-            .toList()
-          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    if (candidates.isEmpty) return false;
+  Future<bool> _isNearDuplicateInShortWindow(
+    _ParsedLocationEvent event,
+    Map<String, _ParsedLocationEvent> latestImportedBySource,
+  ) async {
+    final latestImported = latestImportedBySource[event.source];
+    if (latestImported != null &&
+        !latestImported.timestamp.isAfter(event.timestamp) &&
+        event.timestamp.difference(latestImported.timestamp) <=
+            _nearDuplicateWindow) {
+      return _isNearDuplicateOf(
+        latitude: latestImported.latitude,
+        longitude: latestImported.longitude,
+        accuracy: latestImported.accuracy,
+        event: event,
+      );
+    }
 
-    final latest = candidates.first;
+    final windowStart = event.timestamp.subtract(_nearDuplicateWindow);
+    final query = _database.select(_database.locationPoints)
+      ..where(
+        (point) =>
+            point.source.equals(event.source) &
+            point.timestamp.isBiggerOrEqualValue(windowStart) &
+            point.timestamp.isSmallerOrEqualValue(event.timestamp),
+      )
+      ..orderBy([(point) => OrderingTerm.desc(point.timestamp)])
+      ..limit(1);
+    final latestStored = await query.getSingleOrNull();
+    if (latestStored == null) return false;
+
+    return _isNearDuplicateOf(
+      latitude: latestStored.latitude,
+      longitude: latestStored.longitude,
+      accuracy: latestStored.accuracy,
+      event: event,
+    );
+  }
+
+  bool _isNearDuplicateOf({
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+    required _ParsedLocationEvent event,
+  }) {
     final distance = distanceMeters(
-      latest.latitude,
-      latest.longitude,
+      latitude,
+      longitude,
       event.latitude,
       event.longitude,
     );
-    final threshold = _nearDuplicateDistanceThreshold(
-      latest.accuracy,
-      event.accuracy,
-    );
+    final threshold = _nearDuplicateDistanceThreshold(accuracy, event.accuracy);
     return distance <= threshold;
   }
 

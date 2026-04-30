@@ -34,6 +34,7 @@ class DayTimelineRepository {
             durationMinutes: visit.durationMinutes,
             latitude: visit.representativeLatitude,
             longitude: visit.representativeLongitude,
+            placeClusterId: place?.id,
           );
         })
         .toList(growable: false);

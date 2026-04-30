@@ -1,5 +1,11 @@
+import 'dart:isolate';
+
+import 'package:drift/drift.dart';
+
 import '../../core/geo/geo_math.dart';
 import '../places/place_clustering_service.dart';
+import '../places/place_label.dart';
+import '../processing/location_post_processor.dart';
 import '../settings/settings_models.dart';
 import '../storage/app_database.dart';
 import 'day_timeline_models.dart';
@@ -19,20 +25,25 @@ class DayActivityPreviewRepository {
     final summary = await _loadDailySummary(date);
     final timeline = await DayTimelineRepository(_database).loadForDate(date);
     final rawPoints = await _loadLocationPoints(date);
-    final points = compactNearbyLocationPoints(rawPoints);
-    final inferredTimeline = _inferTimelineFromRawPoints(
+    final places = await _database.select(_database.placeClusters).get();
+    final rawComputation = await _computeRawPreview(
       rawPoints,
       settings ?? AppSettings.defaults(),
     );
+    final inferredTimeline = _labelKnownPlaces(
+      rawComputation.inferredTimeline,
+      places,
+    );
     final visibleTimeline = _mergeTimelineItems(timeline, inferredTimeline);
 
-    final fallbackTimeline = visibleTimeline.isNotEmpty || points.isEmpty
+    final fallbackTimeline =
+        visibleTimeline.isNotEmpty || rawComputation.compactedPointCount == 0
         ? visibleTimeline
         : [
             DayTimelineItem(
-              timeLabel: _timeLabel(points.last.timestamp),
-              placeLabel: '최근 위치 기록',
-              durationLabel: '위치 기록 ${points.length}개 · 머문 곳은 판단 중',
+              timeLabel: _timeLabel(rawPoints.last.timestamp),
+              placeLabel: '최근 위치',
+              durationLabel: '분석 중',
             ),
           ];
 
@@ -44,12 +55,12 @@ class DayActivityPreviewRepository {
             ? summary.visitCount
             : inferredTimeline.length,
         timeline: fallbackTimeline,
-        pointCount: points.length,
+        pointCount: rawComputation.compactedPointCount,
         hasData: true,
       );
     }
 
-    if (points.isEmpty) {
+    if (rawComputation.compactedPointCount == 0) {
       return DayActivityPreview(
         totalDistanceMeters: null,
         movingMinutes: null,
@@ -60,18 +71,16 @@ class DayActivityPreviewRepository {
       );
     }
 
-    final displayPoints = const RouteDisplayPointCleaner().clean(rawPoints);
-    final totalDistance = _totalDistance(displayPoints);
     return DayActivityPreview(
-      totalDistanceMeters: totalDistance,
-      movingMinutes: totalDistance <= 0
+      totalDistanceMeters: rawComputation.totalDistanceMeters,
+      movingMinutes: rawComputation.totalDistanceMeters <= 0
           ? 0
           : rawPoints.last.timestamp
                 .difference(rawPoints.first.timestamp)
                 .inMinutes,
       visitCount: visibleTimeline.length,
       timeline: fallbackTimeline,
-      pointCount: points.length,
+      pointCount: rawComputation.compactedPointCount,
       hasData: true,
     );
   }
@@ -86,71 +95,18 @@ class DayActivityPreviewRepository {
   Future<List<LocationPoint>> _loadLocationPoints(DateTime date) async {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    final points = await _database.select(_database.locationPoints).get();
-    return points
-        .where(
-          (point) =>
-              !point.timestamp.isBefore(start) &&
-              point.timestamp.isBefore(end) &&
-              !point.isMock &&
-              point.accuracy <= 200,
-        )
-        .toList()
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  }
-
-  double _totalDistance(List<RouteDisplayPoint> points) {
-    var total = 0.0;
-    for (var i = 1; i < points.length; i++) {
-      final previous = points[i - 1];
-      final current = points[i];
-      total += distanceMeters(
-        previous.latitude,
-        previous.longitude,
-        current.latitude,
-        current.longitude,
-      );
-    }
-    return total;
-  }
-
-  List<DayTimelineItem> _inferTimelineFromRawPoints(
-    List<LocationPoint> rawPoints,
-    AppSettings settings,
-  ) {
-    final visits =
-        PlaceClusteringService(
-          clusterRadiusMeters: settings.minimumMovementMeters.toDouble(),
-          minimumStayMinutes: settings.minimumStayMinutes,
-        ).detectVisits(
-          rawPoints
-              .map(
-                (point) => TrackedPoint(
-                  point.timestamp,
-                  point.latitude,
-                  point.longitude,
-                  point.accuracy,
-                  point.isMock,
-                ),
-              )
-              .toList(growable: false),
-        );
-
-    return visits
-        .map(
-          (visit) => DayTimelineItem(
-            timeLabel: _timeLabel(visit.startedAt),
-            placeLabel: '머문 곳',
-            durationLabel: '머문 곳으로 보여요',
-            startedAt: visit.startedAt,
-            endedAt: visit.endedAt,
-            durationMinutes: visit.durationMinutes,
-            latitude: visit.latitude,
-            longitude: visit.longitude,
-            isInferred: true,
-          ),
-        )
-        .toList(growable: false);
+    final points =
+        await (_database.select(_database.locationPoints)..where(
+              (point) =>
+                  point.timestamp.isBiggerOrEqualValue(start) &
+                  point.timestamp.isSmallerThanValue(end) &
+                  point.isMock.equals(false) &
+                  point.accuracy.isSmallerOrEqualValue(
+                    maximumUsableAccuracyMeters,
+                  ),
+            ))
+            .get();
+    return points..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }
 
   List<DayTimelineItem> _mergeTimelineItems(
@@ -208,6 +164,57 @@ class DayActivityPreviewRepository {
     return false;
   }
 
+  List<DayTimelineItem> _labelKnownPlaces(
+    List<DayTimelineItem> inferred,
+    List<PlaceCluster> places,
+  ) {
+    if (inferred.isEmpty || places.isEmpty) return inferred;
+
+    return inferred
+        .map((item) {
+          final place = _findMatchingPlace(item, places);
+          if (place == null) return item;
+          return DayTimelineItem(
+            timeLabel: item.timeLabel,
+            placeLabel: placeLabel(place),
+            durationLabel: '방문 기록',
+            startedAt: item.startedAt,
+            endedAt: item.endedAt,
+            durationMinutes: item.durationMinutes,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            placeClusterId: place.id,
+            isInferred: item.isInferred,
+          );
+        })
+        .toList(growable: false);
+  }
+
+  PlaceCluster? _findMatchingPlace(
+    DayTimelineItem item,
+    List<PlaceCluster> places,
+  ) {
+    if (item.latitude == null || item.longitude == null) return null;
+    PlaceCluster? closest;
+    var closestDistance = double.infinity;
+    for (final place in places) {
+      final distance = distanceMeters(
+        item.latitude!,
+        item.longitude!,
+        place.centerLatitude,
+        place.centerLongitude,
+      );
+      final radius = place.radiusMeters > _knownPlaceMatchRadiusMeters
+          ? place.radiusMeters
+          : _knownPlaceMatchRadiusMeters;
+      if (distance <= radius && distance < closestDistance) {
+        closest = place;
+        closestDistance = distance;
+      }
+    }
+    return closest;
+  }
+
   int _compareTimelineItems(DayTimelineItem a, DayTimelineItem b) {
     final aTime = a.startedAt;
     final bTime = b.startedAt;
@@ -221,14 +228,116 @@ class DayActivityPreviewRepository {
     return '${date.year}-$month-$day';
   }
 
-  String _timeLabel(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+  String _timeLabel(DateTime time) => _previewTimeLabel(time);
+}
+
+Future<_RawPreviewComputation> _computeRawPreview(
+  List<LocationPoint> rawPoints,
+  AppSettings settings,
+) async {
+  if (rawPoints.length < _isolatePointThreshold) {
+    return _computeRawPreviewSync(rawPoints, settings);
+  }
+  try {
+    return await Isolate.run(() => _computeRawPreviewSync(rawPoints, settings));
+  } on Object {
+    return _computeRawPreviewSync(rawPoints, settings);
   }
 }
 
+_RawPreviewComputation _computeRawPreviewSync(
+  List<LocationPoint> rawPoints,
+  AppSettings settings,
+) {
+  final compactedPointCount = compactNearbyLocationPoints(rawPoints).length;
+  final displayPoints = const LocationPostProcessor().cleanRouteDisplayPoints(
+    rawPoints,
+  );
+  final totalDistance = _totalDistance(displayPoints);
+  final inferredTimeline = _inferTimelineFromRawPoints(rawPoints, settings);
+  return _RawPreviewComputation(
+    compactedPointCount: compactedPointCount,
+    totalDistanceMeters: totalDistance,
+    inferredTimeline: inferredTimeline,
+  );
+}
+
+double _totalDistance(List<RouteDisplayPoint> points) {
+  var total = 0.0;
+  for (var i = 1; i < points.length; i++) {
+    final previous = points[i - 1];
+    final current = points[i];
+    total += distanceMeters(
+      previous.latitude,
+      previous.longitude,
+      current.latitude,
+      current.longitude,
+    );
+  }
+  return total;
+}
+
+List<DayTimelineItem> _inferTimelineFromRawPoints(
+  List<LocationPoint> rawPoints,
+  AppSettings settings,
+) {
+  final visits =
+      PlaceClusteringService(
+        clusterRadiusMeters: settings.minimumMovementMeters.toDouble(),
+        minimumStayMinutes: settings.minimumStayMinutes,
+      ).detectVisits(
+        rawPoints
+            .map(
+              (point) => TrackedPoint(
+                point.timestamp,
+                point.latitude,
+                point.longitude,
+                point.accuracy,
+                point.isMock,
+                speed: point.speed,
+              ),
+            )
+            .toList(growable: false),
+      );
+
+  return visits
+      .map(
+        (visit) => DayTimelineItem(
+          timeLabel: _previewTimeLabel(visit.startedAt),
+          placeLabel: '새 장소 후보',
+          durationLabel: '저장 가능',
+          startedAt: visit.startedAt,
+          endedAt: visit.endedAt,
+          durationMinutes: visit.durationMinutes,
+          latitude: visit.latitude,
+          longitude: visit.longitude,
+          isInferred: true,
+        ),
+      )
+      .toList(growable: false);
+}
+
+String _previewTimeLabel(DateTime time) {
+  final hour = time.hour.toString().padLeft(2, '0');
+  final minute = time.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
+}
+
+class _RawPreviewComputation {
+  const _RawPreviewComputation({
+    required this.compactedPointCount,
+    required this.totalDistanceMeters,
+    required this.inferredTimeline,
+  });
+
+  final int compactedPointCount;
+  final double totalDistanceMeters;
+  final List<DayTimelineItem> inferredTimeline;
+}
+
 const _samePlaceMergeRadiusMeters = 80.0;
+const _knownPlaceMatchRadiusMeters = 80.0;
+const _isolatePointThreshold = 80;
 
 class DayActivityPreview {
   const DayActivityPreview({

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/history/history_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/places/place_management_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/storage/app_database.dart';
+import '../features/timeline/day_activity_preview_repository.dart';
 import '../features/timeline/day_detail_screen.dart';
+import '../features/timeline/day_flow_playback_screen.dart';
+import '../features/timeline/day_route_models.dart';
 import 'app_dependencies.dart';
+import 'app_providers.dart';
 import 'app_theme.dart';
 
 class DailyPatternApp extends StatelessWidget {
@@ -17,120 +22,127 @@ class DailyPatternApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '하루 기록',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        textTheme: _appTextTheme(),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.ink,
-          brightness: Brightness.light,
-          surface: AppColors.surface,
-          primary: AppColors.ink,
-          secondary: AppColors.softBlue,
-        ),
-        scaffoldBackgroundColor: AppColors.background,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.background,
-          foregroundColor: AppColors.ink,
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: AppColors.ink,
-            fontSize: 19,
-            fontWeight: FontWeight.w700,
+    return ProviderScope(
+      overrides: [appDependenciesProvider.overrideWithValue(dependencies)],
+      child: MaterialApp(
+        title: '하루 기록',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          textTheme: _appTextTheme(),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.ink,
+            brightness: Brightness.dark,
+            surface: AppColors.surface,
+            primary: AppColors.ink,
+            secondary: AppColors.softBlue,
           ),
-        ),
-        navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.softBlue,
-          elevation: 0,
-          height: 72,
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => TextStyle(
-              color: states.contains(WidgetState.selected)
-                  ? AppColors.ink
-                  : AppColors.muted,
-              fontSize: 13,
-              fontWeight: states.contains(WidgetState.selected)
-                  ? FontWeight.w700
-                  : FontWeight.w500,
-            ),
-          ),
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected)
-                  ? AppColors.ink
-                  : AppColors.muted,
-              size: states.contains(WidgetState.selected) ? 25 : 23,
-            ),
-          ),
-        ),
-        listTileTheme: ListTileThemeData(
-          iconColor: AppColors.ink,
-          textColor: AppColors.ink,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.surfaceAlt,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.blueGrey, width: 1.4),
-          ),
-        ),
-        switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? AppColors.ink
-                : AppColors.muted,
-          ),
-          trackColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? AppColors.softBlue
-                : AppColors.paleBlue,
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.ink,
-            foregroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
+          scaffoldBackgroundColor: AppColors.background,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: AppColors.background,
             foregroundColor: AppColors.ink,
-            backgroundColor: AppColors.surface,
-            side: const BorderSide(color: AppColors.border),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+            elevation: 0,
+            centerTitle: false,
+            titleTextStyle: TextStyle(
+              color: AppColors.ink,
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: AppColors.background,
+            indicatorColor: Colors.transparent,
+            elevation: 0,
+            height: 72,
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (states) => TextStyle(
+                color: states.contains(WidgetState.selected)
+                    ? AppColors.softBlue
+                    : AppColors.muted,
+                fontSize: 13,
+                fontWeight: states.contains(WidgetState.selected)
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+              ),
+            ),
+            iconTheme: WidgetStateProperty.resolveWith(
+              (states) => IconThemeData(
+                color: states.contains(WidgetState.selected)
+                    ? AppColors.softBlue
+                    : AppColors.muted,
+                size: states.contains(WidgetState.selected) ? 25 : 23,
+              ),
+            ),
+          ),
+          listTileTheme: ListTileThemeData(
+            iconColor: AppColors.ink,
+            textColor: AppColors.ink,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: AppColors.surfaceAlt,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: AppColors.blueGrey,
+                width: 1.4,
+              ),
+            ),
+          ),
+          switchTheme: SwitchThemeData(
+            thumbColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.ink
+                  : AppColors.muted,
+            ),
+            trackColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.softBlue
+                  : AppColors.paleBlue,
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.softBlue,
+              foregroundColor: AppColors.background,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.ink,
+              backgroundColor: AppColors.surface,
+              side: const BorderSide(color: AppColors.border),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            ),
+          ),
+          useMaterial3: true,
         ),
-        useMaterial3: true,
+        home: DailyPatternShell(dependencies: dependencies),
       ),
-      home: DailyPatternShell(dependencies: dependencies),
     );
   }
 }
 
 TextTheme _appTextTheme() {
-  final base = Typography.material2021().black;
+  final base = Typography.material2021().white;
   return base.copyWith(
     headlineSmall: base.headlineSmall?.copyWith(fontSize: 25),
     titleLarge: base.titleLarge?.copyWith(fontSize: 23),
@@ -158,13 +170,15 @@ class _DailyPatternShellState extends State<DailyPatternShell>
     with WidgetsBindingObserver {
   int _selectedIndex = 0;
   int _refreshVersion = 0;
+  int _homeEntryVersion = 0;
+  bool _isSyncingRecords = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _importPendingLocationEvents();
+      _syncStartupRecords();
     });
   }
 
@@ -177,44 +191,26 @@ class _DailyPatternShellState extends State<DailyPatternShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _importPendingLocationEvents();
+      _syncStartupRecords();
     }
   }
 
-  Future<void> _importPendingLocationEvents() async {
+  Future<void> _syncStartupRecords() async {
+    if (_isSyncingRecords) return;
+    _isSyncingRecords = true;
     try {
-      final result = await widget.dependencies.importPendingEvents();
-      if (!mounted || result.importedCount == 0) return;
+      final result = await widget.dependencies.syncStartupRecords();
+      if (!mounted || !result.hasChanges) return;
       _refreshAll();
     } catch (_) {
-      // Location import is opportunistic here; daily processing still retries.
+      // Startup sync is opportunistic; the background worker/manual action retries.
+    } finally {
+      _isSyncingRecords = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(
-        dependencies: widget.dependencies,
-        refreshVersion: _refreshVersion,
-        onOpenTodayRecords: _openTodayRecords,
-        onOpenLatestInsight: _openInsightDetail,
-      ),
-      HistoryScreen(
-        database: widget.dependencies.database,
-        refreshVersion: _refreshVersion,
-      ),
-      PlaceManagementScreen(
-        database: widget.dependencies.database,
-        refreshVersion: _refreshVersion,
-        onPlacesChanged: _refreshAll,
-      ),
-      SettingsScreen(
-        dependencies: widget.dependencies,
-        onDataChanged: _refreshAll,
-      ),
-    ];
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -227,37 +223,33 @@ class _DailyPatternShellState extends State<DailyPatternShell>
       child: Scaffold(
         body: SafeArea(
           child: Column(
-            children: [
-              _ShellHeader(
-                dependencies: widget.dependencies,
-                refreshVersion: _refreshVersion,
-              ),
-              Expanded(child: screens[_selectedIndex]),
-            ],
+            children: [Expanded(child: _buildScreen(_selectedIndex))],
           ),
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) {
             setState(() {
+              if (index == 0 && _selectedIndex != 0) {
+                _homeEntryVersion++;
+              }
               _selectedIndex = index;
             });
-            _importPendingLocationEvents();
           },
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
+              icon: Icon(Icons.play_circle_outline_rounded),
+              selectedIcon: Icon(Icons.play_circle_fill_rounded),
               label: '오늘',
             ),
             NavigationDestination(
-              icon: Icon(Icons.timeline_outlined),
-              selectedIcon: Icon(Icons.timeline),
+              icon: Icon(Icons.queue_music_outlined),
+              selectedIcon: Icon(Icons.queue_music_rounded),
               label: '돌아보기',
             ),
             NavigationDestination(
-              icon: Icon(Icons.place_outlined),
-              selectedIcon: Icon(Icons.place),
+              icon: Icon(Icons.album_outlined),
+              selectedIcon: Icon(Icons.album_rounded),
               label: '방문한 곳',
             ),
             NavigationDestination(
@@ -269,6 +261,32 @@ class _DailyPatternShellState extends State<DailyPatternShell>
         ),
       ),
     );
+  }
+
+  Widget _buildScreen(int index) {
+    return switch (index) {
+      0 => HomeScreen(
+        refreshVersion: _refreshVersion,
+        entryVersion: _homeEntryVersion,
+        onOpenTodayRecords: _openTodayRecords,
+        onOpenDayFlow: _openTodayFlow,
+        onOpenLatestInsight: _openInsightDetail,
+      ),
+      1 => HistoryScreen(
+        database: widget.dependencies.database,
+        refreshVersion: _refreshVersion,
+      ),
+      2 => PlaceManagementScreen(
+        database: widget.dependencies.database,
+        refreshVersion: _refreshVersion,
+        onPlacesChanged: _refreshAll,
+      ),
+      3 => SettingsScreen(
+        dependencies: widget.dependencies,
+        onDataChanged: _refreshAll,
+      ),
+      _ => const SizedBox.shrink(),
+    };
   }
 
   Future<bool> _confirmExit() async {
@@ -298,7 +316,10 @@ class _DailyPatternShellState extends State<DailyPatternShell>
     });
   }
 
-  void _openTodayRecords() {
+  void _openTodayRecords(
+    DayActivityPreview preview,
+    Future<DayRouteSnapshot> route,
+  ) {
     final now = DateTime.now();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -309,6 +330,25 @@ class _DailyPatternShellState extends State<DailyPatternShell>
           appBarTitle: '오늘 기록',
           title: '오늘 기록',
           body: '오늘 기기 안에 쌓이고 있는 위치 기록과 머문 곳을 확인해요.',
+          initialPreview: preview,
+          initialRoute: route,
+        ),
+      ),
+    );
+  }
+
+  void _openTodayFlow(
+    DayActivityPreview preview,
+    Future<DayRouteSnapshot> route,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => DayFlowPlaybackScreen(
+          database: widget.dependencies.database,
+          date: DateTime.now(),
+          settingsRepository: widget.dependencies.settingsRepository,
+          initialPreview: preview,
+          initialRoute: route,
         ),
       ),
     );

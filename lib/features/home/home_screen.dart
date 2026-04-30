@@ -1,38 +1,81 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/app_dependencies.dart';
 import '../../app/app_theme.dart';
-import '../../app/responsive_type.dart';
-import '../settings/settings_models.dart';
+import '../../core/geo/coordinate_validation.dart';
+import '../maps/cached_map_snapshot.dart';
+import '../places/place_label.dart';
+import '../processing/location_post_processor.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_activity_preview_repository.dart';
+import '../timeline/day_route_models.dart';
+import '../timeline/day_time_selection.dart';
 import '../timeline/day_timeline_models.dart';
+import 'home_view_model.dart';
 
-class HomeScreen extends StatefulWidget {
+part 'home_album_art.dart';
+part 'home_player_widgets.dart';
+part 'home_timeline_sections.dart';
+
+typedef OpenTodayRecordsCallback =
+    void Function(DayActivityPreview preview, Future<DayRouteSnapshot> route);
+typedef OpenDayFlowCallback =
+    void Function(DayActivityPreview preview, Future<DayRouteSnapshot> route);
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({
     super.key,
-    required this.dependencies,
     required this.refreshVersion,
+    required this.entryVersion,
     this.onOpenTodayRecords,
+    this.onOpenDayFlow,
     this.onOpenLatestInsight,
   });
 
-  final AppDependencies dependencies;
   final int refreshVersion;
-  final VoidCallback? onOpenTodayRecords;
+  final int entryVersion;
+  final OpenTodayRecordsCallback? onOpenTodayRecords;
+  final OpenDayFlowCallback? onOpenDayFlow;
   final ValueChanged<Insight>? onOpenLatestInsight;
 
+  static Future<void> preloadInitialData(
+    AppDependencies dependencies, {
+    required int refreshVersion,
+  }) {
+    return _HomeScreenState.preloadInitialData(
+      dependencies,
+      refreshVersion: refreshVersion,
+    );
+  }
+
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  late Future<_HomeSnapshot> _snapshot;
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int? _selectedRoutePointIndex;
+  Timer? _cheerTimer;
+  bool _cheerVisible = false;
+  String _cheerMessage = _cheerMessages.first;
 
-  @override
-  void initState() {
-    super.initState();
-    _snapshot = _load();
+  static Future<void> preloadInitialData(
+    AppDependencies dependencies, {
+    required int refreshVersion,
+  }) async {
+    final settings = await dependencies.settingsRepository.load();
+    await Future.wait([
+      dependencies.trackingService.isTracking(),
+      loadLatestInsight(dependencies),
+      loadHomePlaces(dependencies),
+      loadTodayPreview(dependencies, settings: settings),
+      loadTodayRouteSnapshot(dependencies),
+    ]);
   }
 
   @override
@@ -40,596 +83,179 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.refreshVersion != widget.refreshVersion) {
       setState(() {
-        _snapshot = _load();
+        _selectedRoutePointIndex = null;
+      });
+    } else if (oldWidget.entryVersion != widget.entryVersion) {
+      setState(() {
+        _selectedRoutePointIndex = null;
       });
     }
   }
 
-  Future<_HomeSnapshot> _load() async {
-    final settings = await widget.dependencies.settingsRepository.load();
-    final isTracking = await widget.dependencies.trackingService.isTracking();
-    final insights = await widget.dependencies.database
-        .select(widget.dependencies.database.insights)
-        .get();
-    final todayPreview = await DayActivityPreviewRepository(
-      widget.dependencies.database,
-    ).loadForDate(DateTime.now(), settings: settings);
-    insights.sort((a, b) => b.date.compareTo(a.date));
-    return _HomeSnapshot(
-      settings: settings,
-      isTracking: isTracking,
-      latestInsight: insights.firstOrNull,
-      todayPreview: todayPreview,
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_HomeSnapshot>(
-      future: _snapshot,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final data = snapshot.data!;
-        final isRecording = data.isTracking || data.settings.trackingEnabled;
-        return ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            _DateHero(isTracking: isRecording),
-            const SizedBox(height: 2),
-            _StatChips(preview: data.todayPreview),
-            const SizedBox(height: 14),
-            _DarkInsightCard(
-              insight: data.latestInsight,
-              onOpen: widget.onOpenLatestInsight,
-            ),
-            _SectionHeader(
-              title: '오늘의 흐름',
-              actionLabel: '전체 보기',
-              onAction: widget.onOpenTodayRecords,
-            ),
-            _DotTimeline(items: data.todayPreview.timeline),
-            const SizedBox(height: 4),
-            _QuickActionCard(onOpen: widget.onOpenTodayRecords),
-            const SizedBox(height: 12),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _DateHero extends StatelessWidget {
-  const _DateHero({required this.isTracking});
-
-  final bool isTracking;
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final weekday = _weekdayLabel(now.weekday);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 14, 22, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '${now.year}년 · $weekday',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-              ),
-              const SizedBox(width: 8),
-              _RecordingPill(isRecording: isTracking),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '${now.day}',
-                style: TextStyle(
-                  fontSize: responsiveTitleFontSize(
-                    context,
-                    58,
-                    minScale: 0.92,
-                    maxScale: 1.14,
-                  ),
-                  fontWeight: FontWeight.w300,
-                  color: AppColors.ink,
-                  height: 1,
-                  letterSpacing: -2,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${now.month}월',
-                    style: TextStyle(
-                      fontSize: responsiveTitleFontSize(context, 19),
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.ink,
-                      height: 1.2,
-                    ),
-                  ),
-                  Text(
-                    weekday,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _cheerTimer?.cancel();
+    super.dispose();
   }
 
-  String _weekdayLabel(int weekday) {
-    return const ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'][weekday - 1];
-  }
-}
-
-class _RecordingPill extends StatelessWidget {
-  const _RecordingPill({required this.isRecording});
-
-  final bool isRecording;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isRecording ? AppColors.paleBlue : AppColors.surface,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: isRecording ? AppColors.blueGrey : AppColors.muted,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              isRecording ? '기록 중' : '기록 쉼',
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatChips extends StatelessWidget {
-  const _StatChips({required this.preview});
-
-  final DayActivityPreview preview;
-
-  @override
-  Widget build(BuildContext context) {
-    final distanceKm = preview.totalDistanceMeters == null
-        ? null
-        : (preview.totalDistanceMeters! / 1000).toStringAsFixed(1);
-    final visits = preview.visitCount;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _Chip(
-            icon: Icons.directions_walk_outlined,
-            value: distanceKm != null ? '${distanceKm}km' : '--',
-            label: '이동',
-          ),
-          _Chip(
-            icon: Icons.place_outlined,
-            value: visits != null ? '$visits곳' : '--',
-            label: '방문',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.icon, required this.value, required this.label});
-
-  final IconData icon;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.muted),
-            const SizedBox(width: 5),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(width: 3),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DarkInsightCard extends StatelessWidget {
-  const _DarkInsightCard({required this.insight, required this.onOpen});
-
-  final Insight? insight;
-  final ValueChanged<Insight>? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: insight == null ? null : () => onOpen?.call(insight!),
-          child: DecoratedBox(
-            decoration: AppThemeDecorations.inkCard(),
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: insight == null
-                  ? const _EmptyInsightBody()
-                  : _FilledInsightBody(insight: insight!),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyInsightBody extends StatelessWidget {
-  const _EmptyInsightBody();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '최근 돌아보기',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.softBlue,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '아직 돌아볼 하루가 없어요',
-          style: TextStyle(
-            fontSize: responsiveTitleFontSize(context, 20),
-            fontWeight: FontWeight.w500,
-            color: AppColors.surface,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '하루 정도 기록이 쌓이면 조용히 정리해드릴게요.',
-          style: TextStyle(fontSize: 13, color: Color(0x99FCFDFE), height: 1.6),
-        ),
-      ],
-    );
-  }
-}
-
-class _FilledInsightBody extends StatelessWidget {
-  const _FilledInsightBody({required this.insight});
-
-  final Insight insight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '최근 돌아보기',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.softBlue,
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          insight.title,
-          style: TextStyle(
-            fontSize: responsiveTitleFontSize(context, 20),
-            fontWeight: FontWeight.w500,
-            color: AppColors.surface,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          insight.body,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0x99FCFDFE),
-            height: 1.6,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                child: Text(
-                  '자세히',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, this.actionLabel, this.onAction});
-
-  final String title;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 18, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (actionLabel != null && onAction != null)
-            TextButton(
-              onPressed: onAction,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.blueGrey,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                actionLabel!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DotTimeline extends StatelessWidget {
-  const _DotTimeline({required this.items});
-
-  final List<DayTimelineItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final visible = items.take(3).toList(growable: false);
-    if (visible.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
-        child: Text(
-          '기록이 쌓이면 오늘 머문 곳이 시간순으로 보여요.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-        ),
-      );
+  void _toggleCheer() {
+    if (_cheerVisible) {
+      _hideCheer();
+      return;
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
-      child: Column(
-        children: [
-          for (var i = 0; i < visible.length; i++)
-            _DotTimelineRow(item: visible[i], isLast: i == visible.length - 1),
-        ],
-      ),
-    );
+    final index = math.Random().nextInt(_cheerMessages.length);
+    _cheerTimer?.cancel();
+    setState(() {
+      _cheerMessage = _cheerMessages[index];
+      _cheerVisible = true;
+    });
+    _cheerTimer = Timer(const Duration(seconds: 3), _hideCheer);
   }
-}
 
-class _DotTimelineRow extends StatelessWidget {
-  const _DotTimelineRow({required this.item, required this.isLast});
-
-  final DayTimelineItem item;
-  final bool isLast;
+  void _hideCheer() {
+    _cheerTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _cheerVisible = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 52,
-            child: Text(
-              item.timeLabel,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    final settings = ref.watch(homeSettingsProvider(widget.refreshVersion));
+    final tracking = ref.watch(homeTrackingProvider(widget.refreshVersion));
+    final latestInsight = ref.watch(
+      homeLatestInsightProvider(widget.refreshVersion),
+    );
+    final places = ref.watch(homePlacesProvider(widget.refreshVersion));
+    final preview = ref.watch(todayPreviewProvider(widget.refreshVersion));
+    final routeSnapshot = ref.watch(
+      todayRouteSnapshotProvider(widget.refreshVersion),
+    );
+    final routeFuture = ref.watch(
+      todayRouteSnapshotProvider(widget.refreshVersion).future,
+    );
+
+    final previewValue = preview.value ?? _emptyTodayPreview;
+    final route = routeSnapshot.value;
+    final knownPlaces = places.value ?? const <PlaceCluster>[];
+    final isRecording =
+        (tracking.value ?? false) || (settings.value?.trackingEnabled ?? false);
+    final selection = _HomeTimeSelection.from(
+      preview: previewValue,
+      route: route,
+      knownPlaces: knownPlaces,
+      selectedIndex: _selectedRoutePointIndex,
+    );
+
+    return ListView(
+      cacheExtent: 2400,
+      padding: const EdgeInsets.only(bottom: 28),
+      children: [
+        const _NowPlayingHeader(),
+        _AlbumArtSection(
+          isRecording: isRecording,
+          route: route,
+          selectedPointIndex: selection.selectedIndex,
+        ),
+        _TrackInfoRow(
+          distanceKm: _distanceLabel(previewValue),
+          placeCount: previewValue.visitCount ?? 0,
+          cheerVisible: _cheerVisible,
+          cheerMessage: _cheerMessage,
+          onCheer: _toggleCheer,
+          isLoading: preview.isLoading,
+        ),
+        _StatsChipRow(preview: previewValue, isLoading: preview.isLoading),
+        const SizedBox(height: 10),
+        _ProgressBar(
+          progress: selection.progress,
+          timeLabel: selection.timeLabel,
+          onTap: widget.onOpenDayFlow == null || !preview.hasValue
+              ? null
+              : () => widget.onOpenDayFlow!(previewValue, routeFuture),
+        ),
+        _ControlsRow(
+          preview: previewValue,
+          route: routeFuture,
+          onOpenTodayRecords: preview.hasValue
+              ? widget.onOpenTodayRecords
+              : null,
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Divider(height: 1, color: AppColors.mpSurface),
+        ),
+        _CurrentLocationCard(item: selection.currentItem),
+        _TodayVisitList(
+          preview: previewValue,
+          route: routeFuture,
+          items: selection.visibleTimeline,
+          onOpen: preview.hasValue ? widget.onOpenTodayRecords : null,
+          isLoading: preview.isLoading,
+        ),
+        _DarkInsightCard(
+          insight: latestInsight.value,
+          onOpen: widget.onOpenLatestInsight,
+        ),
+        if (preview.hasError ||
+            routeSnapshot.hasError ||
+            settings.hasError ||
+            tracking.hasError ||
+            places.hasError ||
+            latestInsight.hasError)
+          _HomePartialError(
+            onRetry: () {
+              ref.invalidate(homeSettingsProvider(widget.refreshVersion));
+              ref.invalidate(homeTrackingProvider(widget.refreshVersion));
+              ref.invalidate(homeLatestInsightProvider(widget.refreshVersion));
+              ref.invalidate(homePlacesProvider(widget.refreshVersion));
+              ref.invalidate(todayPreviewProvider(widget.refreshVersion));
+              ref.invalidate(todayRouteSnapshotProvider(widget.refreshVersion));
+            },
           ),
-          Column(
+      ],
+    );
+  }
+
+  String _distanceLabel(DayActivityPreview preview) {
+    final meters = preview.totalDistanceMeters;
+    if (meters == null) return '--';
+    return '${(meters / 1000).toStringAsFixed(1)}km';
+  }
+}
+
+class _HomePartialError extends StatelessWidget {
+  const _HomePartialError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.mpSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.mpBorder),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.blueGrey,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 1,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: AppColors.border,
+              const Expanded(
+                child: Text(
+                  '일부 기록을 불러오지 못했어요',
+                  style: TextStyle(
+                    color: AppColors.mpTextSub,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+              TextButton(onPressed: onRetry, child: const Text('다시')),
             ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.placeLabel,
-                    style: const TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.durationLabel,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({required this.onOpen});
-
-  final VoidCallback? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onOpen,
-          child: DecoratedBox(
-            decoration: AppThemeDecorations.softCard(color: AppColors.surface),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.article_outlined, color: AppColors.blueGrey),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '오늘 기록',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          '지금 기록된 위치와 머문 곳을 확인해요',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: AppColors.muted),
-                ],
-              ),
-            ),
           ),
         ),
       ),
@@ -637,16 +263,123 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-class _HomeSnapshot {
-  const _HomeSnapshot({
-    required this.settings,
-    required this.isTracking,
-    required this.latestInsight,
-    required this.todayPreview,
+class _HomeTimeSelection {
+  const _HomeTimeSelection({
+    required this.selectedIndex,
+    required this.progress,
+    required this.timeLabel,
+    required this.currentItem,
+    required this.visibleTimeline,
+    required this.isCurrent,
   });
 
-  final AppSettings settings;
-  final bool isTracking;
-  final Insight? latestInsight;
-  final DayActivityPreview todayPreview;
+  final int? selectedIndex;
+  final double progress;
+  final String timeLabel;
+  final DayTimelineItem? currentItem;
+  final List<DayTimelineItem> visibleTimeline;
+  final bool isCurrent;
+
+  factory _HomeTimeSelection.from({
+    required DayActivityPreview preview,
+    required DayRouteSnapshot? route,
+    required List<PlaceCluster> knownPlaces,
+    required int? selectedIndex,
+  }) {
+    final points = route?.points ?? const <DayRoutePoint>[];
+    if (points.isEmpty) {
+      final latest = preview.timeline.isEmpty ? null : preview.timeline.last;
+      return _HomeTimeSelection(
+        selectedIndex: null,
+        progress: progressForTime(DateTime.now()),
+        timeLabel: routeTimeLabel(DateTime.now()),
+        currentItem: latest,
+        visibleTimeline: preview.timeline,
+        isCurrent: true,
+      );
+    }
+
+    final isCurrentMode = selectedIndex == null;
+    final effectiveIndex = isCurrentMode
+        ? points.length - 1
+        : selectedIndex.clamp(0, points.length - 1);
+    final selectedPoint = points[effectiveIndex];
+    final selectedTime = isCurrentMode
+        ? DateTime.now()
+        : selectedPoint.timestamp;
+    final currentItemTime = isCurrentMode
+        ? selectedPoint.timestamp
+        : selectedTime;
+    final visibleTimeline = timelineItemsAtOrBefore(
+      preview.timeline,
+      selectedTime,
+    );
+    final matchingItem = timelineItemAt(preview.timeline, currentItemTime);
+    final knownPlace = _findKnownPlace(
+      selectedPoint: selectedPoint,
+      knownPlaces: knownPlaces,
+    );
+
+    return _HomeTimeSelection(
+      selectedIndex: effectiveIndex,
+      progress: progressForTime(selectedTime),
+      timeLabel: routeTimeLabel(selectedTime),
+      currentItem:
+          matchingItem ??
+          (knownPlace == null
+              ? null
+              : DayTimelineItem(
+                  timeLabel: selectedPoint.timeLabel,
+                  placeLabel: placeLabel(knownPlace),
+                  durationLabel: '현재 위치',
+                  startedAt: currentItemTime,
+                  latitude: selectedPoint.latitude,
+                  longitude: selectedPoint.longitude,
+                  placeClusterId: knownPlace.id,
+                )) ??
+          DayTimelineItem(
+            timeLabel: selectedPoint.timeLabel,
+            placeLabel: '최근 기록 위치',
+            durationLabel: '위치 기록',
+            startedAt: currentItemTime,
+            latitude: selectedPoint.latitude,
+            longitude: selectedPoint.longitude,
+          ),
+      visibleTimeline: visibleTimeline,
+      isCurrent: isCurrentMode,
+    );
+  }
+
+  static PlaceCluster? _findKnownPlace({
+    required DayRoutePoint selectedPoint,
+    required List<PlaceCluster> knownPlaces,
+  }) {
+    return const LocationPostProcessor().findKnownPlace(
+      latitude: selectedPoint.latitude,
+      longitude: selectedPoint.longitude,
+      knownPlaces: knownPlaces,
+    );
+  }
 }
+
+const _webMercatorMaxLatitude = 85.05112878;
+
+const _emptyTodayPreview = DayActivityPreview(
+  totalDistanceMeters: null,
+  movingMinutes: null,
+  visitCount: null,
+  timeline: <DayTimelineItem>[],
+  pointCount: 0,
+  hasData: false,
+);
+
+const _cheerMessages = [
+  '오늘 하루도 잘 부탁해요',
+  '천천히 시작해도 괜찮아요',
+  '잘하고 있어요',
+  '오늘도 한 걸음씩',
+  '이 정도면 충분해요',
+  '오늘 하루 수고했어요',
+  '오늘도 잘 버텼어요',
+  '내일은 또 내일의 하루가 있어요',
+];

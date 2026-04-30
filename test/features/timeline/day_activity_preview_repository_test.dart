@@ -45,8 +45,8 @@ void main() {
 
       expect(preview.visitCount, 1);
       expect(preview.timeline, hasLength(1));
-      expect(preview.timeline.single.placeLabel, '머문 곳');
-      expect(preview.timeline.single.durationLabel, '머문 곳으로 보여요');
+      expect(preview.timeline.single.placeLabel, '새 장소 후보');
+      expect(preview.timeline.single.durationLabel, '저장 가능');
     },
   );
 
@@ -114,7 +114,10 @@ void main() {
       );
 
       expect(preview.visitCount, 2);
-      expect(preview.timeline.map((item) => item.placeLabel), ['학원', '머문 곳']);
+      expect(preview.timeline.map((item) => item.placeLabel), [
+        '학원',
+        '새 장소 후보',
+      ]);
     },
   );
 
@@ -177,6 +180,57 @@ void main() {
       expect(preview.visitCount, 1);
       expect(preview.timeline, hasLength(1));
       expect(preview.timeline.single.placeLabel, '학원');
+    },
+  );
+
+  test(
+    'labels inferred stays with a known place even before daily processing',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final date = DateTime(2026, 4, 28);
+      await database
+          .into(database.placeClusters)
+          .insert(
+            PlaceClustersCompanion.insert(
+              centerLatitude: 35.1596608,
+              centerLongitude: 129.0602568,
+              radiusMeters: 80,
+              displayName: const Value('학원'),
+              createdAt: date,
+              updatedAt: date,
+              visitCount: 1,
+            ),
+          );
+
+      for (final time in [
+        DateTime(2026, 4, 28, 9, 58),
+        DateTime(2026, 4, 28, 10, 8),
+      ]) {
+        await database
+            .into(database.locationPoints)
+            .insert(
+              LocationPointsCompanion.insert(
+                timestamp: time,
+                latitude: 35.1596840,
+                longitude: 129.0602311,
+                accuracy: 5,
+              ),
+            );
+      }
+
+      final preview = await DayActivityPreviewRepository(database).loadForDate(
+        date,
+        settings: AppSettings.defaults().copyWith(
+          minimumMovementMeters: 50,
+          minimumStayMinutes: 5,
+        ),
+      );
+
+      expect(preview.visitCount, 1);
+      expect(preview.timeline, hasLength(1));
+      expect(preview.timeline.single.placeLabel, '학원');
+      expect(preview.timeline.single.canSaveAsPlace, isFalse);
     },
   );
 

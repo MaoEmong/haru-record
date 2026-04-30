@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>19 - Music Player</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, 'Helvetica Neue', sans-serif; }
+
+.phone { width: 390px; height: 844px; background: #0D0D0D; border-radius: 50px; box-shadow: 0 40px 100px rgba(0,0,0,0.9); overflow: hidden; display: flex; flex-direction: column; }
+.notch { width: 120px; height: 34px; background: #0D0D0D; border-radius: 0 0 20px 20px; position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; }
+.screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Status */
+.status { padding: 48px 24px 0; display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #888; }
+
+/* Tab pages */
+.tab-page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.tab-page.active { display: flex; }
+
+/* ── TAB 0: NOW PLAYING ── */
+.now-playing { flex: 1; display: flex; flex-direction: column; padding: 16px 24px 0; overflow: hidden; }
+
+/* Album art */
+.album-art { width: 260px; height: 260px; border-radius: 16px; background: linear-gradient(135deg, #1a3a1a, #2d6a2d); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 60px rgba(29,185,84,0.3); position: relative; overflow: hidden; flex-shrink: 0; }
+.album-art-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #0A2A0A 0%, #1A4A1A 40%, #0D380D 100%); }
+.album-map { font-size: 64px; }
+.album-date { font-size: 12px; font-weight: 700; color: #1DB954; letter-spacing: 2px; margin-top: 8px; }
+.album-places { font-size: 10px; color: #5A8A5A; margin-top: 4px; }
+
+/* Track info */
+.track-info { text-align: center; margin-bottom: 16px; flex-shrink: 0; }
+.track-title { font-size: 20px; font-weight: 700; color: #fff; }
+.track-artist { font-size: 14px; color: #888; margin-top: 4px; }
+
+.track-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-shrink: 0; }
+.heart-btn { font-size: 20px; color: #1DB954; }
+.dots-btn { font-size: 20px; color: #888; }
+
+/* Waveform */
+.waveform { height: 44px; display: flex; align-items: center; gap: 2px; margin-bottom: 8px; flex-shrink: 0; overflow: hidden; }
+.wave-bar { flex: 1; border-radius: 2px; transition: height 0.3s ease; }
+
+/* Progress */
+.progress-wrap { margin-bottom: 16px; flex-shrink: 0; }
+.progress-bar { height: 4px; background: #333; border-radius: 2px; margin-bottom: 6px; position: relative; }
+.progress-fill { height: 100%; border-radius: 2px; background: #fff; width: 35%; }
+.progress-knob { width: 12px; height: 12px; background: #fff; border-radius: 50%; position: absolute; top: -4px; left: 35%; transform: translateX(-50%); box-shadow: 0 0 6px rgba(255,255,255,0.5); }
+.progress-times { display: flex; justify-content: space-between; font-size: 11px; color: #888; font-weight: 600; }
+
+/* Controls */
+.controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-shrink: 0; }
+.ctrl-btn { font-size: 22px; color: #888; cursor: pointer; }
+.ctrl-btn.primary { font-size: 48px; color: #fff; }
+.ctrl-btn.active { color: #1DB954; }
+
+/* Volume */
+.volume-row { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.vol-icon { font-size: 14px; color: #888; }
+.vol-bar { flex: 1; height: 4px; background: #333; border-radius: 2px; }
+.vol-fill { height: 100%; background: #888; border-radius: 2px; width: 70%; }
+
+/* ── TAB 1: QUEUE / HISTORY ── */
+.queue-header { padding: 20px 24px 12px; flex-shrink: 0; }
+.queue-title { font-size: 22px; font-weight: 700; color: #fff; }
+.queue-sub { font-size: 13px; color: #888; margin-top: 2px; }
+
+.queue-list { flex: 1; overflow-y: auto; padding: 0 24px; display: flex; flex-direction: column; gap: 2px; }
+.queue-list::-webkit-scrollbar { display: none; }
+
+.queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1A1A1A; }
+.qi-art { width: 48px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, #1a3a1a, #2d6a2d); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.qi-info { flex: 1; }
+.qi-title { font-size: 14px; font-weight: 600; color: #fff; }
+.qi-artist { font-size: 12px; color: #888; margin-top: 2px; }
+.qi-duration { font-size: 12px; color: #888; }
+.qi-playing { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
+.qi-bar { width: 3px; background: #1DB954; border-radius: 2px; }
+
+/* ── TAB 2: PLACES ── */
+.places-header { padding: 20px 24px 12px; flex-shrink: 0; }
+.places-title { font-size: 22px; font-weight: 700; color: #fff; }
+
+.places-list { flex: 1; overflow-y: auto; padding: 0 24px; display: flex; flex-direction: column; gap: 2px; }
+.places-list::-webkit-scrollbar { display: none; }
+.place-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #1A1A1A; }
+.pi-icon { width: 48px; height: 48px; border-radius: 50%; background: #1A1A1A; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.pi-name { font-size: 15px; font-weight: 600; color: #fff; }
+.pi-visits { font-size: 12px; color: #888; margin-top: 2px; }
+.pi-mini-bar { width: 60px; margin-left: auto; }
+.pi-mini-track { height: 3px; background: #333; border-radius: 2px; margin-bottom: 4px; }
+.pi-mini-fill { height: 100%; border-radius: 2px; background: #1DB954; }
+.pi-pct { font-size: 11px; color: #1DB954; text-align: right; font-weight: 600; }
+
+/* ── TAB 3: SETTINGS ── */
+.settings-content { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 6px; }
+.settings-content::-webkit-scrollbar { display: none; }
+.settings-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.setting-row { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid #1A1A1A; }
+.sr-label { font-size: 15px; color: #fff; font-weight: 500; flex: 1; }
+.sr-sub { font-size: 12px; color: #888; margin-top: 2px; }
+.sr-toggle-on { width: 44px; height: 26px; background: #1DB954; border-radius: 13px; position: relative; flex-shrink: 0; }
+.sr-toggle-on::after { content:''; position:absolute; right:2px; top:2px; width:22px; height:22px; background:#fff; border-radius:50%; }
+.sr-toggle-off { width: 44px; height: 26px; background: #333; border-radius: 13px; position: relative; flex-shrink: 0; }
+.sr-toggle-off::after { content:''; position:absolute; left:2px; top:2px; width:22px; height:22px; background:#888; border-radius:50%; }
+.sr-value { font-size: 13px; color: #888; }
+
+/* Bottom nav */
+.bottom-nav { height: 72px; background: #0D0D0D; border-top: 1px solid #1A1A1A; display: flex; flex-shrink: 0; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.nav-icon { font-size: 22px; color: #555; }
+.nav-icon.active { color: #1DB954; }
+.nav-label { font-size: 11px; font-weight: 600; color: #555; }
+.nav-label.active { color: #1DB954; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <div class="status">
+      <span>9:41</span>
+      <span>●●● 100%</span>
+    </div>
+
+    <!-- Tab 0: Now Playing -->
+    <div class="tab-page active" id="tab-0">
+      <div class="now-playing">
+        <div class="album-art">
+          <div class="album-art-inner">
+            <div class="album-map">🗺️</div>
+            <div class="album-date">APR 28</div>
+            <div class="album-places">집 · 카페 · 회사 · 마트</div>
+          </div>
+        </div>
+
+        <div class="track-info">
+          <div class="track-title">오늘의 하루</div>
+          <div class="track-artist">12.4 km · 4 places · 기록 중</div>
+        </div>
+
+        <div class="track-actions">
+          <div class="heart-btn">♥</div>
+          <div class="dots-btn">•••</div>
+        </div>
+
+        <!-- Waveform visualization -->
+        <div class="waveform" id="waveform"></div>
+
+        <!-- Progress -->
+        <div class="progress-wrap">
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+            <div class="progress-knob"></div>
+          </div>
+          <div class="progress-times">
+            <span>09:41</span>
+            <span>23:59</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+          <div class="ctrl-btn active">⇄</div>
+          <div class="ctrl-btn">⏮</div>
+          <div class="ctrl-btn primary">⏸</div>
+          <div class="ctrl-btn">⏭</div>
+          <div class="ctrl-btn">↻</div>
+        </div>
+
+        <!-- Volume -->
+        <div class="volume-row">
+          <div class="vol-icon">🔈</div>
+          <div class="vol-bar"><div class="vol-fill"></div></div>
+          <div class="vol-icon">🔊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 1: History queue -->
+    <div class="tab-page" id="tab-1">
+      <div class="queue-header">
+        <div class="queue-title">돌아보기</div>
+        <div class="queue-sub">지난 하루들</div>
+      </div>
+      <div class="queue-list">
+        <!-- Currently playing -->
+        <div class="queue-item">
+          <div class="qi-art">🗺️</div>
+          <div class="qi-info">
+            <div class="qi-title" style="color:#1DB954;">오늘의 하루</div>
+            <div class="qi-artist" style="color:#1DB954;">4월 28일 · 12.4 km</div>
+          </div>
+          <div class="qi-playing">
+            <div class="qi-bar" style="height:8px;animation:bar1 0.8s ease-in-out infinite alternate;"></div>
+            <div class="qi-bar" style="height:14px;animation:bar2 0.7s ease-in-out infinite alternate;"></div>
+            <div class="qi-bar" style="height:6px;animation:bar3 0.9s ease-in-out infinite alternate;"></div>
+          </div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-art">🏠</div>
+          <div class="qi-info">
+            <div class="qi-title">집에서 여유로운 하루</div>
+            <div class="qi-artist">4월 27일 · 2.1 km</div>
+          </div>
+          <div class="qi-duration">2:10</div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-art">🌿</div>
+          <div class="qi-info">
+            <div class="qi-title">서울숲 봄 산책</div>
+            <div class="qi-artist">4월 26일 · 8.7 km</div>
+          </div>
+          <div class="qi-duration">8:42</div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-art">💼</div>
+          <div class="qi-info">
+            <div class="qi-title">바쁜 금요일</div>
+            <div class="qi-artist">4월 25일 · 15.2 km</div>
+          </div>
+          <div class="qi-duration">15:12</div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-art">🚶</div>
+          <div class="qi-info">
+            <div class="qi-title">평범한 출퇴근</div>
+            <div class="qi-artist">4월 24일 · 11.3 km</div>
+          </div>
+          <div class="qi-duration">11:18</div>
+        </div>
+        <div class="queue-item">
+          <div class="qi-art">☕</div>
+          <div class="qi-info">
+            <div class="qi-title">재택 근무 + 카페</div>
+            <div class="qi-artist">4월 23일 · 4.2 km</div>
+          </div>
+          <div class="qi-duration">4:12</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Places -->
+    <div class="tab-page" id="tab-2">
+      <div class="places-header">
+        <div class="places-title">방문한 곳</div>
+      </div>
+      <div class="places-list">
+        <div class="place-item">
+          <div class="pi-icon">🏠</div>
+          <div>
+            <div class="pi-name">집</div>
+            <div class="pi-visits">98회 · 평균 14h</div>
+          </div>
+          <div class="pi-mini-bar">
+            <div class="pi-mini-track"><div class="pi-mini-fill" style="width:100%"></div></div>
+            <div class="pi-pct">98%</div>
+          </div>
+        </div>
+        <div class="place-item">
+          <div class="pi-icon">💼</div>
+          <div>
+            <div class="pi-name">회사</div>
+            <div class="pi-visits">65회 · 평균 8.5h</div>
+          </div>
+          <div class="pi-mini-bar">
+            <div class="pi-mini-track"><div class="pi-mini-fill" style="width:66%"></div></div>
+            <div class="pi-pct">66%</div>
+          </div>
+        </div>
+        <div class="place-item">
+          <div class="pi-icon">☕</div>
+          <div>
+            <div class="pi-name">카페</div>
+            <div class="pi-visits">34회 · 평균 1.7h</div>
+          </div>
+          <div class="pi-mini-bar">
+            <div class="pi-mini-track"><div class="pi-mini-fill" style="width:35%"></div></div>
+            <div class="pi-pct">35%</div>
+          </div>
+        </div>
+        <div class="place-item">
+          <div class="pi-icon">🛒</div>
+          <div>
+            <div class="pi-name">마트</div>
+            <div class="pi-visits">12회 · 평균 45m</div>
+          </div>
+          <div class="pi-mini-bar">
+            <div class="pi-mini-track"><div class="pi-mini-fill" style="width:12%"></div></div>
+            <div class="pi-pct">12%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Settings -->
+    <div class="tab-page" id="tab-3">
+      <div class="settings-content">
+        <div class="settings-title">설정</div>
+        <div class="setting-row">
+          <div>
+            <div class="sr-label">위치 기록</div>
+            <div class="sr-sub">백그라운드 추적</div>
+          </div>
+          <div class="sr-toggle-on"></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="sr-label">음질 (시각화)</div>
+            <div class="sr-sub">고해상도 파형</div>
+          </div>
+          <div class="sr-toggle-on"></div>
+        </div>
+        <div class="setting-row">
+          <div>
+            <div class="sr-label">알림</div>
+            <div class="sr-sub">인사이트 push</div>
+          </div>
+          <div class="sr-toggle-off"></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">테마</div></div>
+          <div class="sr-value">Dark ›</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">데이터 내보내기</div></div>
+          <div class="sr-value">CSV ›</div>
+        </div>
+        <div class="setting-row">
+          <div><div class="sr-label">계정</div></div>
+          <div class="sr-value">› </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="switchTab(0)">
+        <div class="nav-icon active" id="icon-0">▶️</div>
+        <div class="nav-label active" id="label-0">오늘</div>
+      </div>
+      <div class="nav-item" onclick="switchTab(1)">
+        <div class="nav-icon" id="icon-1">📋</div>
+        <div class="nav-label" id="label-1">기록</div>
+      </div>
+      <div class="nav-item" onclick="switchTab(2)">
+        <div class="nav-icon" id="icon-2">📍</div>
+        <div class="nav-label" id="label-2">장소</div>
+      </div>
+      <div class="nav-item" onclick="switchTab(3)">
+        <div class="nav-icon" id="icon-3">⚙️</div>
+        <div class="nav-label" id="label-3">설정</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes bar1 { from{height:4px} to{height:16px} }
+@keyframes bar2 { from{height:10px} to{height:4px} }
+@keyframes bar3 { from{height:8px} to{height:20px} }
+</style>
+
+<script>
+// Generate waveform bars
+const wf = document.getElementById('waveform');
+const heights = [8,14,22,18,30,24,16,28,20,12,26,32,18,22,14,28,20,16,24,30,18,12,22,16,28,20,14,26,18,24,20,16,28,22,14,18,26,20,16,24];
+heights.forEach((h, i) => {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  const played = i < heights.length * 0.35;
+  bar.style.cssText = `height:${h}px;background:${played?'#fff':'#333'};animation:waveAnim${i%4} ${0.8+Math.random()*0.6}s ease-in-out infinite alternate;`;
+  wf.appendChild(bar);
+});
+
+// Inject wave animations
+const style = document.createElement('style');
+for (let k=0;k<4;k++) {
+  const lo = 60+Math.random()*20, hi = 100+Math.random()*30;
+  style.textContent += `@keyframes waveAnim${k}{from{transform:scaleY(0.6)}to{transform:scaleY(1)}}`;
+}
+document.head.appendChild(style);
+
+function switchTab(i) {
+  document.querySelectorAll('.tab-page').forEach((t,j) => t.classList.toggle('active',j===i));
+  for (let j=0;j<4;j++) {
+    const a=j===i;
+    document.getElementById('icon-'+j).className='nav-icon'+(a?' active':'');
+    document.getElementById('label-'+j).className='nav-label'+(a?' active':'');
+  }
+}
+</script>
+</body>
+</html>
