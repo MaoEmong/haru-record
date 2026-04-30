@@ -381,6 +381,43 @@ void main() {
     expect(route.points.any((point) => point.latitude > 35.19), isFalse);
   });
 
+  test(
+    'removes a short multi-point gps excursion that returns to the same area',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final date = DateTime(2026, 4, 26);
+      final start = DateTime(2026, 4, 26, 9);
+
+      for (final (seconds, latitude, longitude, speed) in [
+        (0, 35.15960, 129.06020, 0.1),
+        (10, 35.15964, 129.06024, 0.2),
+        (20, 35.16220, 129.06300, 4.2),
+        (30, 35.16235, 129.06310, 4.5),
+        (40, 35.15966, 129.06026, 0.2),
+        (50, 35.15968, 129.06028, 0.1),
+      ]) {
+        await database
+            .into(database.locationPoints)
+            .insert(
+              LocationPointsCompanion.insert(
+                timestamp: start.add(Duration(seconds: seconds)),
+                latitude: latitude,
+                longitude: longitude,
+                accuracy: 12,
+                speed: Value(speed),
+              ),
+            );
+      }
+
+      final route = await DayRouteRepository(database).loadForDate(date);
+
+      expect(route.rawPointCount, 6);
+      expect(route.points.any((point) => point.latitude > 35.162), isFalse);
+      expect(route.points, hasLength(1));
+    },
+  );
+
   test('keeps a fast but consistent moving route', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
