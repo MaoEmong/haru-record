@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/insights/insight_models.dart';
-import 'package:projectapp_1/features/insights/insight_narrator.dart';
-import 'package:projectapp_1/features/insights/pattern_analysis_models.dart';
+import 'package:haru_record/features/insights/insight_models.dart';
+import 'package:haru_record/features/insights/insight_narrator.dart';
+import 'package:haru_record/features/insights/pattern_analysis_models.dart';
 
 void main() {
   test('rule based narrator produces non-empty movement copy', () {

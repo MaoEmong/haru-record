@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/notifications/notification_service.dart';
+import 'package:haru_record/features/notifications/notification_service.dart';
 
 void main() {
   test('schedules daily insight notification at configured time', () async {

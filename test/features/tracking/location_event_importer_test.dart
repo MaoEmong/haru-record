@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/tracking/location_event_importer.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/tracking/location_event_importer.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

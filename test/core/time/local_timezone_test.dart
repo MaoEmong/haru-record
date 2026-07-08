@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/core/time/local_timezone.dart';
+import 'package:haru_record/core/time/local_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 void main() {

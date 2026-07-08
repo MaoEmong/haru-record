@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/settings/settings_models.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/timeline/day_activity_preview_repository.dart';
+import 'package:haru_record/features/settings/settings_models.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/timeline/day_activity_preview_repository.dart';
 
 void main() {
   test(

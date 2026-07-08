@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/timeline/day_route_models.dart';
-import 'package:projectapp_1/features/timeline/day_time_selection.dart';
+import 'package:haru_record/features/timeline/day_route_models.dart';
+import 'package:haru_record/features/timeline/day_time_selection.dart';
 
 void main() {
   test('playback window uses current time for today', () {

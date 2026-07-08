@@ -1,5 +1,5 @@
-name: projectapp_1
-description: "A new Flutter project."
+name: haru_record
+description: "위치 기반 하루 기록 앱"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

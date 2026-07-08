@@ -2,16 +2,16 @@
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/app/app_dependencies.dart';
-import 'package:projectapp_1/features/background/daily_insight_worker.dart';
-import 'package:projectapp_1/features/notifications/notification_service.dart';
-import 'package:projectapp_1/features/permissions/app_permission_service.dart';
-import 'package:projectapp_1/features/settings/settings_models.dart';
-import 'package:projectapp_1/features/settings/settings_repository.dart';
-import 'package:projectapp_1/features/storage/app_maintenance_service.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/tracking/location_event_importer.dart';
-import 'package:projectapp_1/features/tracking/location_tracking_service.dart';
+import 'package:haru_record/app/app_dependencies.dart';
+import 'package:haru_record/features/background/daily_insight_worker.dart';
+import 'package:haru_record/features/notifications/notification_service.dart';
+import 'package:haru_record/features/permissions/app_permission_service.dart';
+import 'package:haru_record/features/settings/settings_models.dart';
+import 'package:haru_record/features/settings/settings_repository.dart';
+import 'package:haru_record/features/storage/app_maintenance_service.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/tracking/location_event_importer.dart';
+import 'package:haru_record/features/tracking/location_tracking_service.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 

@@ -1,8 +1,8 @@
 // ignore_for_file: depend_on_referenced_packages
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/settings/settings_models.dart';
-import 'package:projectapp_1/features/settings/settings_repository.dart';
+import 'package:haru_record/features/settings/settings_models.dart';
+import 'package:haru_record/features/settings/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';

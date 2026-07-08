@@ -1,7 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/storage/retention_service.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/storage/retention_service.dart';
 
 void main() {
   late AppDatabase database;
