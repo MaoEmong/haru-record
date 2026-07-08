@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/timeline/day_route_repository.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/timeline/day_route_repository.dart';
 
 void main() {
   test('returns ordered route points and visits for a day', () async {

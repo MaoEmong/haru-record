@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/settings/settings_models.dart';
-import 'package:projectapp_1/features/tracking/platform_location_tracking_service.dart';
+import 'package:haru_record/features/settings/settings_models.dart';
+import 'package:haru_record/features/tracking/platform_location_tracking_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

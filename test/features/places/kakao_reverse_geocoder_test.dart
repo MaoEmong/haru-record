@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/places/kakao_reverse_geocoder.dart';
+import 'package:haru_record/features/places/kakao_reverse_geocoder.dart';
 
 void main() {
   test('parses road and land-lot address from Kakao coord2address', () async {

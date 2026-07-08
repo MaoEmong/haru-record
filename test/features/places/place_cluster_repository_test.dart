@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/places/place_cluster_repository.dart';
-import 'package:projectapp_1/features/places/place_address.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
+import 'package:haru_record/features/places/place_cluster_repository.dart';
+import 'package:haru_record/features/places/place_address.dart';
+import 'package:haru_record/features/storage/app_database.dart';
 
 void main() {
   test('creates a new place cluster when no nearby cluster exists', () async {

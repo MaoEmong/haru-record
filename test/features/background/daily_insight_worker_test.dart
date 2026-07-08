@@ -1,10 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/background/daily_insight_worker.dart';
-import 'package:projectapp_1/features/notifications/notification_service.dart';
-import 'package:projectapp_1/features/settings/settings_models.dart';
-import 'package:projectapp_1/features/storage/app_database.dart';
-import 'package:projectapp_1/features/tracking/location_event_importer.dart';
+import 'package:haru_record/features/background/daily_insight_worker.dart';
+import 'package:haru_record/features/notifications/notification_service.dart';
+import 'package:haru_record/features/settings/settings_models.dart';
+import 'package:haru_record/features/storage/app_database.dart';
+import 'package:haru_record/features/tracking/location_event_importer.dart';
 
 void main() {
   test('registers daily insight worker as a periodic task', () async {

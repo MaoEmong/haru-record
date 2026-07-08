@@ -1,6 +1,6 @@
-package com.example.projectapp_1
+package com.maoemong.harurecord
 
-import com.example.projectapp_1.tracking.TrackingMethodChannel
+import com.maoemong.harurecord.tracking.TrackingMethodChannel
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

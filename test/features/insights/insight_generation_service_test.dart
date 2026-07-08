@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/analysis/daily_summary_service.dart';
-import 'package:projectapp_1/features/insights/insight_generation_service.dart';
-import 'package:projectapp_1/features/insights/insight_models.dart';
-import 'package:projectapp_1/features/insights/insight_narrator.dart';
-import 'package:projectapp_1/features/insights/pattern_analysis_models.dart';
+import 'package:haru_record/features/analysis/daily_summary_service.dart';
+import 'package:haru_record/features/insights/insight_generation_service.dart';
+import 'package:haru_record/features/insights/insight_models.dart';
+import 'package:haru_record/features/insights/insight_narrator.dart';
+import 'package:haru_record/features/insights/pattern_analysis_models.dart';
 
 void main() {
   test('generates lower movement insight against baseline', () {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/core/geo/geo_math.dart';
+import 'package:haru_record/core/geo/geo_math.dart';
 
 void main() {
   test('distanceMeters returns near-zero for identical coordinates', () {

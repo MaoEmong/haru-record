@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/analysis/daily_summary_service.dart';
+import 'package:haru_record/features/analysis/daily_summary_service.dart';
 
 void main() {
   test('summarizes visits into stationary minutes and visit count', () {

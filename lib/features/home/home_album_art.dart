@@ -172,7 +172,7 @@ class _RouteAlbumMap extends StatelessWidget {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.example.projectapp_1',
+            userAgentPackageName: 'com.maoemong.harurecord',
           ),
           PolylineLayer(
             polylines: [
@@ -240,7 +240,7 @@ class _SinglePointAlbumMap extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.projectapp_1',
+              userAgentPackageName: 'com.maoemong.harurecord',
             ),
             MarkerLayer(
               markers: [

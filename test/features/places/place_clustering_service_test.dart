@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:projectapp_1/features/places/place_clustering_service.dart';
+import 'package:haru_record/features/places/place_clustering_service.dart';
 
 void main() {
   test('creates a visit when points stay near the same place long enough', () {
