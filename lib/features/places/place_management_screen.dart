@@ -778,6 +778,7 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
 
 /// 장소 편집 다이얼로그의 가로 사진 갤러리.
 /// 기존 사진 + 이번에 고른 사진을 보여주고, 각각 X로 뺄 수 있다.
+/// 썸네일을 탭하면 전체화면 뷰어가 열린다.
 class _PhotoStrip extends StatelessWidget {
   const _PhotoStrip({
     required this.existingPhotos,
@@ -797,18 +798,37 @@ class _PhotoStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final allPaths = [
+      for (final photo in existingPhotos) photo.filePath,
+      for (final file in addedPhotos) file.path,
+    ];
+    void view(int index) {
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) =>
+              _PlacePhotoViewer(paths: allPaths, initialIndex: index),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 68,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          for (final photo in existingPhotos)
+          for (final (index, photo) in existingPhotos.indexed)
             _PhotoThumb(
               path: photo.filePath,
+              onTap: () => view(index),
               onRemove: () => onRemoveExisting(photo),
             ),
-          for (final file in addedPhotos)
-            _PhotoThumb(path: file.path, onRemove: () => onRemoveAdded(file)),
+          for (final (index, file) in addedPhotos.indexed)
+            _PhotoThumb(
+              path: file.path,
+              onTap: () => view(existingPhotos.length + index),
+              onRemove: () => onRemoveAdded(file),
+            ),
           _AddPhotoTile(
             key: const ValueKey('place-photo-camera'),
             icon: Icons.photo_camera_outlined,
@@ -825,10 +845,81 @@ class _PhotoStrip extends StatelessWidget {
   }
 }
 
+/// 전체화면 사진 뷰어. 좌우 스와이프로 넘기고 핀치로 확대한다.
+class _PlacePhotoViewer extends StatefulWidget {
+  const _PlacePhotoViewer({required this.paths, required this.initialIndex});
+
+  final List<String> paths;
+  final int initialIndex;
+
+  @override
+  State<_PlacePhotoViewer> createState() => _PlacePhotoViewerState();
+}
+
+class _PlacePhotoViewerState extends State<_PlacePhotoViewer> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.paths.length}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.paths.length,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            maxScale: 5,
+            child: Center(
+              child: Image.file(
+                File(widget.paths[index]),
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white38,
+                  size: 64,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _PhotoThumb extends StatelessWidget {
-  const _PhotoThumb({required this.path, required this.onRemove});
+  const _PhotoThumb({
+    required this.path,
+    required this.onTap,
+    required this.onRemove,
+  });
 
   final String path;
+  final VoidCallback onTap;
   final VoidCallback onRemove;
 
   @override
@@ -837,20 +928,23 @@ class _PhotoThumb extends StatelessWidget {
       padding: const EdgeInsets.only(right: 8),
       child: Stack(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(
-              File(path),
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
+          GestureDetector(
+            onTap: onTap,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(path),
                 width: 64,
                 height: 64,
-                color: AppColors.mpSurface,
-                child: const Icon(
-                  Icons.broken_image_outlined,
-                  color: AppColors.mpTextSub,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: 64,
+                  height: 64,
+                  color: AppColors.mpSurface,
+                  child: const Icon(
+                    Icons.broken_image_outlined,
+                    color: AppColors.mpTextSub,
+                  ),
                 ),
               ),
             ),
