@@ -41,6 +41,7 @@ void main() {
     expect(find.text('돌아보기'), findsOneWidget);
     expect(find.text('방문한 곳'), findsOneWidget);
     expect(find.text('설정'), findsOneWidget);
+    await _revealHomeItem(tester, '아직 돌아볼 하루가 없어요');
     expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
   });
 
@@ -113,8 +114,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('1.2km'), findsOneWidget);
-    expect(find.text('2곳'), findsOneWidget);
+    await _revealHomeItem(tester, '1.2km · 2곳 방문');
+    expect(find.text('1.2km · 2곳 방문'), findsOneWidget);
     expect(find.textContaining('분'), findsNothing);
   });
 
@@ -151,10 +152,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('1.1km'), findsOneWidget);
-    expect(find.text('0곳'), findsOneWidget);
-    expect(find.textContaining('분'), findsNothing);
-    expect(find.text('최근 위치 기록'), findsOneWidget);
+    await _revealHomeItem(tester, '1.1km · 0곳 방문');
+    expect(find.text('1.1km · 0곳 방문'), findsOneWidget);
+    await _revealHomeItem(tester, '최근 기록 위치');
+    expect(find.text('현재 위치'), findsOneWidget);
+    expect(find.text('최근 기록 위치'), findsOneWidget);
   });
 
   testWidgets('app imports pending native location events on startup', (
@@ -191,6 +193,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(imported, isTrue);
+    await _revealHomeItem(tester, '오늘 기록');
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
@@ -234,9 +237,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('오늘의 흐름'), findsOneWidget);
-    expect(find.text('집 근처'), findsOneWidget);
-    expect(find.text('머문 기록'), findsOneWidget);
+    await _revealHomeItem(tester, '오늘 방문한 곳');
+    expect(find.text('오늘 방문한 곳'), findsOneWidget);
+    expect(find.text('집 근처'), findsWidgets);
+    expect(find.text('머문 기록'), findsWidgets);
   });
 
   testWidgets('home recent reflection opens the reflection detail', (
@@ -263,8 +267,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -140));
-    await tester.pumpAndSettle();
+    await _revealHomeItem(tester, '어제는 조금 조용한 하루였어요');
     await tester.tap(find.text('어제는 조금 조용한 하루였어요'));
     await tester.pumpAndSettle();
 
@@ -293,6 +296,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _revealHomeItem(tester, '오늘 기록');
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
@@ -327,6 +331,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _revealHomeItem(tester, '오늘 기록');
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
 
@@ -334,9 +339,9 @@ void main() {
     await tester.scrollUntilVisible(find.text('하루 요약'), 300);
     expect(find.text('방문 0곳'), findsOneWidget);
     expect(find.textContaining('움직임'), findsNothing);
-    await tester.scrollUntilVisible(find.text('최근 위치 기록'), 300);
-    expect(find.text('최근 위치 기록'), findsOneWidget);
-    expect(find.textContaining('위치 기록 2개 · 머문 곳은 판단 중'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('장소 흐름'), 300);
+    expect(find.text('장소 흐름'), findsOneWidget);
+    expect(find.textContaining('최근 위치 · 분석 중'), findsOneWidget);
   });
 
   testWidgets('today inferred stay can be saved as a visited place', (
@@ -384,9 +389,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _revealHomeItem(tester, '오늘 기록');
     await tester.tap(find.text('오늘 기록'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('장소 흐름'), 300);
+    await tester.scrollUntilVisible(find.text('저장'), 300);
     await tester.tap(find.text('저장').last);
     await tester.pumpAndSettle();
 
@@ -420,9 +426,10 @@ void main() {
     await tester.tap(find.text('돌아보기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('이런 식으로 하루가 정리돼요'), findsOneWidget);
-    expect(find.text('예시'), findsWidgets);
-    expect(find.text('어제는 조금 조용한 하루였어요'), findsOneWidget);
+    expect(find.text('아직 재생할 하루가 없어요'), findsOneWidget);
+    expect(find.text('오늘 위치 기록이 쌓이면 내일 아침에 하루가 정리돼요.'), findsOneWidget);
+    expect(find.text('하루가 끝나면 여기에 쌓여요'), findsOneWidget);
+    expect(find.text('기록이 모이면 조용히 정리돼요'), findsOneWidget);
   });
 
   testWidgets('empty places shows example frequent place cards', (
@@ -439,17 +446,15 @@ void main() {
     await tester.tap(find.text('방문한 곳'));
     await tester.pumpAndSettle();
 
-    expect(find.text('방문한 곳은 이렇게 보여요'), findsOneWidget);
+    expect(find.text('아직 라이브러리가 비어 있어요'), findsOneWidget);
     expect(
-      find.text(
-        '머문 위치가 생기면 이곳에 방문한 곳으로 모아요. 가까운 위치는 같은 장소로 묶고, 이름은 눌러서 바꿀 수 있어요.',
-      ),
+      find.text('오늘 기록에서 머문 곳을 저장하면 자주 간 장소와 이름 없는 곳이 이곳에 모여요.'),
       findsOneWidget,
     );
     expect(find.text('방문한 곳'), findsWidgets);
-    expect(find.text('서울 중구 세종대로 근처'), findsOneWidget);
-    expect(find.text('카페로 이름 바꾼 곳'), findsOneWidget);
-    expect(find.byKey(const ValueKey('place-map--101')), findsOneWidget);
+    expect(find.text('이렇게 모여요'), findsOneWidget);
+    expect(find.text('자주 머문 곳'), findsOneWidget);
+    expect(find.text('이름 없는 곳'), findsOneWidget);
   });
 
   testWidgets('frequent places show map context for each place', (
@@ -1028,10 +1033,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('settings-diagnostics-summary')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('settings-status-area')), findsOneWidget);
     expect(find.textContaining('위치 1개'), findsNothing);
     expect(find.textContaining('방문 0개'), findsOneWidget);
     expect(find.textContaining('돌아보기 0개'), findsOneWidget);
@@ -1075,6 +1077,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _revealHomeItem(tester, '아직 돌아볼 하루가 없어요');
     expect(find.text('아직 돌아볼 하루가 없어요'), findsOneWidget);
 
     await tester.tap(find.text('설정'));
@@ -1086,6 +1089,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(processingRuns, 1);
+    await _revealHomeItem(tester, '어제는 조금 조용한 하루였어요');
     expect(find.text('어제는 조금 조용한 하루였어요'), findsOneWidget);
   });
 
@@ -1280,6 +1284,14 @@ void main() {
     expect(settings.notificationEnabled, isFalse);
     expect(find.text('돌아보기 알림을 받으려면 알림 권한이 필요해요'), findsOneWidget);
   });
+}
+
+/// Scrolls the home list until [text] is on screen. The music player home
+/// layout puts most content below the album art, outside the initial
+/// viewport, so finders need the item scrolled into view first.
+Future<void> _revealHomeItem(WidgetTester tester, String text) async {
+  await tester.ensureVisible(find.text(text, skipOffstage: false));
+  await tester.pumpAndSettle();
 }
 
 AppDependencies _testDependencies(
