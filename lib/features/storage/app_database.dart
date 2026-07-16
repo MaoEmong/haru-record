@@ -24,6 +24,7 @@ class PlaceClusters extends Table {
   TextColumn get roadAddressName => text().nullable()();
   TextColumn get regionName => text().nullable()();
   DateTimeColumn get addressResolvedAt => dateTime().nullable()();
+  TextColumn get photoPath => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   IntColumn get visitCount => integer()();
@@ -80,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -93,6 +94,9 @@ class AppDatabase extends _$AppDatabase {
           placeClusters,
           placeClusters.addressResolvedAt,
         );
+      }
+      if (from < 3) {
+        await migrator.addColumn(placeClusters, placeClusters.photoPath);
       }
     },
   );

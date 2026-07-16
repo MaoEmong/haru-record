@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app/app_theme.dart';
 import '../../shared/widgets/music_player_widgets.dart';
@@ -32,13 +35,18 @@ class _PlaceManagementScreenState extends ConsumerState<PlaceManagementScreen> {
   );
 
   Future<void> _rename(PlaceCluster place) async {
-    final name = await showDialog<String>(
+    final result = await showDialog<_PlaceEditResult>(
       context: context,
       builder: (context) => _RenamePlaceDialog(place: place),
     );
-    if (name == null) return;
+    if (result == null) return;
 
-    await renamePlace(widget.database, place, name);
+    await renamePlace(widget.database, place, result.name);
+    if (result.pickedPhoto != null) {
+      await setPlacePhoto(widget.database, place, result.pickedPhoto!);
+    } else if (result.removePhoto) {
+      await removePlacePhoto(widget.database, place);
+    }
     ref.invalidate(placesSnapshotProvider(_query));
     widget.onPlacesChanged?.call();
   }
@@ -601,6 +609,22 @@ class _PlaceMapPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 사용자가 붙인 사진이 있으면 지도 대신 사진을 보여준다.
+    final photoPath = place.photoPath;
+    if (photoPath != null && File(photoPath).existsSync()) {
+      return Image.file(
+        File(photoPath),
+        key: ValueKey('place-photo-${place.id}'),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, _, _) => _mapPreview(),
+      );
+    }
+    return _mapPreview();
+  }
+
+  Widget _mapPreview() {
     return PlaceMapPreview(
       latitude: place.centerLatitude,
       longitude: place.centerLongitude,
@@ -615,6 +639,19 @@ class _PlaceMapPreview extends StatelessWidget {
   }
 }
 
+/// 장소 편집 다이얼로그의 결과. 이름과 사진 변경(선택/삭제)을 한 번에 담는다.
+class _PlaceEditResult {
+  const _PlaceEditResult({
+    required this.name,
+    this.pickedPhoto,
+    this.removePhoto = false,
+  });
+
+  final String name;
+  final File? pickedPhoto;
+  final bool removePhoto;
+}
+
 class _RenamePlaceDialog extends StatefulWidget {
   const _RenamePlaceDialog({required this.place});
 
@@ -626,6 +663,8 @@ class _RenamePlaceDialog extends StatefulWidget {
 
 class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
   late final TextEditingController _controller;
+  File? _pickedPhoto;
+  bool _photoRemoved = false;
 
   @override
   void initState() {
@@ -637,6 +676,34 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  String? get _previewPhotoPath {
+    if (_pickedPhoto != null) return _pickedPhoto!.path;
+    if (_photoRemoved) return null;
+    final existing = widget.place.photoPath;
+    if (existing != null && File(existing).existsSync()) return existing;
+    return null;
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      setState(() {
+        _pickedPhoto = File(picked.path);
+        _photoRemoved = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사진을 가져오지 못했어요')),
+      );
+    }
   }
 
   @override
@@ -667,10 +734,44 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
                 child: SizedBox(
                   height: 170,
                   width: double.infinity,
-                  child: _PlaceMapPreview(place: widget.place, zoom: 16),
+                  child: _previewPhotoPath != null
+                      ? Image.file(
+                          File(_previewPhotoPath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              _PlaceMapPreview(place: widget.place, zoom: 16),
+                        )
+                      : _PlaceMapPreview(place: widget.place, zoom: 16),
                 ),
               ),
-              const SizedBox(height: 10),
+              Row(
+                children: [
+                  TextButton.icon(
+                    key: const ValueKey('place-photo-camera'),
+                    onPressed: () => _pickPhoto(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                    label: const Text('촬영'),
+                  ),
+                  TextButton.icon(
+                    key: const ValueKey('place-photo-gallery'),
+                    onPressed: () => _pickPhoto(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: const Text('갤러리'),
+                  ),
+                  const Spacer(),
+                  if (_previewPhotoPath != null)
+                    TextButton.icon(
+                      key: const ValueKey('place-photo-remove'),
+                      onPressed: () => setState(() {
+                        _pickedPhoto = null;
+                        _photoRemoved = true;
+                      }),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('사진 지우기'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
               Text(
                 placeAreaLabel(widget.place),
                 maxLines: 2,
@@ -697,8 +798,13 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () =>
-                        Navigator.of(context).pop(_controller.text),
+                    onPressed: () => Navigator.of(context).pop(
+                      _PlaceEditResult(
+                        name: _controller.text,
+                        pickedPhoto: _pickedPhoto,
+                        removePhoto: _photoRemoved && _pickedPhoto == null,
+                      ),
+                    ),
                     child: const Text('저장'),
                   ),
                 ],
