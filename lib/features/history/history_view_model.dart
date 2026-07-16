@@ -88,10 +88,19 @@ Future<List<HistoryDay>> loadHistoryDays(
   int refreshVersion = 0,
 }) async {
   final insights = await database.select(database.insights).get();
-  final sorted = insights..sort((a, b) => b.date.compareTo(a.date));
+  // 같은 날짜에 인사이트가 여러 개 저장될 수 있으므로(하루 최대 2개 생성),
+  // 날짜당 하나의 카드만 만들고 대표 인사이트는 저장 순서(강도순)의 첫 행을 쓴다.
+  final sorted = insights
+    ..sort((a, b) {
+      final byDate = b.date.compareTo(a.date);
+      if (byDate != 0) return byDate;
+      return a.id.compareTo(b.id);
+    });
   final previewRepository = DayActivityPreviewRepository(database);
-  final days = [
-    for (final insight in sorted)
+  final days = <HistoryDay>[];
+  for (final insight in sorted) {
+    if (days.isNotEmpty && isSameDate(days.last.date, insight.date)) continue;
+    days.add(
       HistoryDay(
         database: database,
         refreshVersion: refreshVersion,
@@ -101,7 +110,8 @@ Future<List<HistoryDay>> loadHistoryDays(
         insight: insight,
         preview: previewRepository.loadForDate(insight.date),
       ),
-  ];
+    );
+  }
 
   final today = DateTime.now();
   if (!days.any((day) => isSameDate(day.date, today)) &&
