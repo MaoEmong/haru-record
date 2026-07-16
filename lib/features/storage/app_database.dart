@@ -24,10 +24,23 @@ class PlaceClusters extends Table {
   TextColumn get roadAddressName => text().nullable()();
   TextColumn get regionName => text().nullable()();
   DateTimeColumn get addressResolvedAt => dateTime().nullable()();
+  /// v3에서 장소당 사진 1장을 담던 컬럼. v4부터 PlacePhotos 테이블이
+  /// 대체하며, 기존 값은 마이그레이션으로 옮겨진다. 읽지 말 것.
   TextColumn get photoPath => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   IntColumn get visitCount => integer()();
+}
+
+class PlacePhotos extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get placeClusterId => integer().references(
+    PlaceClusters,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get filePath => text()();
+  DateTimeColumn get createdAt => dateTime()();
 }
 
 class Visits extends Table {
@@ -75,13 +88,20 @@ class Insights extends Table {
 }
 
 @DriftDatabase(
-  tables: [LocationPoints, PlaceClusters, Visits, DailySummaries, Insights],
+  tables: [
+    LocationPoints,
+    PlaceClusters,
+    Visits,
+    DailySummaries,
+    Insights,
+    PlacePhotos,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -97,6 +117,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await migrator.addColumn(placeClusters, placeClusters.photoPath);
+      }
+      if (from < 4) {
+        await migrator.createTable(placePhotos);
+        // v3의 단일 사진(photo_path)을 새 테이블로 이전한다.
+        await customStatement(
+          'INSERT INTO place_photos (place_cluster_id, file_path, created_at) '
+          'SELECT id, photo_path, updated_at FROM place_clusters '
+          'WHERE photo_path IS NOT NULL',
+        );
       }
     },
   );

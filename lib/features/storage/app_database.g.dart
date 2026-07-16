@@ -867,6 +867,9 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
   final String? roadAddressName;
   final String? regionName;
   final DateTime? addressResolvedAt;
+
+  /// v3에서 장소당 사진 1장을 담던 컬럼. v4부터 PlacePhotos 테이블이
+  /// 대체하며, 기존 값은 마이그레이션으로 옮겨진다. 읽지 말 것.
   final String? photoPath;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2782,6 +2785,319 @@ class InsightsCompanion extends UpdateCompanion<Insight> {
   }
 }
 
+class $PlacePhotosTable extends PlacePhotos
+    with TableInfo<$PlacePhotosTable, PlacePhoto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlacePhotosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _placeClusterIdMeta = const VerificationMeta(
+    'placeClusterId',
+  );
+  @override
+  late final GeneratedColumn<int> placeClusterId = GeneratedColumn<int>(
+    'place_cluster_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES place_clusters (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    placeClusterId,
+    filePath,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'place_photos';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlacePhoto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('place_cluster_id')) {
+      context.handle(
+        _placeClusterIdMeta,
+        placeClusterId.isAcceptableOrUnknown(
+          data['place_cluster_id']!,
+          _placeClusterIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_placeClusterIdMeta);
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlacePhoto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlacePhoto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      placeClusterId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}place_cluster_id'],
+      )!,
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PlacePhotosTable createAlias(String alias) {
+    return $PlacePhotosTable(attachedDatabase, alias);
+  }
+}
+
+class PlacePhoto extends DataClass implements Insertable<PlacePhoto> {
+  final int id;
+  final int placeClusterId;
+  final String filePath;
+  final DateTime createdAt;
+  const PlacePhoto({
+    required this.id,
+    required this.placeClusterId,
+    required this.filePath,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['place_cluster_id'] = Variable<int>(placeClusterId);
+    map['file_path'] = Variable<String>(filePath);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PlacePhotosCompanion toCompanion(bool nullToAbsent) {
+    return PlacePhotosCompanion(
+      id: Value(id),
+      placeClusterId: Value(placeClusterId),
+      filePath: Value(filePath),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PlacePhoto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlacePhoto(
+      id: serializer.fromJson<int>(json['id']),
+      placeClusterId: serializer.fromJson<int>(json['placeClusterId']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'placeClusterId': serializer.toJson<int>(placeClusterId),
+      'filePath': serializer.toJson<String>(filePath),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PlacePhoto copyWith({
+    int? id,
+    int? placeClusterId,
+    String? filePath,
+    DateTime? createdAt,
+  }) => PlacePhoto(
+    id: id ?? this.id,
+    placeClusterId: placeClusterId ?? this.placeClusterId,
+    filePath: filePath ?? this.filePath,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PlacePhoto copyWithCompanion(PlacePhotosCompanion data) {
+    return PlacePhoto(
+      id: data.id.present ? data.id.value : this.id,
+      placeClusterId: data.placeClusterId.present
+          ? data.placeClusterId.value
+          : this.placeClusterId,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlacePhoto(')
+          ..write('id: $id, ')
+          ..write('placeClusterId: $placeClusterId, ')
+          ..write('filePath: $filePath, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, placeClusterId, filePath, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlacePhoto &&
+          other.id == this.id &&
+          other.placeClusterId == this.placeClusterId &&
+          other.filePath == this.filePath &&
+          other.createdAt == this.createdAt);
+}
+
+class PlacePhotosCompanion extends UpdateCompanion<PlacePhoto> {
+  final Value<int> id;
+  final Value<int> placeClusterId;
+  final Value<String> filePath;
+  final Value<DateTime> createdAt;
+  const PlacePhotosCompanion({
+    this.id = const Value.absent(),
+    this.placeClusterId = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PlacePhotosCompanion.insert({
+    this.id = const Value.absent(),
+    required int placeClusterId,
+    required String filePath,
+    required DateTime createdAt,
+  }) : placeClusterId = Value(placeClusterId),
+       filePath = Value(filePath),
+       createdAt = Value(createdAt);
+  static Insertable<PlacePhoto> custom({
+    Expression<int>? id,
+    Expression<int>? placeClusterId,
+    Expression<String>? filePath,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (placeClusterId != null) 'place_cluster_id': placeClusterId,
+      if (filePath != null) 'file_path': filePath,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PlacePhotosCompanion copyWith({
+    Value<int>? id,
+    Value<int>? placeClusterId,
+    Value<String>? filePath,
+    Value<DateTime>? createdAt,
+  }) {
+    return PlacePhotosCompanion(
+      id: id ?? this.id,
+      placeClusterId: placeClusterId ?? this.placeClusterId,
+      filePath: filePath ?? this.filePath,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (placeClusterId.present) {
+      map['place_cluster_id'] = Variable<int>(placeClusterId.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlacePhotosCompanion(')
+          ..write('id: $id, ')
+          ..write('placeClusterId: $placeClusterId, ')
+          ..write('filePath: $filePath, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2790,6 +3106,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $VisitsTable visits = $VisitsTable(this);
   late final $DailySummariesTable dailySummaries = $DailySummariesTable(this);
   late final $InsightsTable insights = $InsightsTable(this);
+  late final $PlacePhotosTable placePhotos = $PlacePhotosTable(this);
   late final Index locationPointsTimestamp = Index(
     'location_points_timestamp',
     'CREATE INDEX location_points_timestamp ON location_points (timestamp)',
@@ -2804,6 +3121,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     visits,
     dailySummaries,
     insights,
+    placePhotos,
     locationPointsTimestamp,
   ];
   @override
@@ -2821,6 +3139,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('daily_summaries', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'place_clusters',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('place_photos', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -3161,6 +3486,27 @@ final class $$PlaceClustersTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$PlacePhotosTable, List<PlacePhoto>>
+  _placePhotosRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.placePhotos,
+    aliasName: $_aliasNameGenerator(
+      db.placeClusters.id,
+      db.placePhotos.placeClusterId,
+    ),
+  );
+
+  $$PlacePhotosTableProcessedTableManager get placePhotosRefs {
+    final manager = $$PlacePhotosTableTableManager(
+      $_db,
+      $_db.placePhotos,
+    ).filter((f) => f.placeClusterId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_placePhotosRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PlaceClustersTableFilterComposer
@@ -3278,6 +3624,31 @@ class $$PlaceClustersTableFilterComposer
           }) => $$DailySummariesTableFilterComposer(
             $db: $db,
             $table: $db.dailySummaries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> placePhotosRefs(
+    Expression<bool> Function($$PlacePhotosTableFilterComposer f) f,
+  ) {
+    final $$PlacePhotosTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.placePhotos,
+      getReferencedColumn: (t) => t.placeClusterId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlacePhotosTableFilterComposer(
+            $db: $db,
+            $table: $db.placePhotos,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3478,6 +3849,31 @@ class $$PlaceClustersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> placePhotosRefs<T extends Object>(
+    Expression<T> Function($$PlacePhotosTableAnnotationComposer a) f,
+  ) {
+    final $$PlacePhotosTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.placePhotos,
+      getReferencedColumn: (t) => t.placeClusterId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlacePhotosTableAnnotationComposer(
+            $db: $db,
+            $table: $db.placePhotos,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$PlaceClustersTableTableManager
@@ -3493,7 +3889,11 @@ class $$PlaceClustersTableTableManager
           $$PlaceClustersTableUpdateCompanionBuilder,
           (PlaceCluster, $$PlaceClustersTableReferences),
           PlaceCluster,
-          PrefetchHooks Function({bool visitsRefs, bool dailySummariesRefs})
+          PrefetchHooks Function({
+            bool visitsRefs,
+            bool dailySummariesRefs,
+            bool placePhotosRefs,
+          })
         > {
   $$PlaceClustersTableTableManager(_$AppDatabase db, $PlaceClustersTable table)
     : super(
@@ -3575,12 +3975,17 @@ class $$PlaceClustersTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({visitsRefs = false, dailySummariesRefs = false}) {
+              ({
+                visitsRefs = false,
+                dailySummariesRefs = false,
+                placePhotosRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (visitsRefs) db.visits,
                     if (dailySummariesRefs) db.dailySummaries,
+                    if (placePhotosRefs) db.placePhotos,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -3627,6 +4032,27 @@ class $$PlaceClustersTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (placePhotosRefs)
+                        await $_getPrefetchedData<
+                          PlaceCluster,
+                          $PlaceClustersTable,
+                          PlacePhoto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PlaceClustersTableReferences
+                              ._placePhotosRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PlaceClustersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).placePhotosRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.placeClusterId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -3647,7 +4073,11 @@ typedef $$PlaceClustersTableProcessedTableManager =
       $$PlaceClustersTableUpdateCompanionBuilder,
       (PlaceCluster, $$PlaceClustersTableReferences),
       PlaceCluster,
-      PrefetchHooks Function({bool visitsRefs, bool dailySummariesRefs})
+      PrefetchHooks Function({
+        bool visitsRefs,
+        bool dailySummariesRefs,
+        bool placePhotosRefs,
+      })
     >;
 typedef $$VisitsTableCreateCompanionBuilder =
     VisitsCompanion Function({
@@ -4626,6 +5056,303 @@ typedef $$InsightsTableProcessedTableManager =
       Insight,
       PrefetchHooks Function()
     >;
+typedef $$PlacePhotosTableCreateCompanionBuilder =
+    PlacePhotosCompanion Function({
+      Value<int> id,
+      required int placeClusterId,
+      required String filePath,
+      required DateTime createdAt,
+    });
+typedef $$PlacePhotosTableUpdateCompanionBuilder =
+    PlacePhotosCompanion Function({
+      Value<int> id,
+      Value<int> placeClusterId,
+      Value<String> filePath,
+      Value<DateTime> createdAt,
+    });
+
+final class $$PlacePhotosTableReferences
+    extends BaseReferences<_$AppDatabase, $PlacePhotosTable, PlacePhoto> {
+  $$PlacePhotosTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $PlaceClustersTable _placeClusterIdTable(_$AppDatabase db) =>
+      db.placeClusters.createAlias(
+        $_aliasNameGenerator(
+          db.placePhotos.placeClusterId,
+          db.placeClusters.id,
+        ),
+      );
+
+  $$PlaceClustersTableProcessedTableManager get placeClusterId {
+    final $_column = $_itemColumn<int>('place_cluster_id')!;
+
+    final manager = $$PlaceClustersTableTableManager(
+      $_db,
+      $_db.placeClusters,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_placeClusterIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PlacePhotosTableFilterComposer
+    extends Composer<_$AppDatabase, $PlacePhotosTable> {
+  $$PlacePhotosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PlaceClustersTableFilterComposer get placeClusterId {
+    final $$PlaceClustersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.placeClusterId,
+      referencedTable: $db.placeClusters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaceClustersTableFilterComposer(
+            $db: $db,
+            $table: $db.placeClusters,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlacePhotosTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlacePhotosTable> {
+  $$PlacePhotosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PlaceClustersTableOrderingComposer get placeClusterId {
+    final $$PlaceClustersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.placeClusterId,
+      referencedTable: $db.placeClusters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaceClustersTableOrderingComposer(
+            $db: $db,
+            $table: $db.placeClusters,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlacePhotosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlacePhotosTable> {
+  $$PlacePhotosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$PlaceClustersTableAnnotationComposer get placeClusterId {
+    final $$PlaceClustersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.placeClusterId,
+      referencedTable: $db.placeClusters,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaceClustersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.placeClusters,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlacePhotosTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PlacePhotosTable,
+          PlacePhoto,
+          $$PlacePhotosTableFilterComposer,
+          $$PlacePhotosTableOrderingComposer,
+          $$PlacePhotosTableAnnotationComposer,
+          $$PlacePhotosTableCreateCompanionBuilder,
+          $$PlacePhotosTableUpdateCompanionBuilder,
+          (PlacePhoto, $$PlacePhotosTableReferences),
+          PlacePhoto,
+          PrefetchHooks Function({bool placeClusterId})
+        > {
+  $$PlacePhotosTableTableManager(_$AppDatabase db, $PlacePhotosTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlacePhotosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlacePhotosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlacePhotosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> placeClusterId = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => PlacePhotosCompanion(
+                id: id,
+                placeClusterId: placeClusterId,
+                filePath: filePath,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int placeClusterId,
+                required String filePath,
+                required DateTime createdAt,
+              }) => PlacePhotosCompanion.insert(
+                id: id,
+                placeClusterId: placeClusterId,
+                filePath: filePath,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PlacePhotosTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({placeClusterId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (placeClusterId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.placeClusterId,
+                                referencedTable: $$PlacePhotosTableReferences
+                                    ._placeClusterIdTable(db),
+                                referencedColumn: $$PlacePhotosTableReferences
+                                    ._placeClusterIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PlacePhotosTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PlacePhotosTable,
+      PlacePhoto,
+      $$PlacePhotosTableFilterComposer,
+      $$PlacePhotosTableOrderingComposer,
+      $$PlacePhotosTableAnnotationComposer,
+      $$PlacePhotosTableCreateCompanionBuilder,
+      $$PlacePhotosTableUpdateCompanionBuilder,
+      (PlacePhoto, $$PlacePhotosTableReferences),
+      PlacePhoto,
+      PrefetchHooks Function({bool placeClusterId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4640,4 +5367,6 @@ class $AppDatabaseManager {
       $$DailySummariesTableTableManager(_db, _db.dailySummaries);
   $$InsightsTableTableManager get insights =>
       $$InsightsTableTableManager(_db, _db.insights);
+  $$PlacePhotosTableTableManager get placePhotos =>
+      $$PlacePhotosTableTableManager(_db, _db.placePhotos);
 }
