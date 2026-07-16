@@ -607,6 +607,17 @@ class $PlaceClustersTable extends PlaceClusters
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -651,6 +662,7 @@ class $PlaceClustersTable extends PlaceClusters
     roadAddressName,
     regionName,
     addressResolvedAt,
+    photoPath,
     createdAt,
     updatedAt,
     visitCount,
@@ -745,6 +757,12 @@ class $PlaceClustersTable extends PlaceClusters
         ),
       );
     }
+    if (data.containsKey('photo_path')) {
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -814,6 +832,10 @@ class $PlaceClustersTable extends PlaceClusters
         DriftSqlType.dateTime,
         data['${effectivePrefix}address_resolved_at'],
       ),
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -845,6 +867,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
   final String? roadAddressName;
   final String? regionName;
   final DateTime? addressResolvedAt;
+  final String? photoPath;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int visitCount;
@@ -858,6 +881,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     this.roadAddressName,
     this.regionName,
     this.addressResolvedAt,
+    this.photoPath,
     required this.createdAt,
     required this.updatedAt,
     required this.visitCount,
@@ -883,6 +907,9 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     }
     if (!nullToAbsent || addressResolvedAt != null) {
       map['address_resolved_at'] = Variable<DateTime>(addressResolvedAt);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -911,6 +938,9 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       addressResolvedAt: addressResolvedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(addressResolvedAt),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       visitCount: Value(visitCount),
@@ -934,6 +964,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       addressResolvedAt: serializer.fromJson<DateTime?>(
         json['addressResolvedAt'],
       ),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       visitCount: serializer.fromJson<int>(json['visitCount']),
@@ -952,6 +983,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       'roadAddressName': serializer.toJson<String?>(roadAddressName),
       'regionName': serializer.toJson<String?>(regionName),
       'addressResolvedAt': serializer.toJson<DateTime?>(addressResolvedAt),
+      'photoPath': serializer.toJson<String?>(photoPath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'visitCount': serializer.toJson<int>(visitCount),
@@ -968,6 +1000,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     Value<String?> roadAddressName = const Value.absent(),
     Value<String?> regionName = const Value.absent(),
     Value<DateTime?> addressResolvedAt = const Value.absent(),
+    Value<String?> photoPath = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     int? visitCount,
@@ -985,6 +1018,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     addressResolvedAt: addressResolvedAt.present
         ? addressResolvedAt.value
         : this.addressResolvedAt,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     visitCount: visitCount ?? this.visitCount,
@@ -1016,6 +1050,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
       addressResolvedAt: data.addressResolvedAt.present
           ? data.addressResolvedAt.value
           : this.addressResolvedAt,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       visitCount: data.visitCount.present
@@ -1036,6 +1071,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
           ..write('roadAddressName: $roadAddressName, ')
           ..write('regionName: $regionName, ')
           ..write('addressResolvedAt: $addressResolvedAt, ')
+          ..write('photoPath: $photoPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('visitCount: $visitCount')
@@ -1054,6 +1090,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
     roadAddressName,
     regionName,
     addressResolvedAt,
+    photoPath,
     createdAt,
     updatedAt,
     visitCount,
@@ -1071,6 +1108,7 @@ class PlaceCluster extends DataClass implements Insertable<PlaceCluster> {
           other.roadAddressName == this.roadAddressName &&
           other.regionName == this.regionName &&
           other.addressResolvedAt == this.addressResolvedAt &&
+          other.photoPath == this.photoPath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.visitCount == this.visitCount);
@@ -1086,6 +1124,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
   final Value<String?> roadAddressName;
   final Value<String?> regionName;
   final Value<DateTime?> addressResolvedAt;
+  final Value<String?> photoPath;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> visitCount;
@@ -1099,6 +1138,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     this.roadAddressName = const Value.absent(),
     this.regionName = const Value.absent(),
     this.addressResolvedAt = const Value.absent(),
+    this.photoPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.visitCount = const Value.absent(),
@@ -1113,6 +1153,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     this.roadAddressName = const Value.absent(),
     this.regionName = const Value.absent(),
     this.addressResolvedAt = const Value.absent(),
+    this.photoPath = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     required int visitCount,
@@ -1132,6 +1173,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     Expression<String>? roadAddressName,
     Expression<String>? regionName,
     Expression<DateTime>? addressResolvedAt,
+    Expression<String>? photoPath,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? visitCount,
@@ -1146,6 +1188,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
       if (roadAddressName != null) 'road_address_name': roadAddressName,
       if (regionName != null) 'region_name': regionName,
       if (addressResolvedAt != null) 'address_resolved_at': addressResolvedAt,
+      if (photoPath != null) 'photo_path': photoPath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (visitCount != null) 'visit_count': visitCount,
@@ -1162,6 +1205,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     Value<String?>? roadAddressName,
     Value<String?>? regionName,
     Value<DateTime?>? addressResolvedAt,
+    Value<String?>? photoPath,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? visitCount,
@@ -1176,6 +1220,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
       roadAddressName: roadAddressName ?? this.roadAddressName,
       regionName: regionName ?? this.regionName,
       addressResolvedAt: addressResolvedAt ?? this.addressResolvedAt,
+      photoPath: photoPath ?? this.photoPath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       visitCount: visitCount ?? this.visitCount,
@@ -1212,6 +1257,9 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
     if (addressResolvedAt.present) {
       map['address_resolved_at'] = Variable<DateTime>(addressResolvedAt.value);
     }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1236,6 +1284,7 @@ class PlaceClustersCompanion extends UpdateCompanion<PlaceCluster> {
           ..write('roadAddressName: $roadAddressName, ')
           ..write('regionName: $regionName, ')
           ..write('addressResolvedAt: $addressResolvedAt, ')
+          ..write('photoPath: $photoPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('visitCount: $visitCount')
@@ -3040,6 +3089,7 @@ typedef $$PlaceClustersTableCreateCompanionBuilder =
       Value<String?> roadAddressName,
       Value<String?> regionName,
       Value<DateTime?> addressResolvedAt,
+      Value<String?> photoPath,
       required DateTime createdAt,
       required DateTime updatedAt,
       required int visitCount,
@@ -3055,6 +3105,7 @@ typedef $$PlaceClustersTableUpdateCompanionBuilder =
       Value<String?> roadAddressName,
       Value<String?> regionName,
       Value<DateTime?> addressResolvedAt,
+      Value<String?> photoPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> visitCount,
@@ -3163,6 +3214,11 @@ class $$PlaceClustersTableFilterComposer
 
   ColumnFilters<DateTime> get addressResolvedAt => $composableBuilder(
     column: $table.addressResolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3286,6 +3342,11 @@ class $$PlaceClustersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3353,6 +3414,9 @@ class $$PlaceClustersTableAnnotationComposer
     column: $table.addressResolvedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3453,6 +3517,7 @@ class $$PlaceClustersTableTableManager
                 Value<String?> roadAddressName = const Value.absent(),
                 Value<String?> regionName = const Value.absent(),
                 Value<DateTime?> addressResolvedAt = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> visitCount = const Value.absent(),
@@ -3466,6 +3531,7 @@ class $$PlaceClustersTableTableManager
                 roadAddressName: roadAddressName,
                 regionName: regionName,
                 addressResolvedAt: addressResolvedAt,
+                photoPath: photoPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 visitCount: visitCount,
@@ -3481,6 +3547,7 @@ class $$PlaceClustersTableTableManager
                 Value<String?> roadAddressName = const Value.absent(),
                 Value<String?> regionName = const Value.absent(),
                 Value<DateTime?> addressResolvedAt = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 required int visitCount,
@@ -3494,6 +3561,7 @@ class $$PlaceClustersTableTableManager
                 roadAddressName: roadAddressName,
                 regionName: regionName,
                 addressResolvedAt: addressResolvedAt,
+                photoPath: photoPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 visitCount: visitCount,
