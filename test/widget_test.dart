@@ -1284,6 +1284,92 @@ void main() {
     expect(settings.notificationEnabled, isFalse);
     expect(find.text('돌아보기 알림을 받으려면 알림 권한이 필요해요'), findsOneWidget);
   });
+
+  testWidgets('pin control saves the current location exactly once', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime.now().subtract(const Duration(minutes: 1)),
+            latitude: 34.7025,
+            longitude: 135.4959,
+            accuracy: 15,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    final pinControl = find.byKey(
+      const ValueKey('home-pin-current-location-control'),
+      skipOffstage: false,
+    );
+    await tester.ensureVisible(pinControl);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -80));
+    await tester.pumpAndSettle();
+    await tester.tap(pinControl);
+    await tester.pumpAndSettle();
+
+    expect(await database.select(database.placeClusters).get(), hasLength(1));
+    expect(find.text('현재 위치를 핑으로 추가했어요'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // 같은 자리에서 다시 눌러도 중복으로 추가되지 않는다.
+    await tester.tap(pinControl);
+    await tester.pumpAndSettle();
+
+    expect(await database.select(database.placeClusters).get(), hasLength(1));
+    expect(find.textContaining('이미 추가된 곳이에요'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('pin control rejects stale location records', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database
+        .into(database.locationPoints)
+        .insert(
+          LocationPointsCompanion.insert(
+            timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+            latitude: 34.7025,
+            longitude: 135.4959,
+            accuracy: 15,
+          ),
+        );
+
+    await tester.pumpWidget(
+      DailyPatternApp(dependencies: _testDependencies(database)),
+    );
+    await tester.pumpAndSettle();
+
+    final pinControl = find.byKey(
+      const ValueKey('home-pin-current-location-control'),
+      skipOffstage: false,
+    );
+    await tester.ensureVisible(pinControl);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -80));
+    await tester.pumpAndSettle();
+    await tester.tap(pinControl);
+    await tester.pumpAndSettle();
+
+    expect(await database.select(database.placeClusters).get(), isEmpty);
+    expect(
+      find.text('최근 위치 기록이 없어요. 위치 기록이 켜져 있는지 확인해주세요.'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
 }
 
 /// Scrolls the home list until [text] is on screen. The music player home
