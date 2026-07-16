@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../app/app_dependencies.dart';
+import '../../app/app_providers.dart';
 import '../../app/app_theme.dart';
 import '../../core/geo/coordinate_validation.dart';
 import '../maps/cached_map_snapshot.dart';
+import '../places/place_cluster_repository.dart';
 import '../places/place_label.dart';
 import '../processing/location_post_processor.dart';
 import '../storage/app_database.dart';
@@ -121,6 +124,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  bool _isPinningLocation = false;
+
+  /// 최근에 기록된 위치를 방문한 곳(핑)으로 저장한다.
+  /// 같은 반경 안에 이미 저장된 곳이 있으면 새로 만들지 않는다.
+  Future<void> _pinCurrentLocation() async {
+    if (_isPinningLocation) return;
+    setState(() => _isPinningLocation = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final dependencies = ref.read(appDependenciesProvider);
+      // 네이티브 서비스가 쌓아둔 최신 이벤트를 먼저 반영해 "현재"에 가깝게.
+      await dependencies.importPendingEvents();
+      final latest =
+          await (dependencies.database.select(dependencies.database.locationPoints)
+                ..orderBy([(point) => OrderingTerm.desc(point.timestamp)])
+                ..limit(1))
+              .getSingleOrNull();
+      if (latest == null ||
+          DateTime.now().difference(latest.timestamp) >
+              _pinFreshnessWindow) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('최근 위치 기록이 없어요. 위치 기록이 켜져 있는지 확인해주세요.'),
+          ),
+        );
+        return;
+      }
+
+      final settings = await dependencies.settingsRepository.load();
+      final match = await PlaceClusterRepository(dependencies.database)
+          .findOrCreateForVisit(
+            latitude: latest.latitude,
+            longitude: latest.longitude,
+            radiusMeters: settings.minimumMovementMeters.toDouble(),
+            visitedAt: latest.timestamp,
+          );
+      if (!mounted) return;
+      if (match.isNew) {
+        ref.invalidate(homePlacesProvider(widget.refreshVersion));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('현재 위치를 핑으로 추가했어요')),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(content: Text('이미 추가된 곳이에요 (${placeLabel(match.cluster)})')),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('핑 추가에 실패했어요. 다시 시도해주세요.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isPinningLocation = false);
+    }
+  }
+
+  static const _pinFreshnessWindow = Duration(minutes: 15);
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(homeSettingsProvider(widget.refreshVersion));
@@ -182,6 +243,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onOpenTodayRecords: preview.hasValue
               ? widget.onOpenTodayRecords
               : null,
+          onPinCurrentLocation: _isPinningLocation ? null : _pinCurrentLocation,
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 24),

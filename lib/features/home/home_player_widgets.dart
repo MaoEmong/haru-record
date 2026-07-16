@@ -399,11 +399,13 @@ class _ControlsRow extends StatelessWidget {
     required this.preview,
     required this.route,
     required this.onOpenTodayRecords,
+    required this.onPinCurrentLocation,
   });
 
   final DayActivityPreview preview;
   final Future<DayRouteSnapshot> route;
   final OpenTodayRecordsCallback? onOpenTodayRecords;
+  final VoidCallback? onPinCurrentLocation;
 
   @override
   Widget build(BuildContext context) {
@@ -412,7 +414,13 @@ class _ControlsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const _ControlIcon(Icons.shuffle_rounded, accent: true),
+          _ControlIcon(
+            Icons.add_location_alt_rounded,
+            accent: true,
+            buttonKey: const ValueKey('home-pin-current-location-control'),
+            semanticLabel: '현재 위치 핑 추가',
+            onTap: onPinCurrentLocation,
+          ),
           const _ControlIcon(Icons.skip_previous_rounded),
           _ControlIcon(
             Icons.pause_circle_filled_rounded,
