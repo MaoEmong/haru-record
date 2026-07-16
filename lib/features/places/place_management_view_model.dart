@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -78,9 +78,20 @@ Future<void> renamePlace(
   );
 }
 
-/// 장소에 사진을 붙인다. 갤러리/카메라가 준 임시 파일은 언제 지워질지
-/// 모르므로 앱 문서 폴더로 복사해 보관하고, 이전 사진 파일은 정리한다.
-Future<void> setPlacePhoto(
+/// 장소에 붙은 사진들을 오래된 순으로 불러온다.
+Future<List<PlacePhoto>> loadPlacePhotos(
+  AppDatabase database,
+  int placeClusterId,
+) {
+  return (database.select(database.placePhotos)
+        ..where((row) => row.placeClusterId.equals(placeClusterId))
+        ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+      .get();
+}
+
+/// 장소에 사진을 추가한다. 갤러리/카메라가 준 임시 파일은 언제 지워질지
+/// 모르므로 앱 문서 폴더로 복사해 보관한다. 여러 장 추가 가능.
+Future<void> addPlacePhoto(
   AppDatabase database,
   PlaceCluster place,
   File source, {
@@ -94,36 +105,27 @@ Future<void> setPlacePhoto(
   final extension = dotIndex == -1 ? 'jpg' : source.path.substring(dotIndex + 1);
   final target = File(
     '${photoDirectory.path}/place_${place.id}_'
-    '${DateTime.now().millisecondsSinceEpoch}.$extension',
+    '${DateTime.now().microsecondsSinceEpoch}.$extension',
   );
   await source.copy(target.path);
-  await _deletePhotoFile(place.photoPath);
-  await (database.update(
-    database.placeClusters,
-  )..where((row) => row.id.equals(place.id))).write(
-    PlaceClustersCompanion(
-      photoPath: Value(target.path),
-      updatedAt: Value(DateTime.now()),
-    ),
-  );
+  await database
+      .into(database.placePhotos)
+      .insert(
+        PlacePhotosCompanion.insert(
+          placeClusterId: place.id,
+          filePath: target.path,
+          createdAt: DateTime.now(),
+        ),
+      );
 }
 
-Future<void> removePlacePhoto(AppDatabase database, PlaceCluster place) async {
-  await _deletePhotoFile(place.photoPath);
-  await (database.update(
-    database.placeClusters,
-  )..where((row) => row.id.equals(place.id))).write(
-    PlaceClustersCompanion(
-      photoPath: const Value(null),
-      updatedAt: Value(DateTime.now()),
-    ),
-  );
-}
-
-Future<void> _deletePhotoFile(String? path) async {
-  if (path == null) return;
-  final file = File(path);
+/// 사진 한 장을 삭제한다. DB 행과 복사된 파일을 함께 정리한다.
+Future<void> deletePlacePhoto(AppDatabase database, PlacePhoto photo) async {
+  final file = File(photo.filePath);
   if (await file.exists()) await file.delete();
+  await (database.delete(
+    database.placePhotos,
+  )..where((row) => row.id.equals(photo.id))).go();
 }
 
 bool hasPlaceDisplayName(PlaceCluster place) {

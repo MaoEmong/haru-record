@@ -37,15 +37,17 @@ class _PlaceManagementScreenState extends ConsumerState<PlaceManagementScreen> {
   Future<void> _rename(PlaceCluster place) async {
     final result = await showDialog<_PlaceEditResult>(
       context: context,
-      builder: (context) => _RenamePlaceDialog(place: place),
+      builder: (context) =>
+          _RenamePlaceDialog(place: place, database: widget.database),
     );
     if (result == null) return;
 
     await renamePlace(widget.database, place, result.name);
-    if (result.pickedPhoto != null) {
-      await setPlacePhoto(widget.database, place, result.pickedPhoto!);
-    } else if (result.removePhoto) {
-      await removePlacePhoto(widget.database, place);
+    for (final photo in result.removedPhotos) {
+      await deletePlacePhoto(widget.database, photo);
+    }
+    for (final file in result.addedPhotos) {
+      await addPlacePhoto(widget.database, place, file);
     }
     ref.invalidate(placesSnapshotProvider(_query));
     widget.onPlacesChanged?.call();
@@ -609,22 +611,6 @@ class _PlaceMapPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 사용자가 붙인 사진이 있으면 지도 대신 사진을 보여준다.
-    final photoPath = place.photoPath;
-    if (photoPath != null && File(photoPath).existsSync()) {
-      return Image.file(
-        File(photoPath),
-        key: ValueKey('place-photo-${place.id}'),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        errorBuilder: (_, _, _) => _mapPreview(),
-      );
-    }
-    return _mapPreview();
-  }
-
-  Widget _mapPreview() {
     return PlaceMapPreview(
       latitude: place.centerLatitude,
       longitude: place.centerLongitude,
@@ -639,23 +625,24 @@ class _PlaceMapPreview extends StatelessWidget {
   }
 }
 
-/// 장소 편집 다이얼로그의 결과. 이름과 사진 변경(선택/삭제)을 한 번에 담는다.
+/// 장소 편집 다이얼로그의 결과. 이름과 사진 추가/삭제 목록을 한 번에 담는다.
 class _PlaceEditResult {
   const _PlaceEditResult({
     required this.name,
-    this.pickedPhoto,
-    this.removePhoto = false,
+    this.addedPhotos = const [],
+    this.removedPhotos = const [],
   });
 
   final String name;
-  final File? pickedPhoto;
-  final bool removePhoto;
+  final List<File> addedPhotos;
+  final List<PlacePhoto> removedPhotos;
 }
 
 class _RenamePlaceDialog extends StatefulWidget {
-  const _RenamePlaceDialog({required this.place});
+  const _RenamePlaceDialog({required this.place, required this.database});
 
   final PlaceCluster place;
+  final AppDatabase database;
 
   @override
   State<_RenamePlaceDialog> createState() => _RenamePlaceDialogState();
@@ -663,27 +650,23 @@ class _RenamePlaceDialog extends StatefulWidget {
 
 class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
   late final TextEditingController _controller;
-  File? _pickedPhoto;
-  bool _photoRemoved = false;
+  List<PlacePhoto> _existingPhotos = const [];
+  final List<File> _addedPhotos = [];
+  final List<PlacePhoto> _removedPhotos = [];
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.place.displayName ?? '');
+    loadPlacePhotos(widget.database, widget.place.id).then((photos) {
+      if (mounted) setState(() => _existingPhotos = photos);
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  String? get _previewPhotoPath {
-    if (_pickedPhoto != null) return _pickedPhoto!.path;
-    if (_photoRemoved) return null;
-    final existing = widget.place.photoPath;
-    if (existing != null && File(existing).existsSync()) return existing;
-    return null;
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -694,10 +677,7 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
         imageQuality: 85,
       );
       if (picked == null || !mounted) return;
-      setState(() {
-        _pickedPhoto = File(picked.path);
-        _photoRemoved = false;
-      });
+      setState(() => _addedPhotos.add(File(picked.path)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -732,44 +712,23 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: SizedBox(
-                  height: 170,
+                  height: 150,
                   width: double.infinity,
-                  child: _previewPhotoPath != null
-                      ? Image.file(
-                          File(_previewPhotoPath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              _PlaceMapPreview(place: widget.place, zoom: 16),
-                        )
-                      : _PlaceMapPreview(place: widget.place, zoom: 16),
+                  child: _PlaceMapPreview(place: widget.place, zoom: 16),
                 ),
               ),
-              Row(
-                children: [
-                  TextButton.icon(
-                    key: const ValueKey('place-photo-camera'),
-                    onPressed: () => _pickPhoto(ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                    label: const Text('촬영'),
-                  ),
-                  TextButton.icon(
-                    key: const ValueKey('place-photo-gallery'),
-                    onPressed: () => _pickPhoto(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined, size: 18),
-                    label: const Text('갤러리'),
-                  ),
-                  const Spacer(),
-                  if (_previewPhotoPath != null)
-                    TextButton.icon(
-                      key: const ValueKey('place-photo-remove'),
-                      onPressed: () => setState(() {
-                        _pickedPhoto = null;
-                        _photoRemoved = true;
-                      }),
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('사진 지우기'),
-                    ),
-                ],
+              const SizedBox(height: 10),
+              _PhotoStrip(
+                existingPhotos: _existingPhotos
+                    .where((photo) => !_removedPhotos.contains(photo))
+                    .toList(growable: false),
+                addedPhotos: _addedPhotos,
+                onPickCamera: () => _pickPhoto(ImageSource.camera),
+                onPickGallery: () => _pickPhoto(ImageSource.gallery),
+                onRemoveExisting: (photo) =>
+                    setState(() => _removedPhotos.add(photo)),
+                onRemoveAdded: (file) =>
+                    setState(() => _addedPhotos.remove(file)),
               ),
               const SizedBox(height: 2),
               Text(
@@ -801,8 +760,8 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
                     onPressed: () => Navigator.of(context).pop(
                       _PlaceEditResult(
                         name: _controller.text,
-                        pickedPhoto: _pickedPhoto,
-                        removePhoto: _photoRemoved && _pickedPhoto == null,
+                        addedPhotos: List.of(_addedPhotos),
+                        removedPhotos: List.of(_removedPhotos),
                       ),
                     ),
                     child: const Text('저장'),
@@ -811,6 +770,136 @@ class _RenamePlaceDialogState extends State<_RenamePlaceDialog> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 장소 편집 다이얼로그의 가로 사진 갤러리.
+/// 기존 사진 + 이번에 고른 사진을 보여주고, 각각 X로 뺄 수 있다.
+class _PhotoStrip extends StatelessWidget {
+  const _PhotoStrip({
+    required this.existingPhotos,
+    required this.addedPhotos,
+    required this.onPickCamera,
+    required this.onPickGallery,
+    required this.onRemoveExisting,
+    required this.onRemoveAdded,
+  });
+
+  final List<PlacePhoto> existingPhotos;
+  final List<File> addedPhotos;
+  final VoidCallback onPickCamera;
+  final VoidCallback onPickGallery;
+  final ValueChanged<PlacePhoto> onRemoveExisting;
+  final ValueChanged<File> onRemoveAdded;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 68,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final photo in existingPhotos)
+            _PhotoThumb(
+              path: photo.filePath,
+              onRemove: () => onRemoveExisting(photo),
+            ),
+          for (final file in addedPhotos)
+            _PhotoThumb(path: file.path, onRemove: () => onRemoveAdded(file)),
+          _AddPhotoTile(
+            key: const ValueKey('place-photo-camera'),
+            icon: Icons.photo_camera_outlined,
+            onTap: onPickCamera,
+          ),
+          _AddPhotoTile(
+            key: const ValueKey('place-photo-gallery'),
+            icon: Icons.photo_library_outlined,
+            onTap: onPickGallery,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoThumb extends StatelessWidget {
+  const _PhotoThumb({required this.path, required this.onRemove});
+
+  final String path;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              File(path),
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                width: 64,
+                height: 64,
+                color: AppColors.mpSurface,
+                child: const Icon(
+                  Icons.broken_image_outlined,
+                  color: AppColors.mpTextSub,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(2),
+                  child: Icon(Icons.close, size: 14, color: AppColors.ink),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddPhotoTile extends StatelessWidget {
+  const _AddPhotoTile({super.key, required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.mpBorder),
+            color: AppColors.mpSurface,
+          ),
+          child: Icon(icon, color: AppColors.mpTextSub, size: 22),
         ),
       ),
     );

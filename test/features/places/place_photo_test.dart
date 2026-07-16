@@ -40,79 +40,75 @@ void main() {
     return file;
   }
 
-  test('setPlacePhoto copies the image and records its path', () async {
-    final database = AppDatabase(NativeDatabase.memory());
-    addTearDown(database.close);
-    final place = await insertPlace(database);
-    final source = fakeSourcePhoto('picked.jpg');
-
-    await setPlacePhoto(
-      database,
-      place,
-      source,
-      directoryProvider: () async => tempDir,
-    );
-
-    final updated = await (database.select(
-      database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).getSingle();
-    expect(updated.photoPath, isNotNull);
-    expect(File(updated.photoPath!).existsSync(), isTrue);
-    // 원본이 지워져도 복사본은 남는다.
-    source.deleteSync();
-    expect(File(updated.photoPath!).existsSync(), isTrue);
-  });
-
-  test('replacing a photo deletes the previous copy', () async {
+  test('a place can hold multiple photos', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final place = await insertPlace(database);
 
-    await setPlacePhoto(
+    await addPlacePhoto(
       database,
       place,
       fakeSourcePhoto('first.jpg'),
       directoryProvider: () async => tempDir,
     );
-    final first = await (database.select(
-      database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).getSingle();
-
-    await setPlacePhoto(
+    await addPlacePhoto(
       database,
-      first,
+      place,
       fakeSourcePhoto('second.jpg'),
       directoryProvider: () async => tempDir,
     );
-    final second = await (database.select(
-      database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).getSingle();
 
-    expect(second.photoPath, isNot(first.photoPath));
-    expect(File(second.photoPath!).existsSync(), isTrue);
-    expect(File(first.photoPath!).existsSync(), isFalse);
+    final photos = await loadPlacePhotos(database, place.id);
+    expect(photos, hasLength(2));
+    for (final photo in photos) {
+      expect(File(photo.filePath).existsSync(), isTrue);
+    }
+    // 두 장이 서로 다른 파일로 복사되어야 한다.
+    expect(photos[0].filePath, isNot(photos[1].filePath));
   });
 
-  test('removePlacePhoto clears the path and deletes the file', () async {
+  test('copies survive after the picker source is deleted', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final place = await insertPlace(database);
-    await setPlacePhoto(
+    final source = fakeSourcePhoto('picked.jpg');
+
+    await addPlacePhoto(
       database,
       place,
-      fakeSourcePhoto('picked.jpg'),
+      source,
       directoryProvider: () async => tempDir,
     );
-    final withPhoto = await (database.select(
-      database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).getSingle();
+    source.deleteSync();
 
-    await removePlacePhoto(database, withPhoto);
+    final photos = await loadPlacePhotos(database, place.id);
+    expect(File(photos.single.filePath).existsSync(), isTrue);
+  });
 
-    final cleared = await (database.select(
-      database.placeClusters,
-    )..where((row) => row.id.equals(place.id))).getSingle();
-    expect(cleared.photoPath, isNull);
-    expect(File(withPhoto.photoPath!).existsSync(), isFalse);
+  test('deleting one photo keeps the others intact', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final place = await insertPlace(database);
+    await addPlacePhoto(
+      database,
+      place,
+      fakeSourcePhoto('first.jpg'),
+      directoryProvider: () async => tempDir,
+    );
+    await addPlacePhoto(
+      database,
+      place,
+      fakeSourcePhoto('second.jpg'),
+      directoryProvider: () async => tempDir,
+    );
+    final photos = await loadPlacePhotos(database, place.id);
+
+    await deletePlacePhoto(database, photos.first);
+
+    final remaining = await loadPlacePhotos(database, place.id);
+    expect(remaining, hasLength(1));
+    expect(remaining.single.id, photos.last.id);
+    expect(File(photos.first.filePath).existsSync(), isFalse);
+    expect(File(remaining.single.filePath).existsSync(), isTrue);
   });
 }
