@@ -15,6 +15,7 @@ import '../processing/location_post_processor.dart';
 import '../storage/app_database.dart';
 import '../timeline/day_activity_preview_repository.dart';
 import '../timeline/day_route_models.dart';
+import '../maps/map_tiles.dart';
 import '../timeline/day_time_selection.dart';
 import '../timeline/day_timeline_models.dart';
 import 'home_view_model.dart';
