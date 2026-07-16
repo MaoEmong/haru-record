@@ -10,6 +10,7 @@ import '../../core/geo/coordinate_validation.dart';
 import '../settings/settings_repository.dart';
 import '../storage/app_database.dart';
 import 'day_activity_preview_repository.dart';
+import '../maps/map_tiles.dart';
 import 'day_detail_view_model.dart';
 import 'day_route_models.dart';
 import 'day_time_selection.dart';
@@ -317,7 +318,7 @@ class _FlowMapState extends State<_FlowMap>
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: mapTileUrlTemplate,
               userAgentPackageName: 'com.maoemong.harurecord',
             ),
             PolylineLayer(

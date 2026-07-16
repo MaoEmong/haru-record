@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../app/app_theme.dart';
 import '../maps/cached_map_snapshot.dart';
+import '../maps/map_tiles.dart';
 
 class PlaceMapPreview extends StatelessWidget {
   const PlaceMapPreview({
@@ -45,7 +46,7 @@ class PlaceMapPreview extends StatelessWidget {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: mapTileUrlTemplate,
                 userAgentPackageName: 'com.maoemong.harurecord',
               ),
               MarkerLayer(

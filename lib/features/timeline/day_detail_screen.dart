@@ -13,6 +13,7 @@ import '../places/place_map_preview.dart';
 import '../settings/settings_repository.dart';
 import '../storage/app_database.dart';
 import 'day_activity_preview_repository.dart';
+import '../maps/map_tiles.dart';
 import 'day_detail_view_model.dart';
 import 'day_flow_playback_screen.dart';
 import 'day_route_models.dart';
@@ -634,7 +635,7 @@ class _DayRouteMapState extends State<_DayRouteMap> {
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: mapTileUrlTemplate,
               userAgentPackageName: 'com.maoemong.harurecord',
             ),
             PolylineLayer(
